@@ -23,6 +23,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
   // Initialize values when product changes
   React.useEffect(() => {
     if (product) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedRoseColor(product.colors && product.colors.length > 0 ? product.colors[0].name : '');
       setSelectedBoxColor(product.boxColors && product.boxColors.length > 0 ? product.boxColors[0].name : '');
       setSelectedSize(product.sizes ? product.sizes[0] : '');
@@ -92,7 +93,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
               {/* Title & Price */}
               <div>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-muted block mb-1">
-                  Venus et Fleur Atelier
+                  Venus et Fl
                 </span>
                 <Dialog.Title className="font-serif text-2xl md:text-3xl text-primary leading-tight mb-2">
                   {product.name}

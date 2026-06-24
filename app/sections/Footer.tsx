@@ -94,7 +94,7 @@ export default function Footer() {
 
       {/* Bottom Bar */}
       <div className="border-t border-charcoal/10 mt-20 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] text-muted font-sans uppercase tracking-wider">
-        <p>© 2026 Venus ET Fleur | All rights reserved</p>
+        <p>© 2023 Lebami | All rights reserved</p>
         <div className="flex gap-4">
           <Link href="#" className="hover:text-secondary transition-colors">Terms & Conditions - Privacy</Link>
           <span className="hidden md:inline">|</span>

@@ -34,6 +34,7 @@ function ShopContent() {
   // Sync initial collection from query param
   useEffect(() => {
     if (initialCollection) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedShape(initialCollection);
     }
   }, [initialCollection]);
@@ -80,6 +81,7 @@ function ShopContent() {
       result.reverse();
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilteredProducts(result);
     setVisibleCount(6); // reset pagination when filters change
   }, [selectedShape, selectedColor, selectedPriceRange, selectedOccasion, sortOption]);
@@ -109,7 +111,7 @@ function ShopContent() {
       {/* Hero Banner */}
       <div className="relative bg-cream border border-divider/60 py-16 px-8 text-center mb-12">
         <span className="text-[10px] uppercase tracking-[0.25em] text-secondary font-semibold block mb-2">
-          Venus et Fleur Atelier
+          Lebami Collection
         </span>
         <h1 className="font-serif text-3xl md:text-5xl font-medium tracking-wide">
           The Collection

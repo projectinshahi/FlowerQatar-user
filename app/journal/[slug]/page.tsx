@@ -110,7 +110,7 @@ export default function BlogPostDetailPage({ params }: PageProps) {
           {/* Elegant Pull Quote */}
           <div className="border-l-2 border-secondary pl-6 py-2 my-8">
             <p className="font-serif text-lg md:text-xl italic text-secondary leading-relaxed">
-              "We wanted to design an arrangement that captures a core botanical memory. An Eternity rose isn't just decoration—it is a continuous reminder of affection."
+              &quot;We wanted to design an arrangement that captures a core botanical memory. An Eternity rose isn&apos;t just decoration—it is a continuous reminder of affection.&quot;
             </p>
             <span className="text-[10px] uppercase tracking-widest text-muted font-semibold mt-2 block">
               — {post.author}, Lead Atelier Stylist
@@ -149,7 +149,7 @@ export default function BlogPostDetailPage({ params }: PageProps) {
               <h4 className="text-xs uppercase tracking-wider font-semibold text-primary mb-0.5">{post.author}</h4>
               <p className="text-[11px] text-muted uppercase tracking-widest mb-1.5">Atelier Design Columnist</p>
               <p className="text-[11px] text-muted/80 leading-relaxed">
-                Elise covers botanical preservation, sustainable luxury development, and design curation for Venus et Fleur.
+                Elise covers botanical preservation, sustainable luxury development, and design curation for Lebami.
               </p>
             </div>
           </div>

@@ -19,7 +19,7 @@ export default function ShippingReturnsPage() {
             1. Insured Shipping Speeds
           </h2>
           <p>
-            Venus et Fleur offers secure shipping worldwide. Standard shipping is complimentary for orders exceeding $150. For smaller items, a flat $15 logistics fee is added. 
+            Lebami offers secure shipping worldwide. Standard shipping is complimentary for orders exceeding $150. For smaller items, a flat $15 logistics fee is added. 
           </p>
           <div className="border border-divider bg-cream/40 p-4 overflow-x-auto rounded-none">
             <table className="w-full text-left text-xs border-collapse">
@@ -65,7 +65,7 @@ export default function ShippingReturnsPage() {
             3. Return & Refund Guidelines
           </h2>
           <p>
-            Please note that all Venus et Fleur preserved arrangements are final sale. Because each box is custom handcrafted with natural preserved vegetation, they cannot be returned or restocked once assembled.
+            Please note that all Lebami preserved arrangements are final sale. Because each box is custom handcrafted with natural preserved vegetation, they cannot be returned or restocked once assembled.
           </p>
           <p>
             In the rare event that your shipment arrives damaged during transit, contact our Customer Care concierge within 48 hours of receipt at <span className="font-semibold text-primary">concierge@venusetfleur-clone.com</span> with details and photographs. We will happily dispatch a replacement.

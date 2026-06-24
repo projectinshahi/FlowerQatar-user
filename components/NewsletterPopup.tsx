@@ -68,7 +68,7 @@ export default function NewsletterPopup() {
               Welcome to the World of
             </span>
             <h2 className="font-serif text-3xl md:text-4xl text-primary mb-4 leading-tight">
-              Venus et Fleur
+              Lebami Exclusive Club
 </h2>
             <p className="text-muted text-sm mb-8 leading-relaxed max-w-sm">
               Subscribe to receive exclusive access to private collection drops, luxury gifting guides, and complimentary shipping on your first order.

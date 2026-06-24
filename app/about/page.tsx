@@ -65,7 +65,7 @@ export default function AboutPage() {
               Redefining Floral Artistry
             </h2>
             <p className="text-muted text-sm md:text-base leading-relaxed">
-              Founded in New York City, Venus et Fleur was born out of a desire to create a lasting floral statement. Traditionally, fresh roses fade within days, leaving only a brief memory. Our founders sought to capture the ultimate peak of rose elegance and preserve it, enabling a floral arrangement to remain beautiful for an entire year.
+              Founded in New York City, Lebami was born out of a desire to create a lasting floral statement. Traditionally, fresh roses fade within days, leaving only a brief memory. Our founders sought to capture the ultimate peak of rose elegance and preserve it, enabling a floral arrangement to remain beautiful for an entire year.
             </p>
             <p className="text-muted text-sm leading-relaxed">
               By partnering with eco-conscious volcanic farms in Ecuador and applying proprietary botanical preservation formulas, we introduced the world to the original Eternity® Rose. Over the years, our custom boxes have become a staple of premium home decor, milestone events, and luxury gifts.
@@ -154,7 +154,7 @@ export default function AboutPage() {
                 <Award size={18} className="text-secondary flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="text-xs uppercase tracking-wider font-semibold text-primary">Reducing Waste</h4>
-                  <p className="text-[11px] text-muted leading-relaxed">One custom Venus et Fleur box replaces approximately 50-60 batches of temporary fresh bouquets.</p>
+                  <p className="text-[11px] text-muted leading-relaxed">One custom Lebami box replaces approximately 50-60 batches of temporary fresh bouquets.</p>
                 </div>
               </div>
             </div>

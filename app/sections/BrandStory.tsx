@@ -15,17 +15,17 @@ export default function BrandStory() {
   const y = useTransform(scrollYProgress, [0, 1], ["-20%", "20%"])
 
   return (
-    <section ref={containerRef} className="relative h-[400px] md:h-[500px] overflow-hidden bg-secondary">
+    <section ref={containerRef} className="relative h-[500px] md:h-[700px] lg:h-[800px] overflow-hidden bg-secondary">
       {/* Parallax Background */}
-      <motion.div style={{ y }} className="absolute inset-0 w-full h-[140%] -top-[20%]">
+      <motion.div style={{ y }} className="absolute inset-0 w-full h-[120%] -top-[10%]">
         <Image
           src="/images/about_florist_1782290182382.png"
           alt="Deep red roses"
           fill
           sizes="100vw"
-          className="object-cover"
+          className="object-cover object-[center_30%]"
         />
-        <div className="absolute inset-0 bg-[#2a0015]/70" />
+        <div className="absolute inset-0 bg-primary/70 mix-blend-multiply" />
       </motion.div>
 
       {/* Content */}
