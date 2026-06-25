@@ -37,7 +37,7 @@ const linkColumns = [
 
 export default function Footer() {
   return (
-    <footer className="bg-cream pt-20 pb-10 px-4 md:px-12">
+    <footer className="bg-cream pt-12 md:pt-20 pb-8 md:pb-10 px-4 md:px-12">
       {/* Top Section */}
       <div className="max-w-md mx-auto text-center">
         {/* Crest Logo (simplified SVG representation) */}
@@ -68,9 +68,9 @@ export default function Footer() {
       </div>
 
       {/* Link Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-4xl mx-auto mt-24 text-center md:text-left">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12 max-w-4xl mx-auto mt-12 md:mt-20 text-left md:text-center">
         {linkColumns.map((col, idx) => (
-          <div key={idx} className="flex flex-col md:items-center">
+          <div key={idx} className="flex flex-col items-start md:items-center">
             <div className="text-left md:text-center inline-block">
               <h4 className="font-sans text-[11px] uppercase tracking-[0.15em] font-medium mb-6 text-secondary">
                 {col.title}
@@ -93,7 +93,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-charcoal/10 mt-20 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] text-muted font-sans uppercase tracking-wider">
+      <div className="border-t border-charcoal/10 mt-12 md:mt-20 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] text-muted font-sans uppercase tracking-wider">
         <p>© 2023 Lebami | All rights reserved</p>
         <div className="flex gap-4">
           <Link href="#" className="hover:text-secondary transition-colors">Terms & Conditions - Privacy</Link>

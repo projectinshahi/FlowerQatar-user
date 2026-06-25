@@ -2,7 +2,7 @@
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AnimatedSection } from '../components/AnimatedSection'
+import { AnimatedSection } from '../../components/AnimatedSection'
 
 const categories = [
   { name: "FLOWERS", image: "/images/product_master_1_1782290164345.png" },

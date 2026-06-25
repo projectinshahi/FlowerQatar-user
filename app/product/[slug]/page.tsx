@@ -432,7 +432,7 @@ export default function ProductDetailPage({ params }: PageProps) {
         <h2 className="font-serif text-2xl md:text-3xl text-primary text-center mb-12">
           You May Also Like
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {relatedProducts.map((p) => (
             <ProductCard key={p.slug} product={p} />
           ))}

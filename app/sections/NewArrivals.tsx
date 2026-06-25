@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Heart, Star } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AnimatedSection } from '../components/AnimatedSection'
+import { AnimatedSection } from '../../components/AnimatedSection'
 
 interface Product {
   id: string;
@@ -83,7 +83,7 @@ export default function NewArrivals() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {products.map((product) => (
             <div key={product.id} className="luxury-card group flex flex-col h-full bg-white relative">
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-cream/20">

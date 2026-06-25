@@ -1,6 +1,6 @@
 'use client'
 import { motion } from 'framer-motion'
-import { AnimatedSection } from '../components/AnimatedSection'
+import { AnimatedSection } from '../../components/AnimatedSection'
 
 const pressLogos = [
   { name: "COSMOPOLITAN", className: "font-sans font-bold tracking-widest text-xl uppercase" },

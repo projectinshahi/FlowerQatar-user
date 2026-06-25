@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AnimatedSection } from '../components/AnimatedSection'
+import { AnimatedSection } from '../../components/AnimatedSection'
 
 const testimonials = [
   {

@@ -38,6 +38,8 @@ interface AppContextType {
   wishlist: string[];
   isCartOpen: boolean;
   isWishlistOpen: boolean;
+  isAccountOpen: boolean;
+  isSearchOpen: boolean;
   toasts: Toast[];
   customizer: CustomArrangementState;
   
@@ -53,6 +55,10 @@ interface AppContextType {
   // Wishlist Actions
   toggleWishlist: (productSlug: string) => void;
   setWishlistOpen: (open: boolean) => void;
+
+  // Drawer Actions
+  setAccountOpen: (open: boolean) => void;
+  setSearchOpen: (open: boolean) => void;
 
   // Customizer Actions
   updateCustomizer: (updates: Partial<CustomArrangementState>) => void;
@@ -80,6 +86,8 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [isCartOpen, setCartOpen] = useState(false);
   const [isWishlistOpen, setWishlistOpen] = useState(false);
+  const [isAccountOpen, setAccountOpen] = useState(false);
+  const [isSearchOpen, setSearchOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [customizer, setCustomizer] = useState<CustomArrangementState>(defaultCustomizer);
 
@@ -200,6 +208,8 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         wishlist,
         isCartOpen,
         isWishlistOpen,
+        isAccountOpen,
+        isSearchOpen,
         toasts,
         customizer,
         addToCart,
@@ -211,6 +221,8 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         getCartCount,
         toggleWishlist,
         setWishlistOpen,
+        setAccountOpen,
+        setSearchOpen,
         updateCustomizer,
         resetCustomizer,
         addToast,

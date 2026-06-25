@@ -117,8 +117,8 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           </div>
         )}
 
-        {/* Slide-up CTA actions on hover */}
-        <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-divider p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-350 ease-out z-10 flex space-x-2">
+        {/* Slide-up CTA actions on hover (Desktop only) */}
+        <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-divider p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-350 ease-out z-10 hidden md:flex space-x-2">
           {onQuickView && (
             <button
               onClick={(e) => {
@@ -169,7 +169,8 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
             onClick={handleQuickAdd}
             className="text-[9px] uppercase tracking-[0.1em] text-secondary hover:text-primary font-semibold transition-colors duration-300 flex items-center space-x-0.5"
           >
-            <span>Quick Add</span>
+            <span className="hidden sm:inline">Quick Add</span>
+            <span className="sm:hidden">Add</span>
             <span>+</span>
           </button>
         </div>

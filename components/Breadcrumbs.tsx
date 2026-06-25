@@ -12,10 +12,12 @@ interface BreadcrumbsProps {
   items: BreadcrumbItem[];
 }
 
+import { ChevronRight } from 'lucide-react';
+
 export default function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
-    <nav aria-label="Breadcrumb" className="py-4 text-xs tracking-widest uppercase">
-      <ol className="flex flex-wrap items-center space-x-2 text-muted">
+    <nav aria-label="Breadcrumb" className="py-4">
+      <ol className="flex flex-wrap items-center space-x-1.5 font-sans text-[13px] md:text-[14px] text-[#888]">
         <li>
           <Link href="/" className="hover:text-secondary transition-colors duration-300">
             Home
@@ -25,8 +27,10 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
           const isLast = idx === items.length - 1;
           return (
             <React.Fragment key={idx}>
-              <li className="text-secondary font-light select-none">/</li>
-              <li className={isLast ? 'text-primary font-medium' : ''}>
+              <li className="text-[#888] flex items-center select-none opacity-60">
+                <ChevronRight size={14} className="stroke-[1.5]" />
+              </li>
+              <li className={isLast ? 'text-primary' : ''}>
                 {isLast || !item.href ? (
                   <span>{item.label}</span>
                 ) : (

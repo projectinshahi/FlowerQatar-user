@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AnimatedSection } from '../components/AnimatedSection'
+import { AnimatedSection } from '../../components/AnimatedSection'
 
 const columns = [
   { text: "ETERNITY FLOWERS", link: "#" },
