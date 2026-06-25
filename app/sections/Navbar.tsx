@@ -118,9 +118,9 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex flex-col items-center justify-center mb-3 md:mb-4 z-0">
             <Link href="/" className="flex items-center group">
-              <span className="font-serif text-3xl md:text-[36px] font-light tracking-[0.2em]">LE</span>
+              <span className="font-serif text-3xl md:text-[36px] font-light tracking-[0.2em]">LEBAMI</span>
               {/* <span className="font-serif italic text-xl mx-3 md:mx-4 group-hover:text-secondary transition-colors duration-400">et</span> */}
-              <span className="font-serif text-3xl md:text-[36px] font-light tracking-[0.2em] ml-2 md:ml-4">BAMI</span>
+              {/* <span className="font-serif text-3xl md:text-[36px] font-light tracking-[0.2em] ml-2 md:ml-4">BAMI</span> */}
             </Link>
           </div>
 
