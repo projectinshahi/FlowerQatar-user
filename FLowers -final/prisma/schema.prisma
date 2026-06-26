@@ -1,0 +1,107 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==================================================
+// ENUMS
+// ==================================================
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+  FACEBOOK
+  GITHUB
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum OtpType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+  PHONE_VERIFY
+}
+
+// ==================================================
+// MODELS
+// ==================================================
+
+model User {
+  id                  String       @id @default(uuid()) @db.Uuid
+
+  // Profile Information
+  firstName           String?      @db.VarChar(50)
+  lastName            String?      @db.VarChar(50)
+  email               String       @unique @db.VarChar(255)
+  phone               String?      @unique @db.VarChar(20)
+  profileImage        String?      @db.Text
+  country             String?      @db.VarChar(100)
+  state               String?      @db.VarChar(100)
+  city                String?      @db.VarChar(100)
+  timezone            String?      @db.VarChar(50)
+  language            String?      @default("en") @db.VarChar(10)
+
+  // Authentication
+  password            String?      @db.Text
+  provider            AuthProvider @default(EMAIL)
+  providerId          String?      @db.VarChar(255)
+
+  // Security & Status
+  role                Role         @default(USER)
+  isEmailVerified     Boolean      @default(false)
+  isActive            Boolean      @default(true)
+  isBlocked           Boolean      @default(false)
+  isDeleted           Boolean      @default(false)
+
+  // Rate Limiting & Account Security
+  failedLoginAttempts Int          @default(0) @db.SmallInt
+  lockUntil           DateTime?    @db.Timestamptz
+  refreshTokenVersion Int          @default(1)
+  lastLogin           DateTime?    @db.Timestamptz
+
+  // Audit
+  deletedAt           DateTime?    @db.Timestamptz
+  createdAt           DateTime     @default(now()) @db.Timestamptz
+  updatedAt           DateTime     @updatedAt @db.Timestamptz
+  createdBy           String?      @db.Uuid
+  updatedBy           String?      @db.Uuid
+
+  // Relations
+  otps                Otp[]
+
+  // Indexes and Constraints
+  @@unique([provider, providerId])
+  @@index([email])
+  @@index([role])
+  @@index([isActive, isDeleted])
+}
+
+model Otp {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  
+  otp       String   @db.VarChar(255) 
+  type      OtpType
+  expiresAt DateTime @db.Timestamptz
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0) @db.SmallInt
+  
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([userId, type])
+  @@index([expiresAt])
+}
