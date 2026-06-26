@@ -110,6 +110,7 @@ export default function Hero() {
           onClick={prevSlide}
           className="text-white hover:text-white/70 transition-colors duration-300 p-2" 
           aria-label="Previous slide"
+          suppressHydrationWarning
         >
           <ChevronLeft size={20} />
         </button>
@@ -134,6 +135,7 @@ export default function Hero() {
           onClick={nextSlide}
           className="text-white hover:text-white/70 transition-colors duration-300 p-2" 
           aria-label="Next slide"
+          suppressHydrationWarning
         >
           <ChevronRight size={20} />
         </button>

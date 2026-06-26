@@ -106,7 +106,7 @@ export default function NewArrivals() {
                     {product.badge}
                   </div>
                 )}
-                <button className="absolute top-4 right-4 text-primary hover:text-accent transition-colors z-10" aria-label="Add to wishlist">
+                <button className="absolute top-4 right-4 text-primary hover:text-accent transition-colors z-10" aria-label="Add to wishlist" suppressHydrationWarning>
                   <Heart size={20} />
                 </button>
               </div>

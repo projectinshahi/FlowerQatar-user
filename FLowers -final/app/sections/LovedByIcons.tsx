@@ -163,6 +163,7 @@ export default function LovedByIcons() {
             onClick={prevSlide}
             className="absolute left-0 top-1/3 -translate-y-1/2 -translate-x-2 md:-translate-x-8 w-10 h-10 flex items-center justify-center bg-white border border-divider text-primary rounded-full hover:bg-cream transition-colors z-10"
             aria-label="Previous testimonial"
+            suppressHydrationWarning
           >
             <ChevronLeft size={16} strokeWidth={1.5} />
           </button>
@@ -170,6 +171,7 @@ export default function LovedByIcons() {
             onClick={nextSlide}
             className="absolute right-0 top-1/3 -translate-y-1/2 translate-x-2 md:translate-x-8 w-10 h-10 flex items-center justify-center bg-white border border-divider text-primary rounded-full hover:bg-cream transition-colors z-10"
             aria-label="Next testimonial"
+            suppressHydrationWarning
           >
             <ChevronRight size={16} strokeWidth={1.5} />
           </button>
