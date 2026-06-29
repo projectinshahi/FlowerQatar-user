@@ -79,7 +79,7 @@ export default function MatiMarine() {
           </p>
           
           <Link
-            href="#"
+            href="/shop"
             className="btn-primary inline-block px-10 py-4 w-fit mx-auto lg:mx-0 text-[11px] tracking-[0.2em]"
           >
             DISCOVER THE COLLECTION

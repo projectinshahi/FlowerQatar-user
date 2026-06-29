@@ -5,9 +5,10 @@ import { cookies } from 'next/headers';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const cookieStore = await cookies();
     const token = cookieStore.get('session')?.value;
     
@@ -25,7 +26,7 @@ export async function PATCH(
 
     const order = await prisma.order.update({
       where: {
-        id: params.id,
+        id,
       },
       data: {
         status,
@@ -45,10 +46,11 @@ export async function PATCH(
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = cookies().get('auth_token')?.value;
+    const { id } = await params;
+    const token = (await cookies()).get('auth_token')?.value;
     
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -61,7 +63,7 @@ export async function GET(
 
     const order = await prisma.order.findUnique({
       where: {
-        id: params.id,
+        id,
       },
       include: {
         user: {

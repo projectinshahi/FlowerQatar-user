@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function AdminLogin() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, isAdminLogin: true }),
       });
 
       const data = await res.json();
@@ -43,7 +43,7 @@ export default function AdminLogin() {
     }
   };
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -56,7 +56,7 @@ export default function AdminLogin() {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
   };
@@ -114,6 +114,7 @@ export default function AdminLogin() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
                   placeholder="admin@flowerqatar.com"
+                  suppressHydrationWarning
                 />
               </div>
             </motion.div>
@@ -131,6 +132,7 @@ export default function AdminLogin() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="block w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
                   placeholder="••••••••"
+                  suppressHydrationWarning
                 />
               </div>
             </motion.div>
@@ -140,6 +142,7 @@ export default function AdminLogin() {
                 type="submit"
                 disabled={isLoading}
                 className="group relative w-full flex justify-center items-center gap-2 py-4 px-4 border border-transparent rounded-xl text-sm font-bold text-white bg-gray-900 hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-70 transition-all shadow-md hover:shadow-lg"
+                suppressHydrationWarning
               >
                 {isLoading ? (
                   <Loader2 className="animate-spin h-5 w-5" />

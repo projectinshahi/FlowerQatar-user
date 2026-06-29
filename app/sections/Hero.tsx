@@ -10,21 +10,21 @@ const slides = [
     subtitle: "REAL FLOWERS THAT LAST A YEAR",
     description: "Sun, sea, and the ancient symbol of protection. Summer is here. New prints, new shades, and the Eternity® Blooms that last all season long.",
     buttonText: "SHOP SUMMER FLORALS",
-    buttonLink: "#"
+    buttonLink: "/shop"
   },
   {
     title: "THE BRIDAL COLLECTION",
     subtitle: "UNFORGETTABLE WEDDING FLORALS",
     description: "Celebrate love with our exquisite bridal arrangements. Handcrafted luxury roses that perfectly capture the magic of your special day.",
     buttonText: "EXPLORE BRIDAL",
-    buttonLink: "#"
+    buttonLink: "/shop"
   },
   {
     title: "LUXURY GIFTING",
     subtitle: "CURATED FOR EVERY OCCASION",
     description: "Make a lasting impression with our signature gift boxes and artisanal chocolates. The perfect gesture of appreciation and love.",
     buttonText: "SHOP GIFTS",
-    buttonLink: "#"
+    buttonLink: "/shop"
   }
 ]
 

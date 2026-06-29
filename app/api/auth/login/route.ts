@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, isAdminLogin } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -23,6 +23,16 @@ export async function POST(req: Request) {
 
     if (!user.isActive || user.isBlocked || user.isDeleted) {
       return NextResponse.json({ error: 'Account is deactivated or blocked' }, { status: 403 });
+    }
+
+    const hasAdminRole = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+
+    if (isAdminLogin && !hasAdminRole) {
+      return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 403 });
+    }
+
+    if (!isAdminLogin && hasAdminRole) {
+      return NextResponse.json({ error: 'Admins cannot log in on the customer portal.' }, { status: 403 });
     }
 
     // Rate Limiting (Brute force protection)

@@ -27,7 +27,11 @@ export default function AdminLayout({
   const navLinks = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-    { name: 'Products', href: '/admin/products', icon: Package },
+    { name: 'All Products', href: '/admin/products', icon: Package },
+    { name: 'Add Product', href: '/admin/products/new', icon: Package },
+    { name: 'Categories', href: '/admin/categories', icon: Package },
+    { name: 'Brands', href: '/admin/brands', icon: Package },
+    { name: 'Product Reviews', href: '/admin/reviews', icon: Package },
     { name: 'Users', href: '/admin/users', icon: Users },
   ];
 

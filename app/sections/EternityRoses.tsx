@@ -24,7 +24,7 @@ export default function EternityRoses() {
           </p>
           
           <Link
-            href="#"
+            href="/shop"
             className="btn-primary inline-block px-8 py-4"
           >
             SHOP THE COLLECTION

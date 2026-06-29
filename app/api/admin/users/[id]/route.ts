@@ -5,9 +5,10 @@ import { cookies } from 'next/headers';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const cookieStore = await cookies();
     const token = cookieStore.get('session')?.value;
     
@@ -32,7 +33,7 @@ export async function PATCH(
 
     const user = await prisma.user.update({
       where: {
-        id: params.id,
+        id,
       },
       data: dataToUpdate,
       select: {
@@ -55,9 +56,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const cookieStore = await cookies();
     const token = cookieStore.get('session')?.value;
     
@@ -72,7 +74,7 @@ export async function DELETE(
 
     await prisma.user.delete({
       where: {
-        id: params.id,
+        id,
       }
     });
 

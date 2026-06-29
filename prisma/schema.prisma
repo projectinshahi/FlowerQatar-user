@@ -77,6 +77,7 @@ model User {
 
   // Relations
   otps                Otp[]
+  orders              Order[]
 
   // Indexes and Constraints
   @@unique([provider, providerId])
@@ -104,4 +105,196 @@ model Otp {
   // Indexes
   @@index([userId, type])
   @@index([expiresAt])
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id             String      @id @default(uuid()) @db.Uuid
+  userId         String      @db.Uuid
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalAmount    Decimal     @db.Decimal(10, 2)
+  status         OrderStatus @default(PENDING)
+  trackingNumber String?     @db.VarChar(100)
+  createdAt      DateTime    @default(now()) @db.Timestamptz
+  updatedAt      DateTime    @updatedAt @db.Timestamptz
+  items          OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id               String          @id @default(uuid()) @db.Uuid
+  orderId          String          @db.Uuid
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String          @db.Uuid
+  product          Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariantId String?         @db.Uuid
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  quantity         Int             @db.Integer
+  price            Decimal         @db.Decimal(10, 2)
+  createdAt        DateTime        @default(now()) @db.Timestamptz
+  updatedAt        DateTime        @updatedAt @db.Timestamptz
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([productVariantId])
+}
+
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(255)
+  slug        String    @unique @db.VarChar(255)
+  products    Product[]
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+}
+
+model Brand {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(255)
+  slug        String    @unique @db.VarChar(255)
+  products    Product[]
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Product {
+  id                String      @id @default(uuid()) @db.Uuid
+  name              String      @db.VarChar(255)
+  slug              String      @unique @db.VarChar(255)
+  sku               String?     @unique @db.VarChar(100)
+  shortDescription  String?     @db.Text
+  description       String?     @db.Text 
+  categoryId        String?     @db.Uuid
+  category          Category?   @relation(fields: [categoryId], references: [id])
+  brandId           String?     @db.Uuid
+  brand             Brand?      @relation(fields: [brandId], references: [id])
+  status            ProductStatus @default(DRAFT)
+  isFeatured        Boolean     @default(false)
+  isBestSeller      Boolean     @default(false)
+  isTrending        Boolean     @default(false)
+  isNewArrival      Boolean     @default(false)
+
+  // Pricing (Base level)
+  basePrice         Decimal     @db.Decimal(10, 2)
+  salePrice         Decimal?    @db.Decimal(10, 2)
+  comparePrice      Decimal?    @db.Decimal(10, 2)
+  costPrice         Decimal?    @db.Decimal(10, 2)
+  taxClass          String?     @db.VarChar(100)
+
+  // Relations
+  variants          ProductVariant[]
+  specifications    ProductSpecification[]
+  faqs              ProductFAQ[]
+  seo               ProductSEO?
+  orderItems        OrderItem[]
+
+  createdAt         DateTime    @default(now()) @db.Timestamptz
+  updatedAt         DateTime    @updatedAt @db.Timestamptz
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([status])
+}
+
+model ProductVariant {
+  id              String      @id @default(uuid()) @db.Uuid
+  productId       String      @db.Uuid
+  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantName     String      @db.VarChar(255)
+  sku             String      @unique @db.VarChar(100)
+  color           String?     @db.VarChar(100)
+  colorCode       String?     @db.VarChar(20) 
+  material        String?     @db.VarChar(100)
+  size            String?     @db.VarChar(50)
+  barcode         String?     @db.VarChar(100)
+  weight          Decimal?    @db.Decimal(10, 2)
+  length          Decimal?    @db.Decimal(10, 2)
+  width           Decimal?    @db.Decimal(10, 2)
+  height          Decimal?    @db.Decimal(10, 2)
+  price           Decimal     @db.Decimal(10, 2)
+  salePrice       Decimal?    @db.Decimal(10, 2)
+  stock           Int         @default(0)
+  lowStockAlert   Int         @default(5)
+  isDefault       Boolean     @default(false)
+  isActive        Boolean     @default(true)
+
+  images          ProductVariantImage[]
+  orderItems      OrderItem[]
+
+  createdAt       DateTime    @default(now()) @db.Timestamptz
+  updatedAt       DateTime    @updatedAt @db.Timestamptz
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model ProductVariantImage {
+  id                String         @id @default(uuid()) @db.Uuid
+  productVariantId  String         @db.Uuid
+  productVariant    ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+  url               String         @db.Text
+  publicId          String         @db.VarChar(255)
+  isPrimary         Boolean        @default(false)
+  isHover           Boolean        @default(false)
+  isGallery         Boolean        @default(true)
+  order             Int            @default(0)
+
+  createdAt         DateTime       @default(now()) @db.Timestamptz
+  updatedAt         DateTime       @updatedAt @db.Timestamptz
+
+  @@index([productVariantId])
+}
+
+model ProductSpecification {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title     String   @db.VarChar(255)
+  value     String   @db.Text
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  @@index([productId])
+}
+
+model ProductFAQ {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  question  String   @db.Text
+  answer    String   @db.Text
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  @@index([productId])
+}
+
+model ProductSEO {
+  id              String   @id @default(uuid()) @db.Uuid
+  productId       String   @unique @db.Uuid
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seoTitle        String?  @db.VarChar(255)
+  metaDescription String?  @db.Text
+  keywords        String?  @db.Text
+
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
 }

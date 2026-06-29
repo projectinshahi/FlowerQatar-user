@@ -18,7 +18,7 @@ export default function ArtTriptych() {
       {/* Shared Background Image */}
       <div className="absolute inset-0 overflow-hidden">
         <Image
-          src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg/1280px-Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg"
+          src="/images/ART.png"
           alt="Birth of Venus"
           fill
           sizes="100vw"
@@ -48,7 +48,7 @@ export default function ArtTriptych() {
               className={`relative z-10 transition-transform duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${hoveredCol === index ? 'scale-[1.05]' : 'scale-100'
                 }`}
             >
-              <h3 className="font-serif text-2xl text-white tracking-wide drop-shadow-lg">
+              <h3 className="font-serif text-2xl md:text-3xl text-[#C1A87D] font-medium tracking-[0.2em] drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
                 {col.text}
               </h3>
             </div>
