@@ -16,7 +16,8 @@ const testimonials = [
       image: "/images/product_master_1_1782290164345.png",
       title: "GIA MARBLE VASE",
       subtitle: "Handcarved Marble / White Roses",
-      price: "$689"
+      price: "$689",
+      slug: "fleura-porcelain-vase"
     }
   },
   {
@@ -29,7 +30,8 @@ const testimonials = [
       image: "/images/product_master_1_1782290164345.png",
       title: "SMALL SQUARE",
       subtitle: "Parisian-Style Box / Red Roses",
-      price: "$299"
+      price: "$299",
+      slug: "small-square"
     }
   },
   {
@@ -42,7 +44,8 @@ const testimonials = [
       image: "/images/product_master_1_1782290164345.png",
       title: "LARGE SQUARE",
       subtitle: "Parisian-Style Box / Red Roses",
-      price: "$399"
+      price: "$399",
+      slug: "grande-square-box"
     }
   }
 ]
@@ -128,7 +131,7 @@ export default function LovedByIcons() {
                     </div>
                     
                     {/* Product Card Attachment */}
-                    <Link href="#" className="w-full bg-[#FAFAFA] border border-[#F0F0F0] p-4 flex items-center hover:bg-[#F5F5F5] transition-colors">
+                    <Link href={`/product/${testimonial.product.slug}`} className="w-full bg-[#FAFAFA] border border-[#F0F0F0] p-4 flex items-center hover:bg-[#F5F5F5] transition-colors">
                       <div className="relative w-16 h-16 flex-shrink-0 bg-white">
                         <Image
                           src={testimonial.product.image}

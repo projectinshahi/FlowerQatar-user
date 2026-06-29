@@ -167,10 +167,14 @@ function ShopContent() {
 
           {/* Shape filter */}
           <div>
-            <h4 className="text-xs uppercase tracking-widest font-semibold text-primary mb-4">Box Shape</h4>
+            <h4 className="text-xs uppercase tracking-widest font-semibold text-primary mb-4">Categories</h4>
             <div className="space-y-2">
               {[
-                { name: 'All Shapes', value: '' },
+                { name: 'All Categories', value: '' },
+                { name: 'Red Roses', value: 'red-roses' },
+                { name: 'Pink Roses', value: 'pink-roses' },
+                { name: 'Orchids', value: 'orchids' },
+                { name: 'Lilies', value: 'lilies' },
                 { name: 'Le Mini (Single)', value: 'le-mini' },
                 { name: 'Round Boxes', value: 'round' },
                 { name: 'Square Boxes', value: 'square' },
@@ -335,10 +339,14 @@ function ShopContent() {
 
               {/* Shapes */}
               <div className="mb-6">
-                <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Shape</h4>
+                <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Category</h4>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { name: 'All', value: '' },
+                    { name: 'Red Roses', value: 'red-roses' },
+                    { name: 'Pink Roses', value: 'pink-roses' },
+                    { name: 'Orchids', value: 'orchids' },
+                    { name: 'Lilies', value: 'lilies' },
                     { name: 'Le Mini', value: 'le-mini' },
                     { name: 'Round', value: 'round' },
                     { name: 'Square', value: 'square' },

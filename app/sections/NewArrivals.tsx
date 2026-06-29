@@ -8,6 +8,7 @@ import { AnimatedSection } from '../../components/AnimatedSection'
 
 interface Product {
   id: string;
+  slug: string;
   badge: string;
   name: string;
   subtitle: string;
@@ -17,10 +18,10 @@ interface Product {
   image: string;
   hoverImage: string;
 }
-
 const products: Product[] = [
   {
     id: "1",
+    slug: "classic-round-box",
     badge: "NEW COLOR",
     name: "Wicker Mixed Globe",
     subtitle: "MIXED FLORALS • JARDIN BLANC",
@@ -32,6 +33,7 @@ const products: Product[] = [
   },
   {
     id: "2",
+    slug: "classic-round-box",
     badge: "BESTSELLER",
     name: "Classic Round",
     subtitle: "ETERNITY ROSES • BURGUNDY",
@@ -43,6 +45,7 @@ const products: Product[] = [
   },
   {
     id: "3",
+    slug: "classic-square-box",
     badge: "LIMITED",
     name: "Artisanal Chocolates",
     subtitle: "LUXURY GIFT BOX",
@@ -54,6 +57,7 @@ const products: Product[] = [
   },
   {
     id: "4",
+    slug: "le-mini-xo",
     badge: "NEW",
     name: "Le Mini Set",
     subtitle: "ETERNITY ROSES • SOFT PINK",
@@ -85,7 +89,8 @@ export default function NewArrivals() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {products.map((product) => (
-            <div key={product.id} className="luxury-card group flex flex-col h-full bg-white relative">
+            <div key={product.id} className="luxury-card group flex flex-col h-full bg-white relative hover:shadow-lg transition-shadow cursor-pointer">
+              <Link href={`/product/${product.slug}`} className="absolute inset-0 z-10" aria-label={`View ${product.name}`} />
               <div className="relative aspect-[4/5] w-full overflow-hidden bg-cream/20">
                 <Image
                   src={product.image}
@@ -106,7 +111,7 @@ export default function NewArrivals() {
                     {product.badge}
                   </div>
                 )}
-                <button className="absolute top-4 right-4 text-primary hover:text-accent transition-colors z-10" aria-label="Add to wishlist" suppressHydrationWarning>
+                <button className="absolute top-4 right-4 text-primary hover:text-accent transition-colors z-20 cursor-pointer" aria-label="Add to wishlist" suppressHydrationWarning>
                   <Heart size={20} />
                 </button>
               </div>

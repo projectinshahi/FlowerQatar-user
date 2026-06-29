@@ -5,10 +5,11 @@ import Link from 'next/link'
 import { AnimatedSection } from '../../components/AnimatedSection'
 
 const categories = [
-  { name: "FLOWERS", image: "/images/product_master_1_1782290164345.png" },
-  { name: "LUXURY BOUQUETS", image: "/images/category_bouquets_1782290106325.png" },
-  { name: "CHOCOLATE GIFTS", image: "/images/category_chocolates_1782290122821.png" },
-  { name: "GIFT BOXES", image: "/images/category_gift_boxes_1782290153364.png" }
+ // Classic Red
+  { name: "RED ROSES", image: "/images/rosses.png", hoverColor: "rgba(180, 20, 30, 0.85)", textColor: "#000000", slug: "pink-roses" },
+    { name: "PINK ROSES", image: "/images/red rosses.png", hoverColor: "rgba(244, 194, 194, 0.85)", textColor: "#FFFFFF", slug: "red-roses" }, // Blush Pink
+  { name: "ORCHIDS", image: "/images/orchid.png", hoverColor: "rgba(255, 255, 255, 0.45)", textColor: "#FFFFFF", slug: "orchids" }, // Deep Purple
+  { name: "LILIES", image: "/images/lillies.png", hoverColor: "rgba(244, 194, 194, 0.75)", textColor: "#000000", slug: "lilies" } // Pure White
 ]
 
 const container: any = {
@@ -44,7 +45,7 @@ export default function ExploreGardens() {
       >
         {categories.map((category, idx) => (
           <motion.div key={idx} variants={item}>
-            <Link href="#" className="block relative aspect-[4/5] overflow-hidden group cursor-pointer">
+            <Link href={`/shop?collection=${category.slug}`} className="block relative aspect-[4/5] overflow-hidden group cursor-pointer">
               <Image
                 src={category.image}
                 alt={category.name}
@@ -52,9 +53,15 @@ export default function ExploreGardens() {
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="object-cover transition-transform duration-600 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-transparent group-hover:bg-primary transition-colors duration-400" />
+              <div 
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
+                style={{ backgroundColor: category.hoverColor }}
+              />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-400">
-                <span className="block font-serif text-2xl text-white tracking-wide drop-shadow-lg text-center px-4">
+                <span 
+                  className="block font-serif text-2xl tracking-wide drop-shadow-sm text-center px-4"
+                  style={{ color: category.textColor }}
+                >
                   {category.name}
                 </span>
               </div>
