@@ -48,7 +48,10 @@ export default function ArtTriptych() {
               className={`relative z-10 transition-transform duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${hoveredCol === index ? 'scale-[1.05]' : 'scale-100'
                 }`}
             >
-              <h3 className="font-serif text-2xl md:text-3xl text-[#C1A87D] font-medium tracking-[0.2em] drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
+              <h3 
+                className="font-serif text-2xl md:text-3xl transition-colors duration-500 font-medium tracking-[0.2em] drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
+                style={{ color: hoveredCol === index ? '#E6D3BF' : '#D4B791' }}
+              >
                 {col.text}
               </h3>
             </div>

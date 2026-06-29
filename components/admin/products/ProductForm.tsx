@@ -7,12 +7,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductFormValues } from "@/lib/validations/product";
 import { createProduct, updateProduct } from "@/lib/actions/product.actions";
 import { Loader2, Check, ArrowRight, ArrowLeft } from "lucide-react";
-import BasicInfoStep from "./steps/BasicInfoStep";
-import PricingStep from "./steps/PricingStep";
-import VariantsStep from "./steps/VariantsStep";
-import SpecificationsStep from "./steps/SpecificationsStep";
-import FAQStep from "./steps/FAQStep";
-import SEOStep from "./steps/SEOStep";
+import BasicInfoStep from "@/components/admin/products/steps/BasicInfoStep";
+import PricingStep from "@/components/admin/products/steps/PricingStep";
+import VariantsStep from "@/components/admin/products/steps/VariantsStep";
+import SpecificationsStep from "@/components/admin/products/steps/SpecificationsStep";
+import FAQStep from "@/components/admin/products/steps/FAQStep";
+import SEOStep from "@/components/admin/products/steps/SEOStep";
 
 const STEPS = [
   { id: "basic", title: "Basic Information" },
