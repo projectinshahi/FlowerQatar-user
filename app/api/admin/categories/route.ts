@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Failed to create category:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: (error as any).errors[0].message }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
   }

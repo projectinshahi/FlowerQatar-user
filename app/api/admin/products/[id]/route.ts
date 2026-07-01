@@ -56,14 +56,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     if (validatedData.slug && validatedData.slug !== product.slug) {
       const existingProduct = await prisma.product.findUnique({ where: { slug: validatedData.slug } });
-      if (existingProduct && existingProduct.id !== params.id) {
+      if (existingProduct && existingProduct.id !== id) {
         return NextResponse.json({ error: 'Slug must be unique' }, { status: 400 });
       }
       finalSlug = validatedData.slug;
     } else if (productName !== product.name) {
       const baseSlug = productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
       const existingProduct = await prisma.product.findUnique({ where: { slug: baseSlug } });
-      finalSlug = (existingProduct && existingProduct.id !== params.id) ? `${baseSlug}-${Date.now()}` : baseSlug;
+      finalSlug = (existingProduct && existingProduct.id !== id) ? `${baseSlug}-${Date.now()}` : baseSlug;
     }
 
     // For a complex PUT, we will delete nested items and recreate them to ensure synchronization.
@@ -101,7 +101,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
       // 2. Update base product
       const p = await tx.product.update({
-        where: { id: params.id },
+        where: { id: id },
         data: {
           name: productName,
           slug: finalSlug,
@@ -267,7 +267,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }
 
       return await tx.product.findUnique({
-        where: { id: params.id },
+        where: { id: id },
         include: {
           variants: { include: { images: true } },
           specifications: true,
@@ -281,7 +281,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   } catch (error) {
     console.error('Failed to update product:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: (error as any).errors[0].message }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
   }

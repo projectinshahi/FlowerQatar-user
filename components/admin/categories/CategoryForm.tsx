@@ -23,7 +23,7 @@ export default function CategoryForm({ initialData, isEdit }: CategoryFormProps)
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
+    resolver: zodResolver(categorySchema) as any,
     defaultValues: initialData || {
       name: '',
       image: '',
