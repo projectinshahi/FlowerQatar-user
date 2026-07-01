@@ -33,7 +33,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [1],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -62,7 +62,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [1],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -90,7 +90,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [7],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -117,7 +117,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [9],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -146,7 +146,7 @@ export const PRODUCTS: Product[] = [
     quantities: [18],
     sizes: ['Classic (18 Roses)', 'Grande (36 Roses)'],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -177,7 +177,7 @@ export const PRODUCTS: Product[] = [
     quantities: [16],
     sizes: ['Classic (16 Roses)', 'Grande (25 Roses)'],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -207,7 +207,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [36],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -234,7 +234,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [25],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -261,7 +261,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [12],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -290,7 +290,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [32],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -318,7 +318,7 @@ export const PRODUCTS: Product[] = [
     boxColors: [{ name: 'Acrylic Clear', hex: '#FFFFFF' }],
     quantities: [4],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png',
       '/images/product_master_1_1782290164345.png'
@@ -346,7 +346,7 @@ export const PRODUCTS: Product[] = [
     boxColors: [{ name: 'Acrylic Clear', hex: '#FFFFFF' }],
     quantities: [15],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -372,7 +372,7 @@ export const PRODUCTS: Product[] = [
     boxColors: [{ name: 'Porcelain White', hex: '#FAF9F6' }],
     quantities: [6],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -400,7 +400,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [2],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -425,7 +425,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [3],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -452,7 +452,7 @@ export const PRODUCTS: Product[] = [
     boxColors: [{ name: 'Emerald Suede', hex: '#0E2A1C' }, { name: 'Matte Black Suede', hex: '#1A1A1A' }],
     quantities: [18],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -477,7 +477,7 @@ export const PRODUCTS: Product[] = [
     boxColors: [{ name: 'Emerald Suede', hex: '#0E2A1C' }, { name: 'Matte Black Suede', hex: '#1A1A1A' }],
     quantities: [16],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -502,7 +502,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [13],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -527,7 +527,7 @@ export const PRODUCTS: Product[] = [
     boxColors: [{ name: 'Porcelain White', hex: '#FAF9F6' }],
     quantities: [9],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -552,7 +552,7 @@ export const PRODUCTS: Product[] = [
     boxColors: BOX_COLORS,
     quantities: [4],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],
@@ -579,7 +579,7 @@ export const PRODUCTS: Product[] = [
     colors: [{ name: 'Neutral Scent', hex: '#FFFFFF' }],
     quantities: [1],
     image: '/images/product_master_1_1782290164345.png',
-    hoverImage: '/images/product_master_1_1782290164345.png',
+    hoverImage: '/images/lillies.png',
     images: [
       '/images/product_master_1_1782290164345.png'
     ],

@@ -11,9 +11,10 @@ interface ProductCardProps {
   product: Product;
   onQuickView?: (product: Product) => void;
   priority?: boolean;
+  className?: string;
 }
 
-export default function ProductCard({ product, onQuickView, priority = false }: ProductCardProps) {
+export default function ProductCard({ product, onQuickView, priority = false, className = '' }: ProductCardProps) {
   const { wishlist, toggleWishlist, addToCart } = useApp();
   const [hovered, setHovered] = useState(false);
 
@@ -23,7 +24,6 @@ export default function ProductCard({ product, onQuickView, priority = false }: 
     e.preventDefault();
     e.stopPropagation();
     
-    // Choose default colors if they exist
     const defaultColor = product.colors && product.colors.length > 0 ? product.colors[0].name : 'Classic Red';
     const defaultBoxColor = product.boxColors && product.boxColors.length > 0 ? product.boxColors[0].name : 'Matte Black';
     const defaultSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
@@ -48,20 +48,20 @@ export default function ProductCard({ product, onQuickView, priority = false }: 
 
   return (
     <div
-      className="luxury-card group relative flex flex-col font-sans"
+      className={`group relative flex flex-col border-r border-b border-divider/40 ${className}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       {/* Product Image Container */}
-      <div className="relative w-full aspect-square bg-cream overflow-hidden">
+      <div className="relative w-full aspect-square bg-[#F8F8F8] overflow-hidden">
         <Link href={`/product/${product.slug}`} className="block w-full h-full">
           {/* Main Image */}
-          <div className="absolute inset-0 transition-transform duration-700 ease-out transform group-hover:scale-105">
+          <div className="absolute inset-0 transition-opacity duration-700 ease-in-out">
             <LuxuryImage
               src={mainImage}
               alt={product.name}
               fill
-              className="object-cover transition-opacity duration-500"
+              className={`object-cover transition-opacity duration-700 ${hoverImage && hovered ? 'opacity-0' : 'opacity-100'}`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               priority={priority}
             />
@@ -69,7 +69,7 @@ export default function ProductCard({ product, onQuickView, priority = false }: 
 
           {/* Alternate Image on Hover */}
           {hoverImage && (
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out transform group-hover:scale-105">
+            <div className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${hovered ? 'opacity-100' : 'opacity-0'}`}>
               <LuxuryImage
                 src={hoverImage}
                 alt={`${product.name} alternate`}
@@ -81,46 +81,40 @@ export default function ProductCard({ product, onQuickView, priority = false }: 
           )}
         </Link>
 
-        {/* Wishlist Icon */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleWishlist(product.slug);
-          }}
-          suppressHydrationWarning
-          className="absolute top-3 right-3 z-10 p-2 bg-white text-accent hover:opacity-80 transition-opacity duration-300 rounded-none shadow-sm"
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-        >
-          <Heart
-            size={14}
-            className={`transition-colors duration-300 ${isWishlisted ? 'fill-accent text-accent' : 'text-accent'}`}
-          />
-        </button>
-
-        {/* Custom Badges (Best Seller / New / Romantic) */}
-        {(product.badge || product.isBestSeller || product.isNew) && (
-          <div className="absolute top-3 left-3 z-10 flex flex-col space-y-1">
-            {product.isBestSeller && (
-              <span className="bg-primary px-2 py-0.5 text-[8px] text-white uppercase tracking-[0.2em] font-medium font-sans">
-                Best Seller
+        {/* Top Badges & Heart & Rating */}
+        <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none z-10">
+          <div className="flex items-center gap-2.5 pointer-events-auto">
+            {(product.badge || product.isBestSeller || product.isNew) && (
+              <span className="bg-[#EBE9DF] px-2 py-0.5 text-[9px] text-[#2C3826] uppercase tracking-[0.1em] font-medium font-sans">
+                {product.badge || (product.isBestSeller ? 'Pre-Order' : 'Limited Quantities')}
               </span>
             )}
-            {product.isNew && (
-              <span className="bg-secondary px-2 py-0.5 text-[8px] text-white uppercase tracking-[0.2em] font-medium font-sans">
-                New
-              </span>
-            )}
-            {product.badge && !product.isBestSeller && !product.isNew && (
-              <span className="bg-secondary px-2 py-0.5 text-[8px] text-white uppercase tracking-[0.2em] font-medium font-sans">
-                {product.badge}
-              </span>
-            )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleWishlist(product.slug);
+              }}
+              suppressHydrationWarning
+              className="text-secondary/60 hover:text-secondary transition-colors"
+              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              <Heart
+                size={16}
+                strokeWidth={1.5}
+                className={`transition-colors duration-300 ${isWishlisted ? 'fill-secondary text-secondary' : ''}`}
+              />
+            </button>
           </div>
-        )}
+          
+          <div className="flex items-center gap-1 text-[10px] text-secondary font-sans pointer-events-auto">
+            <span className="text-[12px] mb-0.5">☆</span>
+            <span>{product.rating?.toFixed(1) || "5.0"}</span>
+          </div>
+        </div>
 
         {/* Slide-up CTA actions on hover (Desktop only) */}
-        <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-divider p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-350 ease-out z-10 hidden md:flex space-x-2">
+        <div className="absolute inset-x-0 bottom-0 bg-white/95 border-t border-divider p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-350 ease-out z-10 hidden md:flex space-x-2 pointer-events-auto">
           {onQuickView && (
             <button
               onClick={(e) => {
@@ -147,38 +141,36 @@ export default function ProductCard({ product, onQuickView, priority = false }: 
       </div>
 
       {/* Info */}
-      <div className="p-4 flex flex-col flex-grow justify-between bg-white">
-        <div className="flex flex-col space-y-1">
-          <span className="text-[9px] text-muted uppercase tracking-[0.15em]">
-            {product.collection.replace('-', ' ')}
-          </span>
-          <h3 className="text-xs uppercase tracking-[0.1em] font-medium text-primary line-clamp-1 group-hover:text-secondary transition-colors duration-300">
+      <div className="p-4 flex flex-col flex-grow bg-white">
+        <div className="flex justify-between items-start gap-2">
+          <h3 className="font-serif text-[15px] leading-tight text-primary group-hover:text-secondary transition-colors duration-300">
             <Link href={`/product/${product.slug}`}>{product.name}</Link>
           </h3>
+          <span className="font-sans text-[11px] font-medium text-secondary whitespace-nowrap">
+            QAR {product.price}
+          </span>
         </div>
         
-        <div className="mt-2 pt-2 border-t border-divider/40 flex justify-between items-center">
-          <div className="flex items-center space-x-1">
-            {product.originalPrice && (
-              <span className="text-[10px] text-muted line-through">
-                QAR {product.originalPrice}
-              </span>
+        <p className="font-sans text-[9px] text-muted uppercase tracking-[0.15em] mt-1.5 line-clamp-1">
+          {product.collection.replace('-', ' ')} • CRÈME CHANTILLY
+        </p>
+
+        {/* Color swatches */}
+        {(product.colors && product.colors.length > 0) && (
+          <div className="flex items-center gap-1.5 mt-3">
+            {product.colors.slice(0, 3).map((color, idx) => (
+              <div 
+                key={idx} 
+                className="w-3.5 h-3.5 rounded-full border border-secondary/20 shadow-sm" 
+                style={{ backgroundColor: color.hex }}
+                title={color.name}
+              />
+            ))}
+            {product.colors.length > 3 && (
+              <span className="text-[10px] text-muted ml-1">+{product.colors.length - 3}</span>
             )}
-            <span className="text-xs font-semibold text-primary">
-              QAR {product.price}
-            </span>
           </div>
-          
-          <button
-            onClick={handleQuickAdd}
-            suppressHydrationWarning
-            className="text-[9px] uppercase tracking-[0.1em] text-secondary hover:text-primary font-semibold transition-colors duration-300 flex items-center space-x-0.5"
-          >
-            <span className="hidden sm:inline">Quick Add</span>
-            <span className="sm:hidden">Add</span>
-            <span>+</span>
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useApp } from '../../context/AppContext'
+import TopAnnouncementBar from '../../components/TopAnnouncementBar'
 
 const leftLinks = ['CONTACT US', 'BOUTIQUES']
 const subNavLinks = ['FLOWERS', 'GIFTS', 'EXPLORE']
@@ -36,6 +37,28 @@ const flowerMenuLists = [
     title: 'SHOP BY COLOR',
     items: ['Yellow', 'Red', 'Pink', 'Lavender', 'White']
   }
+]
+
+const giftMenuLists = [
+  {
+    title: '',
+    items: ['ALL GIFTS', 'MOST GIFTED', 'GIFT SETS', 'GIFT CARDS', 'ASCEND DIFFUSER', 'HOME FRAGRANCE', 'FLOWER LETTERS', 'FLORAL FRAMES']
+  },
+  {
+    title: 'BY PRICE',
+    items: ['Gifts Under QAR 199', 'Gifts Under QAR 299', 'Gifts Under QAR 500', 'Extraordinary Gifts']
+  },
+  {
+    title: 'BY OCCASION',
+    items: ['Newborn', 'Birthdays', 'Graduation', 'Just Because', 'Sympathy', 'Thank You']
+  }
+]
+
+const exploreMenuLists = [
+  { image: '/images/ART.png', title: 'OUR LOVE STORY', link: '#' },
+  { image: '/images/explore_eternity_flowers_1782905757139.png', title: 'ETERNITY FLOWERS', link: '#' },
+  { image: '/images/explore_corporate_1782905768818.png', title: 'CORPORATE GIFTING & EVENTS', link: '#' },
+  { image: '/images/explore_stores_1782905783786.png', title: 'VISIT OUR STORES', link: '#' },
 ]
 
 export default function Navbar() {
@@ -77,10 +100,11 @@ export default function Navbar() {
       <header
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => { setIsHovered(false); setActiveMegaMenu(null); }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-500 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-500 flex flex-col ${
           !isHomePage || isScrolled || isMobileMenuOpen || isHovered || activeMegaMenu !== null || isAccountDropdownOpen ? 'bg-cream/95 backdrop-blur-md text-secondary' : 'bg-transparent text-white'
         }`}
       >
+        <TopAnnouncementBar />
         <div className="max-w-[1440px] mx-auto relative w-full px-4 md:px-12 pt-4 pb-4 flex flex-col justify-between">
           
           {/* Mobile Menu Button */}
@@ -101,14 +125,21 @@ export default function Navbar() {
           </button>
 
           {/* Top Left Links (Desktop) */}
-          <div className="absolute top-4 left-4 md:left-12 hidden md:flex items-center gap-8 z-10">
-            {leftLinks.map((link) => (
-              <NavLink key={link} href="#">{link}</NavLink>
-            ))}
+          <div 
+            className="absolute top-4 left-4 md:left-12 hidden md:flex items-center gap-8 z-10"
+            onMouseEnter={() => setActiveMegaMenu(null)}
+          >
+            {leftLinks.map((link) => {
+              const href = link === 'CONTACT US' ? '/contact' : link === 'BOUTIQUES' ? '/boutiques' : '#';
+              return <NavLink key={link} href={href}>{link}</NavLink>;
+            })}
           </div>
 
           {/* Top Right Links (Desktop) */}
-          <div className="absolute top-4 right-4 md:right-12 hidden md:flex items-center gap-8 z-10">
+          <div 
+            className="absolute top-4 right-4 md:right-12 hidden md:flex items-center gap-8 z-10"
+            onMouseEnter={() => setActiveMegaMenu(null)}
+          >
             {rightLinks.map((link) => (
               <div key={link} className="relative group">
                 <NavLink 
@@ -166,7 +197,10 @@ export default function Navbar() {
           </div>
 
           {/* Logo */}
-          <div className="flex flex-col items-center justify-center mb-3 md:mb-4 z-0">
+          <div 
+            className="flex flex-col items-center justify-center mb-3 md:mb-4 z-0"
+            onMouseEnter={() => setActiveMegaMenu(null)}
+          >
             <Link href="/" className="flex items-center group">
               <span className="font-serif text-3xl md:text-[36px] font-light tracking-[0.2em]">LEBAMI</span>
             </Link>
@@ -178,11 +212,11 @@ export default function Navbar() {
               <div 
                 key={link}
                 onMouseEnter={() => {
-                  if (link === 'FLOWERS') setActiveMegaMenu('FLOWERS')
+                  if (link === 'FLOWERS' || link === 'GIFTS' || link === 'EXPLORE') setActiveMegaMenu(link)
                   else setActiveMegaMenu(null)
                 }}
                 onClick={() => {
-                  if (link === 'FLOWERS') setActiveMegaMenu(activeMegaMenu === 'FLOWERS' ? null : 'FLOWERS')
+                  if (link === 'FLOWERS' || link === 'GIFTS' || link === 'EXPLORE') setActiveMegaMenu(activeMegaMenu === link ? null : link)
                 }}
                 className="cursor-pointer"
               >
@@ -240,6 +274,67 @@ export default function Navbar() {
                   ))}
                 </div>
                 
+              </div>
+            </motion.div>
+          )}
+
+          {activeMegaMenu === 'GIFTS' && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="absolute top-full left-0 w-full bg-cream/95 backdrop-blur-md border-t border-secondary/20 shadow-lg text-secondary"
+            >
+              <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8 md:py-10 flex flex-col items-center">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 w-full px-2 md:px-4">
+                  {giftMenuLists.map((list, idx) => (
+                    <div key={idx} className="flex flex-col gap-4 md:gap-5 items-center">
+                      {list.title ? (
+                        <h4 className="font-sans text-[10px] md:text-[11px] uppercase tracking-widest text-secondary mb-1">{list.title}</h4>
+                      ) : (
+                        <div className="hidden md:block h-[15px] mb-1"></div>
+                      )}
+                      <div className="flex flex-col gap-3 md:gap-4 items-center text-center">
+                        {list.items.map((item, itemIdx) => (
+                          <Link 
+                            key={itemIdx} 
+                            href="#" 
+                            className={`hover:text-primary transition-colors ${idx === 0 ? 'font-sans text-[9px] md:text-[10px] uppercase tracking-widest' : 'font-serif text-[14px] md:text-[16px]'}`}
+                          >
+                            {item}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeMegaMenu === 'EXPLORE' && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="absolute top-full left-0 w-full bg-cream/95 backdrop-blur-md border-t border-secondary/20 shadow-lg text-secondary"
+            >
+              <div className="max-w-[1440px] mx-auto px-4 md:px-12 py-8 md:py-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full">
+                  {exploreMenuLists.map((item, idx) => (
+                    <Link key={idx} href={item.link} className="flex flex-col items-center group overflow-hidden">
+                      <div className="w-full aspect-square overflow-hidden bg-secondary/5 relative">
+                        <Image src={item.image} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+                        <div className="absolute bottom-6 left-0 w-full text-center px-4">
+                          <span className="font-serif text-[16px] md:text-[20px] text-white tracking-wide uppercase">{item.title}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
