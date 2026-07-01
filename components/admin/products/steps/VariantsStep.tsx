@@ -4,8 +4,10 @@ import { useFormContext, useFieldArray } from "react-hook-form";
 import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import VariantImageUploader from "../VariantImageUploader";
+import SingleMediaUploader from "../SingleMediaUploader";
+import ProductCareInput from "../ProductCareInput";
 
-export default function VariantsStep() {
+export default function VariantsStep({ categories = [] }: { categories?: any[] }) {
   const { register, control, watch, setValue, formState: { errors } } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
@@ -26,20 +28,54 @@ export default function VariantsStep() {
       sku: "",
       color: "",
       colorCode: "#000000",
-      size: "",
       material: "",
       price: 0,
-      stock: 0,
-      lowStockAlert: 5,
+      salePrice: 0,
       isDefault: fields.length === 0,
       isActive: true,
+      description: "",
+      details: "",
+      productCare: "",
+      hoverImage: "",
+      videoUrl: "",
+      swatchImage: "",
       images: []
     });
     setExpandedVariants(prev => [...prev, fields.length]);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Basic Fields */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-5">
+        <h3 className="text-lg font-medium text-gray-900">Product Details</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <select 
+              {...register("categoryId")} 
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white"
+            >
+              <option value="">Select Category</option>
+              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <select 
+              {...register("status")} 
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white"
+            >
+              <option value="DRAFT">Draft</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="ARCHIVED">Archived</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-gray-100 pt-6">
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-medium text-gray-900">Product Variants</h3>
@@ -100,21 +136,12 @@ export default function VariantsStep() {
                       <input type="text" {...register(`variants.${index}.sku`)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" placeholder="e.g. PRD-RED-SM" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">Barcode</label>
-                      <input type="text" {...register(`variants.${index}.barcode`)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" />
-                    </div>
-                    
-                    <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">Price (QAR) <span className="text-red-500">*</span></label>
                       <input type="number" step="0.01" {...register(`variants.${index}.price`)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">Sale Price (QAR)</label>
                       <input type="number" step="0.01" {...register(`variants.${index}.salePrice`)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">Stock <span className="text-red-500">*</span></label>
-                      <input type="number" {...register(`variants.${index}.stock`)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" />
                     </div>
 
                     <div>
@@ -138,9 +165,39 @@ export default function VariantsStep() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">Size</label>
-                      <input type="text" {...register(`variants.${index}.size`)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" placeholder="e.g. S, M, L, XL" />
+                      <SingleMediaUploader 
+                        fieldName={`variants.${index}.swatchImage`}
+                        label="Color Swatch Image"
+                        accept="image/*"
+                      />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-5 border-t border-gray-100">
+                    <SingleMediaUploader 
+                      fieldName={`variants.${index}.hoverImage`}
+                      label="Hover Image"
+                      required
+                      accept="image/*"
+                      error={varErrors.hoverImage && "Hover image is required"}
+                    />
+                    <SingleMediaUploader 
+                      fieldName={`variants.${index}.videoUrl`}
+                      label="Video / Media"
+                      accept="video/*,image/*"
+                    />
+                  </div>
+
+                  <div className="space-y-5 pt-5 border-t border-gray-100">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">Description</label>
+                      <textarea {...register(`variants.${index}.description`)} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" placeholder="Variant description..."></textarea>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">Details</label>
+                      <textarea {...register(`variants.${index}.details`)} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm" placeholder="Variant details..."></textarea>
+                    </div>
+                    <ProductCareInput index={index} />
                   </div>
                   
                   <div className="border-t border-gray-100 pt-5">
@@ -162,6 +219,7 @@ export default function VariantsStep() {
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

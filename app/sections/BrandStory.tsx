@@ -41,7 +41,7 @@ export default function BrandStory() {
             WHO WE ARE
           </h2>
           
-          <p className="font-serif text-2xl md:text-4xl text-white font-light text-center leading-snug mt-6">
+          <p className="font-serif text-[28px] md:text-[48px] text-white font-light text-center leading-[1.3] mt-6">
             PIONEERS OF ETERNITY FLOWERS <br className="hidden md:block" />
             <span className="md:hidden">/ </span>
             LUXURY THAT LASTS ALL YEAR <br className="hidden md:block" />
@@ -53,7 +53,7 @@ export default function BrandStory() {
           
           <Link
             href="#"
-            className="border border-white text-white px-8 py-4 font-sans text-[11px] uppercase tracking-[0.15em] hover:bg-white hover:text-[#2a0015] transition-colors duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] mt-10 inline-block"
+            className="border border-white text-white px-8 py-4 font-sans text-[15px] uppercase tracking-[0.15em] hover:bg-white hover:text-[#2a0015] transition-colors duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] mt-10 inline-block"
           >
             LEARN MORE
           </Link>

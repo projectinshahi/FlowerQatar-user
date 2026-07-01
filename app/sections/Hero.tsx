@@ -45,7 +45,7 @@ export default function Hero() {
   const slide = slides[currentIndex]
 
   return (
-    <section className="relative h-screen overflow-hidden">
+    <section className="relative h-[75vh] md:h-[95vh] lg:h-screen min-h-[600px] overflow-hidden">
       {/* Background Video Container */}
       <div className="absolute inset-0 overflow-hidden bg-secondary z-0">
           <iframe
@@ -70,38 +70,40 @@ export default function Hero() {
       </div>
 
       {/* Content */}
-      <div className="absolute bottom-16 left-0 p-12 md:p-16 max-w-[500px] z-30 pointer-events-none">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentIndex}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="flex flex-col"
-          >
-            <h1 className="font-serif text-5xl md:text-7xl text-white font-light tracking-wide leading-tight">
-              {slide.title}
-            </h1>
-            
-            <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-white/90 mt-4">
-              {slide.subtitle}
-            </p>
-            
-            <p className="font-sans text-sm text-white/80 mt-4 leading-relaxed">
-              {slide.description}
-            </p>
-            
-            <div className="pointer-events-auto mt-8">
-              <Link
-                href={slide.buttonLink}
-                className="inline-block bg-white text-secondary px-8 py-4 font-sans text-[11px] uppercase tracking-[0.15em] hover:bg-secondary hover:text-white transition-colors duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
-              >
-                {slide.buttonText}
-              </Link>
-            </div>
-          </motion.div>
-        </AnimatePresence>
+      <div className="absolute inset-0 z-30 pointer-events-none flex items-center">
+        <div className="w-full max-w-[1280px] mx-auto px-6 md:px-12">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentIndex}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="flex flex-col max-w-[520px]"
+            >
+              <h1 className="font-serif text-[48px] text-white font-light tracking-[0.05em] leading-[1.1]">
+                {slide.title}
+              </h1>
+              
+              <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-white/90 mt-6">
+                {slide.subtitle}
+              </p>
+              
+              <p className="font-sans text-[16px] text-white/80 mt-4 leading-[1.6]">
+                {slide.description}
+              </p>
+              
+              <div className="pointer-events-auto mt-10">
+                <Link
+                  href={slide.buttonLink}
+                  className="inline-block bg-white text-secondary px-8 py-4 font-sans text-[15px] uppercase tracking-[0.15em] hover:bg-secondary hover:text-white transition-colors duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+                >
+                  {slide.buttonText}
+                </Link>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Bottom Bar Carousel UI */}

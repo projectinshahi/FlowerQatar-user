@@ -235,8 +235,8 @@ function ShopContent() {
               className="w-full accent-gold bg-divider h-1 cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-muted pt-1">
-              <span>$39</span>
-              <span>$600</span>
+              <span>QAR 39</span>
+              <span>QAR 600</span>
             </div>
           </div>
 

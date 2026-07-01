@@ -366,12 +366,12 @@ export default function CustomArrangementPage() {
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
                   {[
-                    { count: 4, label: 'Le Quartet', price: '$79' },
-                    { count: 9, label: 'Atelier Nine', price: '$149' },
-                    { count: 16, label: 'Classic Sweet', price: '$249' },
-                    { count: 25, label: 'Grande Premium', price: '$349' },
-                    { count: 36, label: 'Majestic Luxe', price: '$449' },
-                    { count: 49, label: 'Royal Emperor', price: '$549' },
+                    { count: 4, label: 'Le Quartet', price: 'QAR 79' },
+                    { count: 9, label: 'Atelier Nine', price: 'QAR 149' },
+                    { count: 16, label: 'Classic Sweet', price: 'QAR 249' },
+                    { count: 25, label: 'Grande Premium', price: 'QAR 349' },
+                    { count: 36, label: 'Majestic Luxe', price: 'QAR 449' },
+                    { count: 49, label: 'Royal Emperor', price: 'QAR 549' },
                   ].map((item) => (
                     <button
                       key={item.count}
@@ -400,9 +400,9 @@ export default function CustomArrangementPage() {
                 </p>
                 <div className="space-y-2.5 pt-2">
                   {[
-                    { title: 'Signature Branded Cardboard Lid', desc: 'Standard presentation cover, embossed in gold.', value: 'Branded Lid', extra: '+$0' },
-                    { title: 'Clear Acrylic Showcase Lid', desc: 'Keep your roses completely visible while protecting dust.', value: 'Clear Acrylic', extra: '+$25' },
-                    { title: 'Embossed Gold Foil Custom Message', desc: 'Emboss a name or anniversary message onto the lid.', value: 'Custom Message', extra: '+$50' },
+                    { title: 'Signature Branded Cardboard Lid', desc: 'Standard presentation cover, embossed in gold.', value: 'Branded Lid', extra: '+QAR 0' },
+                    { title: 'Clear Acrylic Showcase Lid', desc: 'Keep your roses completely visible while protecting dust.', value: 'Clear Acrylic', extra: '+QAR 25' },
+                    { title: 'Embossed Gold Foil Custom Message', desc: 'Emboss a name or anniversary message onto the lid.', value: 'Custom Message', extra: '+QAR 50' },
                   ].map((opt) => (
                     <button
                       key={opt.value}

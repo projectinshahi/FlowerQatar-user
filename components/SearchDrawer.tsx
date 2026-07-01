@@ -162,7 +162,7 @@ export default function SearchDrawer() {
                               </div>
                               <div className="ml-3 md:ml-4 flex flex-col flex-1 min-w-0">
                                 <span className="font-serif text-base md:text-lg text-primary group-hover:text-[#C1A87D] transition-colors truncate">{product.name}</span>
-                                <span className="font-sans text-[10px] md:text-[11px] text-[#888] tracking-widest uppercase mt-1">${product.price}</span>
+                                <span className="font-sans text-[10px] md:text-[11px] text-[#888] tracking-widest uppercase mt-1">QAR {product.price}</span>
                               </div>
                             </Link>
                           ))}

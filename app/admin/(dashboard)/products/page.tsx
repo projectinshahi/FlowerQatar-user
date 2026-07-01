@@ -9,11 +9,10 @@ export const metadata = {
   title: "Products | Admin Dashboard",
 };
 
-export default async function AdminProductsPage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
+export default async function AdminProductsPage(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const searchParams = await props.searchParams;
   const page = typeof searchParams.page === "string" ? Number(searchParams.page) : 1;
   const search = typeof searchParams.search === "string" ? searchParams.search : undefined;
   const status = typeof searchParams.status === "string" ? searchParams.status as any : undefined;
@@ -35,21 +34,10 @@ export default async function AdminProductsPage({
         id: product.id,
         name: product.name,
         slug: product.slug,
-        sku: product.sku || "",
-        shortDescription: product.shortDescription || "",
-        description: product.description || "",
         categoryId: product.categoryId || "",
         brandId: product.brandId || "",
         status: product.status,
-        isFeatured: product.isFeatured,
-        isBestSeller: product.isBestSeller,
-        isTrending: product.isTrending,
-        isNewArrival: product.isNewArrival,
-        basePrice: Number(product.basePrice),
-        salePrice: product.salePrice ? Number(product.salePrice) : 0,
-        comparePrice: product.comparePrice ? Number(product.comparePrice) : 0,
-        costPrice: product.costPrice ? Number(product.costPrice) : 0,
-        taxClass: product.taxClass || "",
+
         variants: product.variants.map((v: any) => ({
           id: v.id,
           variantName: v.variantName,
@@ -57,18 +45,16 @@ export default async function AdminProductsPage({
           color: v.color || "",
           colorCode: v.colorCode || "#000000",
           material: v.material || "",
-          size: v.size || "",
-          barcode: v.barcode || "",
-          weight: v.weight ? Number(v.weight) : 0,
-          length: v.length ? Number(v.length) : 0,
-          width: v.width ? Number(v.width) : 0,
-          height: v.height ? Number(v.height) : 0,
           price: Number(v.price),
           salePrice: v.salePrice ? Number(v.salePrice) : 0,
-          stock: v.stock,
-          lowStockAlert: v.lowStockAlert,
           isDefault: v.isDefault,
           isActive: v.isActive,
+          description: v.description || "",
+          details: v.details || "",
+          productCare: v.productCare || "",
+          hoverImage: v.hoverImage || "",
+          videoUrl: v.videoUrl || "",
+          swatchImage: v.swatchImage || "",
           images: v.images.map((img: any) => ({
             id: img.id,
             url: img.url,
@@ -162,8 +148,7 @@ export default async function AdminProductsPage({
           >
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
-            <option value="price_asc">Price: Low to High</option>
-            <option value="price_desc">Price: High to Low</option>
+
             <option value="name_asc">Name: A-Z</option>
           </select>
         </div>

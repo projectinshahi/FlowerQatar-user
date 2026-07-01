@@ -81,7 +81,7 @@ export default function Navbar() {
           !isHomePage || isScrolled || isMobileMenuOpen || isHovered || activeMegaMenu !== null || isAccountDropdownOpen ? 'bg-cream/95 backdrop-blur-md text-secondary' : 'bg-transparent text-white'
         }`}
       >
-        <div className="relative w-full px-4 md:px-12 pt-3 pb-3 flex flex-col justify-between">
+        <div className="max-w-[1440px] mx-auto relative w-full px-4 md:px-12 pt-4 pb-4 flex flex-col justify-between">
           
           {/* Mobile Menu Button */}
           <button
@@ -173,7 +173,7 @@ export default function Navbar() {
           </div>
 
           {/* Sub Navigation (Desktop) */}
-          <div className={`hidden md:flex justify-center gap-16 md:gap-32 w-full z-10 transition-opacity duration-500`}>
+          <div className={`hidden md:flex justify-center gap-12 lg:gap-24 w-full z-10 transition-opacity duration-500`}>
             {subNavLinks.map((link) => (
               <div 
                 key={link}

@@ -15,20 +15,54 @@ export default function VariantImageUploader({ variantIndex }: { variantIndex: n
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    // SIMULATED UPLOAD TO CLOUDINARY
-    setTimeout(() => {
+    try {
+      setIsUploading(true);
+
+      // 1. Get signature from our API
+      const sigResponse = await fetch('/api/admin/cloudinary/signature');
+      const sigData = await sigResponse.json();
+
+      if (!sigResponse.ok) {
+        throw new Error(sigData.error || 'Failed to get upload signature');
+      }
+
+      // 2. Upload to Cloudinary
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', sigData.apiKey);
+      formData.append('timestamp', sigData.timestamp.toString());
+      formData.append('signature', sigData.signature);
+      formData.append('folder', 'flower_products');
+
+      const uploadResponse = await fetch(
+        `https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok) {
+        throw new Error(uploadData.error?.message || 'Upload failed');
+      }
+
       const newImage = {
-        url: URL.createObjectURL(file), // Temp URL for preview
-        publicId: `temp_${Date.now()}`,
+        url: uploadData.secure_url,
+        publicId: uploadData.public_id,
         isPrimary: images.length === 0,
         isHover: images.length === 1,
         isGallery: true,
         order: images.length
       };
       setValue(`variants.${variantIndex}.images`, [...images, newImage]);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
       setIsUploading(false);
-    }, 1000);
+    }
   };
 
   const removeImage = (index: number) => {

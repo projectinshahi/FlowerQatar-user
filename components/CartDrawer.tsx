@@ -47,13 +47,13 @@ export default function CartDrawer() {
               {/* Progress Bar Section */}
               <div className="px-5 md:px-6 py-5 border-b border-[#EAEAEA] text-center bg-white">
                 <p className="font-serif text-[13px] md:text-[14px] text-primary mb-3 leading-snug md:leading-normal">
-                  Add $399 for your Complimentary Fragrance Discovery Set.
+                  Add QAR 399 for your Complimentary Fragrance Discovery Set.
                 </p>
                 <div className="w-full h-[6px] bg-[#F0F0F0] rounded-full overflow-hidden mb-2">
                   <div className="h-full bg-secondary w-0 transition-all duration-500"></div>
                 </div>
                 <p className="text-[9px] text-[#888] uppercase tracking-widest mt-2">
-                  COMPLIMENTARY GIFT ON ALL ORDERS $399+
+                  COMPLIMENTARY GIFT ON ALL ORDERS QAR 399+
                 </p>
               </div>
 

@@ -184,7 +184,7 @@ export default function CartPage() {
                 <div className="text-[10px] text-muted/80 space-y-2 pt-2">
                   <div className="flex items-center space-x-2">
                     <Truck size={14} className="text-secondary" />
-                    <span>Free Shipping on Orders Over $150</span>
+                    <span>Free Shipping on Orders Over QAR 150</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <ShieldCheck size={14} className="text-secondary" />

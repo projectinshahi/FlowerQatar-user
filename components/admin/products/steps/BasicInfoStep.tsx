@@ -52,16 +52,7 @@ export default function BasicInfoStep({ categories = [], brands = [] }: { catego
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
-          <select 
-            {...register("brandId")} 
-            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white"
-          >
-            <option value="">Select Brand</option>
-            {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        </div>
+
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>

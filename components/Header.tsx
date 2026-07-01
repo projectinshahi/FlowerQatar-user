@@ -82,7 +82,7 @@ export default function Header() {
         {/* Announcement Bar */}
         {showAnnouncement && (
           <div className="bg-secondary text-white text-center py-2 px-4 text-[10px] md:text-xs uppercase tracking-[0.2em] font-medium flex items-center justify-between relative">
-            <div className="mx-auto">Free Shipping on Orders Over $150</div>
+            <div className="mx-auto">Free Shipping on Orders Over QAR 150</div>
             <button
               onClick={() => setShowAnnouncement(false)}
               className="absolute right-4 hover:text-primary transition-colors duration-300"

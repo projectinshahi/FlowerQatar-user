@@ -4,8 +4,7 @@ import Hero from '../sections/Hero'
 // Dynamically import below-the-fold client components to drastically reduce initial JS payload and hydration lag
 const PressMarquee = dynamic(() => import('../sections/PressMarquee'))
 const NewArrivals = dynamic(() => import('../sections/NewArrivals'))
-const MatiMarine = dynamic(() => import('../sections/MatiMarine'))
-const EternityRoses = dynamic(() => import('../sections/EternityRoses'))
+const SignatureCollections = dynamic(() => import('../sections/SignatureCollections'))
 const ExploreGardens = dynamic(() => import('../sections/ExploreGardens'))
 const LovedByIcons = dynamic(() => import('../sections/LovedByIcons'))
 const BrandStory = dynamic(() => import('../sections/BrandStory'))
@@ -17,8 +16,7 @@ export default function Home() {
       <Hero />
       <PressMarquee />
       <NewArrivals />
-      <MatiMarine />
-      <EternityRoses />
+      <SignatureCollections />
       <ExploreGardens />
       <LovedByIcons />
       <BrandStory />

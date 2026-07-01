@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Package, ShoppingCart, LayoutDashboard, Settings, LogOut, Menu, X, Users } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 export default function AdminLayout({
   children,
@@ -28,7 +29,6 @@ export default function AdminLayout({
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'All Products', href: '/admin/products', icon: Package },
-    { name: 'Add Product', href: '/admin/products/new', icon: Package },
     { name: 'Categories', href: '/admin/categories', icon: Package },
     { name: 'Brands', href: '/admin/brands', icon: Package },
     { name: 'Product Reviews', href: '/admin/reviews', icon: Package },
@@ -37,6 +37,7 @@ export default function AdminLayout({
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
+      <Toaster position="top-right" />
       
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (

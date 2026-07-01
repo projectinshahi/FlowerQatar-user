@@ -161,11 +161,11 @@ export default function ProductCard({ product, onQuickView, priority = false }: 
           <div className="flex items-center space-x-1">
             {product.originalPrice && (
               <span className="text-[10px] text-muted line-through">
-                ${product.originalPrice}
+                QAR {product.originalPrice}
               </span>
             )}
             <span className="text-xs font-semibold text-primary">
-              ${product.price}
+              QAR {product.price}
             </span>
           </div>
           

@@ -16,7 +16,7 @@ const testimonials = [
       image: "/images/product_master_1_1782290164345.png",
       title: "GIA MARBLE VASE",
       subtitle: "Handcarved Marble / White Roses",
-      price: "$689",
+      price: "QAR 689",
       slug: "fleura-porcelain-vase"
     }
   },
@@ -30,7 +30,7 @@ const testimonials = [
       image: "/images/product_master_1_1782290164345.png",
       title: "SMALL SQUARE",
       subtitle: "Parisian-Style Box / Red Roses",
-      price: "$299",
+      price: "QAR 299",
       slug: "small-square"
     }
   },
@@ -44,7 +44,7 @@ const testimonials = [
       image: "/images/product_master_1_1782290164345.png",
       title: "LARGE SQUARE",
       subtitle: "Parisian-Style Box / Red Roses",
-      price: "$399",
+      price: "QAR 399",
       slug: "grande-square-box"
     }
   }
@@ -78,13 +78,13 @@ export default function LovedByIcons() {
   }
 
   return (
-    <AnimatedSection className="py-24 bg-white">
+    <AnimatedSection className="py-16 md:py-24 bg-white">
       <style>{`
         .carousel-track { --slide-width: 100%; }
         @media (min-width: 768px) { .carousel-track { --slide-width: 33.333333%; } }
       `}</style>
       
-      <div className="max-w-[1400px] mx-auto px-4 md:px-12">
+      <div className="max-w-[1280px] mx-auto px-6 md:px-12">
         <h2 className="font-sans text-[11px] uppercase tracking-[0.2em] font-semibold text-primary text-center mb-16">
           LOVED BY ICONS
         </h2>

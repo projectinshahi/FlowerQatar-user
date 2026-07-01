@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function Footer() {
@@ -23,9 +24,15 @@ export default function Footer() {
         
         {/* Column 1: Brand & About */}
         <div className="space-y-4">
-          <span className="font-serif text-lg tracking-[0.2em] uppercase font-bold text-white">
-            Lebami
-          </span>
+          <div className="mb-4">
+            <Image
+              src="/images/lebami.png"
+              alt="Lebami Logo"
+              width={160}
+              height={50}
+              className="object-contain"
+            />
+          </div>
           <p className="text-xs text-white/80 leading-relaxed max-w-xs pt-2">
             The original designers of the Eternity® Rose. Handcrafted arrangements of real luxury roses, preserved to maintain their pristine beauty for a full year.
           </p>

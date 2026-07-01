@@ -1,22 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductFormValues } from "@/lib/validations/product";
 import { createProduct, updateProduct } from "@/lib/actions/product.actions";
 import { Loader2, Check, ArrowRight, ArrowLeft } from "lucide-react";
-import BasicInfoStep from "@/components/admin/products/steps/BasicInfoStep";
-import PricingStep from "@/components/admin/products/steps/PricingStep";
+
 import VariantsStep from "@/components/admin/products/steps/VariantsStep";
 import SpecificationsStep from "@/components/admin/products/steps/SpecificationsStep";
 import FAQStep from "@/components/admin/products/steps/FAQStep";
 import SEOStep from "@/components/admin/products/steps/SEOStep";
 
 const STEPS = [
-  { id: "basic", title: "Basic Information" },
-  { id: "pricing", title: "Pricing" },
+
   { id: "variants", title: "Variants & Images" },
   { id: "specs", title: "Specifications" },
   { id: "faqs", title: "FAQs" },
@@ -28,33 +26,25 @@ export default function ProductForm({ categories, brands, initialData }: { categ
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const methods = useForm<any>({
     resolver: zodResolver(productSchema),
     defaultValues: initialData || {
       name: "",
       slug: "",
-      sku: "",
-      shortDescription: "",
-      description: "",
       categoryId: "",
       brandId: "",
       status: "DRAFT",
-      isFeatured: false,
-      isBestSeller: false,
-      isTrending: false,
-      isNewArrival: false,
-      basePrice: 0,
-      salePrice: 0,
-      comparePrice: 0,
-      costPrice: 0,
-      taxClass: "",
       variants: [{
         variantName: "Default",
         sku: "",
         price: 0,
-        stock: 0,
-        lowStockAlert: 5,
+
         isDefault: true,
         isActive: true,
         images: []
@@ -71,8 +61,6 @@ export default function ProductForm({ categories, brands, initialData }: { categ
     // Validate current step fields before proceeding
     let fieldsToValidate: any = [];
     if (currentStep === 0) fieldsToValidate = ['name', 'slug', 'categoryId'];
-    if (currentStep === 1) fieldsToValidate = ['basePrice'];
-    
     const isStepValid = await trigger(fieldsToValidate);
     if (isStepValid) {
       setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
@@ -101,6 +89,15 @@ export default function ProductForm({ categories, brands, initialData }: { categ
       setIsSubmitting(false);
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 min-h-[600px] flex flex-col items-center justify-center p-8">
+        <Loader2 size={32} className="animate-spin text-gray-400 mb-4" />
+        <p className="text-gray-500 font-medium">Loading product form...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
@@ -150,12 +147,10 @@ export default function ProductForm({ categories, brands, initialData }: { categ
             )}
 
             <div className="min-h-[400px]">
-              {currentStep === 0 && <BasicInfoStep categories={categories} brands={brands} />}
-              {currentStep === 1 && <PricingStep />}
-              {currentStep === 2 && <VariantsStep />}
-              {currentStep === 3 && <SpecificationsStep />}
-              {currentStep === 4 && <FAQStep />}
-              {currentStep === 5 && <SEOStep />}
+              {currentStep === 0 && <VariantsStep categories={categories} />}
+              {currentStep === 1 && <SpecificationsStep />}
+              {currentStep === 2 && <FAQStep />}
+              {currentStep === 3 && <SEOStep />}
             </div>
 
             <div className="pt-6 border-t border-gray-100 flex items-center justify-between">

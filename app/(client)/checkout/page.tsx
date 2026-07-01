@@ -303,7 +303,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <span className="text-xs font-semibold text-secondary">
-                    {subtotal >= 150 ? 'Complimentary' : '$15'}
+                    {subtotal >= 150 ? 'Complimentary' : 'QAR 15'}
                   </span>
                 </button>
 
@@ -324,7 +324,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <span className="text-xs font-semibold text-secondary">
-                    {subtotal >= 150 ? '+$35' : '$50'}
+                    {subtotal >= 150 ? '+QAR 35' : 'QAR 50'}
                   </span>
                 </button>
               </div>

@@ -19,7 +19,7 @@ export default function ShippingReturnsPage() {
             1. Insured Shipping Speeds
           </h2>
           <p>
-            Lebami offers secure shipping worldwide. Standard shipping is complimentary for orders exceeding $150. For smaller items, a flat $15 logistics fee is added. 
+            Lebami offers secure shipping worldwide. Standard shipping is complimentary for orders exceeding QAR 150. For smaller items, a flat QAR 15 logistics fee is added. 
           </p>
           <div className="border border-divider bg-cream/40 p-4 overflow-x-auto rounded-none">
             <table className="w-full text-left text-xs border-collapse">
@@ -34,17 +34,17 @@ export default function ShippingReturnsPage() {
                 <tr className="text-muted/80">
                   <td className="py-2.5 font-medium text-primary">Standard Insured</td>
                   <td className="py-2.5">3 - 5 Business Days</td>
-                  <td className="py-2.5">Free ($15 if under $150)</td>
+                  <td className="py-2.5">Free (QAR 15 if under QAR 150)</td>
                 </tr>
                 <tr className="text-muted/80">
                   <td className="py-2.5 font-medium text-primary">Expedited Priority</td>
                   <td className="py-2.5">1 - 2 Business Days</td>
-                  <td className="py-2.5">$25 flat fee</td>
+                  <td className="py-2.5">QAR 25 flat fee</td>
                 </tr>
                 <tr className="text-muted/80">
                   <td className="py-2.5 font-medium text-primary">White Glove Courier</td>
                   <td className="py-2.5">Next Day by 6:00 PM</td>
-                  <td className="py-2.5">+$35 premium</td>
+                  <td className="py-2.5">+QAR 35 premium</td>
                 </tr>
               </tbody>
             </table>

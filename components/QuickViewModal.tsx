@@ -99,7 +99,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                   {product.name}
                 </Dialog.Title>
                 <div className="flex items-center space-x-4 mb-4">
-                  <span className="text-xl font-semibold text-primary">${product.price}</span>
+                  <span className="text-xl font-semibold text-primary">QAR {product.price}</span>
                   <span className="text-xs text-muted uppercase tracking-widest">
                     ★ {product.rating} ({product.reviewCount} reviews)
                   </span>

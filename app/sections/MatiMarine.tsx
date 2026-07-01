@@ -5,8 +5,8 @@ import Link from 'next/link'
 
 export default function MatiMarine() {
   return (
-    <section className="bg-[#FFF8F5] py-24 md:py-32 px-4 md:px-12 lg:px-20 overflow-hidden">
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
+    <section className="bg-[#FFF8F5] py-16 md:py-24 px-6 md:px-12 overflow-hidden">
+      <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
         
         {/* Left Side - Editorial Images */}
         <motion.div
@@ -59,11 +59,11 @@ export default function MatiMarine() {
           transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="w-full lg:w-1/2 flex flex-col justify-center text-center lg:text-left z-20"
         >
-          <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-secondary mb-4 block font-semibold">
+          <span className="font-sans text-[11px] uppercase tracking-[0.3em] text-secondary mb-4 block font-semibold">
             THE SIGNATURE COLLECTION
           </span>
           
-          <h2 className="font-serif text-5xl lg:text-6xl font-light text-primary mb-8 leading-tight">
+          <h2 className="font-serif text-[48px] font-light text-primary mb-8 leading-[1.2]">
             MATI MARINE
           </h2>
           
@@ -74,13 +74,13 @@ export default function MatiMarine() {
             HANDCRAFTED IN PARIS.
           </p>
           
-          <p className="font-sans text-sm text-muted leading-relaxed max-w-[480px] mx-auto lg:mx-0 mb-10">
+          <p className="font-sans text-[16px] text-muted leading-[1.6] max-w-[480px] mx-auto lg:mx-0 mb-10">
             Discover the timeless elegance of our exclusive Mati Marine collection. Each piece is thoughtfully curated to bring an essence of Parisian luxury and protective energy into your home. Experience the perfect harmony of vivid floral tones and meaningful design.
           </p>
           
           <Link
             href="/shop"
-            className="btn-primary inline-block px-10 py-4 w-fit mx-auto lg:mx-0 text-[11px] tracking-[0.2em]"
+            className="btn-primary inline-block px-8 py-4 w-fit mx-auto lg:mx-0 text-[15px] uppercase tracking-[0.15em]"
           >
             DISCOVER THE COLLECTION
           </Link>

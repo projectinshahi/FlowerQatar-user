@@ -5,27 +5,27 @@ import Link from 'next/link'
 
 export default function EternityRoses() {
   return (
-    <section className="py-24 px-4 md:px-12 lg:px-20 overflow-hidden">
-      <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-center">
+    <section className="py-16 md:py-24 px-6 md:px-12 overflow-hidden">
+      <div className="max-w-[1280px] mx-auto grid lg:grid-cols-2 gap-12 lg:gap-24 items-center">
         {/* Left Side - Content */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="flex flex-col items-start order-2 md:order-1"
+          className="flex flex-col items-center text-center lg:items-start lg:text-left order-2 lg:order-1"
         >
-          <h2 className="font-serif text-4xl md:text-5xl font-light text-secondary">
+          <h2 className="font-serif text-[48px] font-light text-secondary leading-[1.2]">
             ETERNITY ROSES
           </h2>
           
-          <p className="font-sans text-[11px] uppercase tracking-[0.15em] text-muted mt-6 max-w-[400px] leading-relaxed">
-            THE ROSES THAT STARTED IT ALL.
+          <p className="font-sans text-[16px] text-muted leading-[1.6] mt-6 mb-10 max-w-[480px]">
+            The original roses that started it all. Handcrafted luxury arrangements of real roses that last a year or more.
           </p>
           
           <Link
             href="/shop"
-            className="btn-primary inline-block px-8 py-4"
+            className="btn-primary inline-block px-8 py-4 text-[15px] uppercase tracking-[0.15em]"
           >
             SHOP THE COLLECTION
           </Link>
@@ -37,7 +37,7 @@ export default function EternityRoses() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="relative aspect-[4/5] w-full order-1 md:order-2"
+          className="relative aspect-[4/5] w-full order-1 lg:order-2"
         >
           <Image
             src="/images/category_gift_boxes_1782290153364.png"
