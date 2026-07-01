@@ -4,10 +4,11 @@ import { productSchema } from '@/lib/validations/product';
 import { z } from 'zod';
 import { deleteCloudinaryImage } from '@/lib/cloudinary';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const product = await prisma.product.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         variants: {
           include: { images: true }
@@ -29,13 +30,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const validatedData = productSchema.parse(body);
 
     const product = await prisma.product.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         variants: { include: { images: true } },
         specifications: true,
@@ -285,10 +287,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const product = await prisma.product.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         variants: {
           include: { images: true }
@@ -311,7 +314,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     // Prisma Cascade delete will handle related items
     await prisma.product.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ success: true });

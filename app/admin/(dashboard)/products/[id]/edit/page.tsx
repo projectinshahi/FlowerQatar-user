@@ -7,8 +7,8 @@ export const metadata = {
   title: "Edit Product | Admin Dashboard",
 };
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   // Fetch product, categories, and brands
   const [productResult, categories, brands] = await Promise.all([
