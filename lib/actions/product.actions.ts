@@ -7,6 +7,7 @@ import { productSchema, ProductFormValues } from "@/lib/validations/product";
 import { ProductStatus } from "@prisma/client";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { requireAdmin } from "@/lib/admin-guard";
+import { logDbError } from "@/lib/prisma-error";
 
 /**
  * Normalizes the validated variants into the JSON shape stored on Product.variants.
@@ -238,8 +239,10 @@ export async function getProductBySlug(slug: string) {
     if (!product) return { success: false, error: "Product not found" };
 
     return { success: true, data: product };
-  } catch (error: any) {
-    console.error("Failed to fetch product by slug:", error);
+  } catch (error) {
+    // Surface the real Prisma code (P1001 connection / P2021 table / P2022 column …)
+    // instead of hiding it behind a generic message.
+    logDbError(`getProductBySlug(${slug})`, error);
     return { success: false, error: "Failed to fetch product" };
   }
 }

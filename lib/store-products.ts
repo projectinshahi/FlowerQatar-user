@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
 
 /**
@@ -89,7 +90,7 @@ export const getStoreProducts = cache(async (): Promise<Product[]> => {
     });
     return rows.map(mapDbProductToStore);
   } catch (e) {
-    console.error("Failed to load store products:", e);
+    logDbError("getStoreProducts", e);
     return [];
   }
 });
@@ -124,7 +125,7 @@ export const getStoreCategories = cache(async (): Promise<StoreCategory[]> => {
       productCount: c._count.products,
     }));
   } catch (e) {
-    console.error("Failed to load store categories:", e);
+    logDbError("getStoreCategories", e);
     return [];
   }
 });
