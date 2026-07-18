@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-// Force Turbopack cache refresh
+import { guardAdmin } from '@/lib/admin-guard';
 
 export async function GET() {
+  const denied = await guardAdmin();
+  if (denied) return denied;
   try {
     const timestamp = Math.round(new Date().getTime() / 1000);
     const apiSecret = process.env.CLOUDINARY_API_SECRET as string;

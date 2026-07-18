@@ -53,7 +53,9 @@ export default function CategoryForm({ initialData, isEdit }: CategoryFormProps)
       formData.append('api_key', apiKey);
       formData.append('timestamp', timestamp.toString());
       formData.append('signature', signature);
-      
+      // Must match the signed params (the signature is generated for folder=flower_products).
+      formData.append('folder', 'flower_products');
+
       // We will use XMLHttpRequest to track progress
       return new Promise<{ url: string, public_id: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -74,7 +76,13 @@ export default function CategoryForm({ initialData, isEdit }: CategoryFormProps)
               public_id: response.public_id
             });
           } else {
-            reject(new Error('Upload failed'));
+            let message = 'Upload failed';
+            try {
+              message = JSON.parse(xhr.responseText)?.error?.message || message;
+            } catch {
+              /* ignore */
+            }
+            reject(new Error(message));
           }
         };
 
@@ -82,9 +90,9 @@ export default function CategoryForm({ initialData, isEdit }: CategoryFormProps)
         xhr.send(formData);
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to upload image');
+      toast.error(error?.message || 'Failed to upload image');
       throw error;
     } finally {
       setIsUploading(false);
@@ -210,7 +218,7 @@ export default function CategoryForm({ initialData, isEdit }: CategoryFormProps)
                   <input type="checkbox" {...register('exploreMore')} className="sr-only peer" suppressHydrationWarning />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#A83A22]"></div>
                 </div>
-                <span className="text-sm font-medium text-gray-700">Explore More Badge</span>
+                <span className="text-sm font-medium text-gray-700">Show in &ldquo;Explore Our Gardens&rdquo;</span>
               </label>
 
               <label className="flex items-center gap-3 cursor-pointer">

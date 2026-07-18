@@ -6,7 +6,6 @@ import { X, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import Link from 'next/link';
 import Image from 'next/image';
-import { PRODUCTS } from '../data/products';
 import { Product } from '../types';
 
 const TOP_SEARCHES = [
@@ -25,15 +24,34 @@ const TOP_SEARCHES = [
 export default function SearchDrawer() {
   const { isSearchOpen, setSearchOpen } = useApp();
   const [query, setQuery] = useState('');
-  const results = React.useMemo(() => {
-    if (query.trim().length > 0) {
-      const lowerQuery = query.toLowerCase();
-      return PRODUCTS.filter((product) => 
-        product.name.toLowerCase().includes(lowerQuery) || 
-        product.collection.toLowerCase().includes(lowerQuery)
-      );
+  const [results, setResults] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Debounced backend search.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length === 0) {
+      setResults([]);
+      setLoading(false);
+      return;
     }
-    return [];
+    setLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+        const data = await res.json();
+        if (data?.success) setResults(data.data as Product[]);
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') console.error('Search failed', err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   // Clear query when drawer closes
@@ -143,7 +161,11 @@ export default function SearchDrawer() {
                         RESULTS FOR &quot;{query}&quot;
                       </h3>
                       
-                      {results.length > 0 ? (
+                      {loading ? (
+                        <div className="py-10 text-center">
+                          <p className="font-serif text-base text-[#888] animate-pulse">Searching…</p>
+                        </div>
+                      ) : results.length > 0 ? (
                         <div className="flex flex-col space-y-5 md:space-y-6">
                           {results.map((product) => (
                             <Link 

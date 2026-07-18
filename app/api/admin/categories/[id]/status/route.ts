@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { guardAdmin } from '@/lib/admin-guard';
+import { revalidatePath } from 'next/cache';
 
 const statusSchema = z.object({
   status: z.boolean()
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardAdmin();
+  if (denied) return denied;
   try {
     const resolvedParams = await params;
     const body = await request.json();
@@ -18,6 +22,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       data: { status: validatedData.status }
     });
 
+    revalidatePath('/');
+    revalidatePath('/shop');
     return NextResponse.json(updatedCategory);
   } catch (error) {
     console.error('Failed to update category status:', error);

@@ -1,22 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { guardAdmin } from '@/lib/admin-guard';
 
 export async function GET(request: Request) {
+  const denied = await guardAdmin();
+  if (denied) return denied;
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('session')?.value;
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const payload = verifyToken(token);
-    if (!payload || (payload.role !== 'ADMIN' && payload.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     const users = await prisma.user.findMany({
       orderBy: {
         createdAt: 'desc'

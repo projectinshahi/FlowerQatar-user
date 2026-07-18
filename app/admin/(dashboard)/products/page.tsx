@@ -21,9 +21,8 @@ export default async function AdminProductsPage(props: {
   const editId = typeof searchParams.edit === "string" ? searchParams.edit : undefined;
 
   if (isNew || editId) {
-    const [categories, brands, editProductResult] = await Promise.all([
+    const [categories, editProductResult] = await Promise.all([
       prisma.category.findMany({ orderBy: { name: 'asc' } }),
-      prisma.brand.findMany({ orderBy: { name: 'asc' } }),
       editId ? getProductById(editId) : Promise.resolve(null)
     ]);
 
@@ -32,54 +31,52 @@ export default async function AdminProductsPage(props: {
       const product = editProductResult.data;
       initialData = {
         id: product.id,
-        name: product.name,
-        slug: product.slug,
+        name: product.name || "",
+        slug: product.slug || "",
+        sku: product.sku || "",
+        shortDescription: product.shortDescription || "",
+        description: product.description || "",
         categoryId: product.categoryId || "",
-        brandId: product.brandId || "",
         status: product.status,
-
-        variants: product.variants.map((v: any) => ({
+        isFeatured: product.isFeatured,
+        isBestSeller: product.isBestSeller,
+        isTrending: product.isTrending,
+        isNewArrival: product.isNewArrival,
+        variants: ((product.variants as any[]) || []).map((v: any) => ({
           id: v.id,
-          variantName: v.variantName,
-          sku: v.sku,
-          color: v.color || "",
-          colorCode: v.colorCode || "#000000",
-          material: v.material || "",
-          price: Number(v.price),
-          salePrice: v.salePrice ? Number(v.salePrice) : 0,
-          isDefault: v.isDefault,
-          isActive: v.isActive,
+          variantName: v.variantName || "",
+          sku: v.sku || "",
           description: v.description || "",
-          details: v.details || "",
-          productCare: v.productCare || "",
-          hoverImage: v.hoverImage || "",
-          videoUrl: v.videoUrl || "",
-          swatchImage: v.swatchImage || "",
-          images: v.images.map((img: any) => ({
-            id: img.id,
-            url: img.url,
-            publicId: img.publicId,
-            isPrimary: img.isPrimary,
-            isHover: img.isHover,
-            isGallery: img.isGallery,
-            order: img.order,
+          productCare: {
+            dos: v.productCare?.dos || [],
+            donts: v.productCare?.donts || [],
+          },
+          isDefault: v.isDefault ?? false,
+          isActive: v.isActive ?? true,
+          specifications: (v.specifications || []).map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            value: s.value
+          })),
+          colorVariants: (v.colorVariants || []).map((cv: any) => ({
+            id: cv.id,
+            colorName: cv.colorName || "",
+            colorCode: cv.colorCode || "#000000",
+            price: cv.price ?? "",
+            salePrice: cv.salePrice ?? "",
+            swatchImage: cv.swatchImage || "",
+            hoverImage: cv.hoverImage || "",
+            isActive: cv.isActive ?? true,
+            isDefault: cv.isDefault ?? false,
+            galleryImages: (cv.galleryImages || []).map((img: any) => ({
+              id: img.id,
+              url: img.url,
+              publicId: img.publicId,
+              isPrimary: img.isPrimary,
+              order: img.order
+            }))
           }))
-        })),
-        specifications: product.specifications.map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          value: s.value,
-        })),
-        faqs: product.faqs.map((f: any) => ({
-          id: f.id,
-          question: f.question,
-          answer: f.answer,
-        })),
-        seo: product.seo ? {
-          seoTitle: product.seo.seoTitle || "",
-          metaDescription: product.seo.metaDescription || "",
-          keywords: product.seo.keywords || "",
-        } : { seoTitle: "", metaDescription: "", keywords: "" },
+        }))
       };
     }
 
@@ -94,13 +91,13 @@ export default async function AdminProductsPage(props: {
             Cancel
           </Link>
         </div>
-        <ProductForm categories={categories} brands={brands} initialData={initialData} />
+        <ProductForm categories={categories} initialData={initialData} />
       </div>
     );
   }
 
   const result = await getProducts({ page, search, status, sortBy, limit: 10 });
-  const products = result.success && result.data ? result.data.products : [];
+  const products = result.success && result.data ? JSON.parse(JSON.stringify(result.data.products)) : [];
   const pagination = result.success && result.data ? result.data.pagination : { total: 0, page: 1, totalPages: 1 };
 
   return (
@@ -110,8 +107,8 @@ export default async function AdminProductsPage(props: {
           <h1 className="text-2xl font-serif font-bold text-gray-900">Products</h1>
           <p className="text-gray-500 text-sm mt-1">Manage your store's products, variants, and inventory.</p>
         </div>
-        <Link 
-          href="/admin/products?new=true" 
+        <Link
+          href="/admin/products?new=true"
           className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-black transition-colors shadow-sm"
         >
           <Plus size={18} />
@@ -125,15 +122,15 @@ export default async function AdminProductsPage(props: {
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
             <Search size={18} />
           </div>
-          <input 
-            type="text" 
-            placeholder="Search products..." 
+          <input
+            type="text"
+            placeholder="Search products..."
             className="block w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none"
             defaultValue={search}
           />
         </div>
         <div className="flex gap-2">
-          <select 
+          <select
             className="border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none bg-white"
             defaultValue={status || ""}
           >
@@ -142,7 +139,7 @@ export default async function AdminProductsPage(props: {
             <option value="DRAFT">Draft</option>
             <option value="ARCHIVED">Archived</option>
           </select>
-          <select 
+          <select
             className="border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none bg-white"
             defaultValue={sortBy || "newest"}
           >

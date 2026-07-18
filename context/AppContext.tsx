@@ -1,20 +1,30 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Product } from '../types';
 import { ROSE_COLORS, BOX_COLORS } from '../data/products';
 
 export interface CartItem {
-  id: string; // Composite key: slug + roseColor + boxColor + size + lid + card
-  product: Product | { name: string; slug: string; price: number };
+  id: string; // cart line id (uuid) once persisted, or a temporary id while optimistic
+  product: Product | { id?: string; name: string; slug: string; price: number; image?: string };
   quantity: number;
   roseColor: string;
   boxColor: string;
-  boxShape?: string; // For custom arrangements
+  boxShape?: string;
   size?: string;
   lid?: string;
   card?: string;
   price: number;
+  variantId?: string; // Product.variants[].id (JSON)
+  colorId?: string; // Product.variants[].colorVariants[].id (JSON)
+  // M05: optional gift add-ons / delivery / greeting (persisted in the cart selection JSON).
+  addOns?: { id: string; name: string; price: number }[];
+  deliveryDate?: string;
+  deliveryTime?: string;
+  greetingTemplateId?: string;
+  greetingMessage?: string;
+  greetingStyle?: { color: string; font: 'serif' | 'script' | 'sans'; size: 'sm' | 'md' | 'lg' };
+  calculatedPrice?: number;
 }
 
 export interface Toast {
@@ -35,6 +45,7 @@ export interface CustomArrangementState {
 
 interface AppContextType {
   cart: CartItem[];
+  cartLoading: boolean;
   wishlist: string[];
   isCartOpen: boolean;
   isWishlistOpen: boolean;
@@ -43,32 +54,28 @@ interface AppContextType {
   toasts: Toast[];
   customizer: CustomArrangementState;
   user: any | null;
-  
-  // Auth Actions
+
   setUser: (user: any | null) => void;
-  
-  // Cart Actions
+
+  // Cart Actions (DB-backed via /api/cart)
   addToCart: (item: Omit<CartItem, 'id'>) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, qty: number) => void;
   clearCart: () => void;
+  refreshCart: () => Promise<void>;
   setCartOpen: (open: boolean) => void;
   getCartTotal: () => number;
   getCartCount: () => number;
 
-  // Wishlist Actions
   toggleWishlist: (productSlug: string) => void;
   setWishlistOpen: (open: boolean) => void;
 
-  // Drawer Actions
   setAccountOpen: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
 
-  // Customizer Actions
   updateCustomizer: (updates: Partial<CustomArrangementState>) => void;
   resetCustomizer: () => void;
-  
-  // Toast Actions
+
   addToast: (message: string, type?: 'success' | 'info' | 'error') => void;
   removeToast: (id: string) => void;
 }
@@ -85,8 +92,46 @@ const defaultCustomizer: CustomArrangementState = {
   cardMessage: '',
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Stable key for de-duping identical selections in the optimistic UI. */
+const dedupKey = (i: Omit<CartItem, 'id'>) => {
+  const p = (i.product as any).id || i.product.slug || 'custom';
+  const sel = [i.roseColor, i.boxColor, i.boxShape, i.size, i.lid, i.card].map((v) => v || '').join('~');
+  // Distinct add-ons / delivery / greeting = distinct cart line (don't merge different gift configs).
+  const extra = [
+    (i.addOns || []).map((a) => a.id).sort().join(','),
+    i.deliveryDate || '', i.deliveryTime || '',
+    i.greetingTemplateId || '', i.greetingMessage || '',
+  ].join('~');
+  return `${p}|${i.variantId || ''}|${i.colorId || ''}|${sel}|${extra}`;
+};
+
+/** Maps the structured server cart payload into the client CartItem shape the UI expects. */
+function mapServerCart(payload: any): CartItem[] {
+  if (!payload?.items) return [];
+  return payload.items.map((i: any): CartItem => ({
+    id: i.id,
+    product: {
+      id: i.product?.id || undefined,
+      name: i.product?.name || 'Item',
+      slug: i.product?.slug || '',
+      price: i.unitPrice,
+      image: i.product?.image || undefined,
+    },
+    quantity: i.quantity,
+    roseColor: i.variant?.roseColor || '',
+    boxColor: i.variant?.boxColor || '',
+    boxShape: i.variant?.boxShape || undefined,
+    price: i.unitPrice,
+    variantId: i.variantId || undefined,
+    colorId: i.variant?.id || undefined,
+  }));
+}
+
 export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartLoading, setCartLoading] = useState(true);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [isCartOpen, setCartOpen] = useState(false);
   const [isWishlistOpen, setWishlistOpen] = useState(false);
@@ -96,9 +141,181 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const [customizer, setCustomizer] = useState<CustomArrangementState>(defaultCustomizer);
   const [user, setUser] = useState<any | null>(null);
 
-  // Check auth session on mount
+  const addToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
+
+  const removeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  /* ─────────────── Cart: server-backed ─────────────── */
+  const refreshCart = useCallback(async () => {
+    try {
+      const res = await fetch('/api/cart');
+      const data = await res.json();
+      if (data?.success) setCart(mapServerCart(data.data));
+    } catch (err) {
+      console.error('Failed to load cart', err);
+    } finally {
+      setCartLoading(false);
+    }
+  }, []);
+
+  // Hydrate cart on mount, and again when the user changes (login merges the guest cart server-side).
   useEffect(() => {
-    async function fetchUser() {
+    refreshCart();
+  }, [refreshCart, user?.id]);
+
+  const addToCart = (item: Omit<CartItem, 'id'>) => {
+    // Cart requires a signed-in user — prompt guests to log in.
+    if (!user) {
+      addToast('Please sign in to add items to your cart.', 'info');
+      setAccountOpen(true);
+      return;
+    }
+    addToast(`Added "${item.product.name}" to your cart.`, 'success');
+    // Optimistic update
+    setCart((prev) => {
+      const key = dedupKey(item);
+      const idx = prev.findIndex((i) => dedupKey(i) === key);
+      if (idx > -1) {
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + item.quantity };
+        return updated;
+      }
+      return [...prev, { ...item, id: `tmp-${Date.now()}` }];
+    });
+
+    const pid = (item.product as any).id;
+    const productId = pid && UUID_RE.test(pid) ? pid : null;
+    const selection = {
+      roseColor: item.roseColor,
+      boxColor: item.boxColor,
+      boxShape: item.boxShape,
+      size: item.size,
+      lid: item.lid,
+      card: item.card,
+      name: item.product.name,
+      slug: item.product.slug,
+      image: (item.product as any).image,
+      // M05 selections
+      addOns: item.addOns,
+      deliveryDate: item.deliveryDate,
+      deliveryTime: item.deliveryTime,
+      greetingTemplateId: item.greetingTemplateId,
+      greetingMessage: item.greetingMessage,
+      greetingStyle: item.greetingStyle,
+      calculatedPrice: item.calculatedPrice,
+    };
+
+    (async () => {
+      try {
+        const res = await fetch('/api/cart/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId,
+            variantId: item.variantId ?? null,
+            colorId: item.colorId ?? null,
+            quantity: item.quantity,
+            unitPrice: item.price,
+            selection,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data?.success) setCart(mapServerCart(data.data));
+        else {
+          addToast(data?.error || 'Could not save to cart.', 'error');
+          await refreshCart();
+        }
+      } catch {
+        await refreshCart();
+      }
+    })();
+  };
+
+  const removeFromCart = (itemId: string) => {
+    setCart((prev) => prev.filter((i) => i.id !== itemId));
+    addToast('Item removed from cart.', 'info');
+    (async () => {
+      try {
+        const res = await fetch(`/api/cart/item/${itemId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data?.success) setCart(mapServerCart(data.data));
+        else await refreshCart();
+      } catch {
+        await refreshCart();
+      }
+    })();
+  };
+
+  const updateCartQuantity = (itemId: string, qty: number) => {
+    if (qty <= 0) return removeFromCart(itemId);
+    setCart((prev) => prev.map((i) => (i.id === itemId ? { ...i, quantity: qty } : i)));
+    (async () => {
+      try {
+        const res = await fetch(`/api/cart/item/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quantity: qty }),
+        });
+        const data = await res.json();
+        if (data?.success) setCart(mapServerCart(data.data));
+        else await refreshCart();
+      } catch {
+        await refreshCart();
+      }
+    })();
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    (async () => {
+      try {
+        const res = await fetch('/api/cart', { method: 'DELETE' });
+        const data = await res.json();
+        if (data?.success) setCart(mapServerCart(data.data));
+      } catch {
+        /* ignore */
+      }
+    })();
+  };
+
+  const getCartTotal = () => cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  const getCartCount = () => cart.reduce((count, item) => count + item.quantity, 0);
+
+  /* ─────────────── Wishlist (localStorage) ─────────────── */
+  useEffect(() => {
+    const stored = localStorage.getItem('v_wishlist');
+    if (stored) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setWishlist(JSON.parse(stored));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('v_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  const toggleWishlist = (slug: string) => {
+    setWishlist((prev) => {
+      if (prev.includes(slug)) {
+        addToast('Removed from wishlist.', 'info');
+        return prev.filter((s) => s !== slug);
+      }
+      addToast('Saved to wishlist.', 'success');
+      return [...prev, slug];
+    });
+  };
+
+  /* ─────────────── Auth session ─────────────── */
+  useEffect(() => {
+    (async () => {
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
@@ -108,126 +325,17 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       } catch (err) {
         console.error('Failed to fetch session', err);
       }
-    }
-    fetchUser();
+    })();
   }, []);
 
-  // Load cart and wishlist from localStorage on mount
-  useEffect(() => {
-    const storedCart = localStorage.getItem('v_cart');
-    const storedWishlist = localStorage.getItem('v_wishlist');
-    if (storedCart) {
-      try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setCart(JSON.parse(storedCart));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    if (storedWishlist) {
-      try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setWishlist(JSON.parse(storedWishlist));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
-
-  // Save cart and wishlist to localStorage on change
-  useEffect(() => {
-    localStorage.setItem('v_cart', JSON.stringify(cart));
-  }, [cart]);
-
-  useEffect(() => {
-    localStorage.setItem('v_wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
-
-  // Toast Handler
-  const addToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
-    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      removeToast(id);
-    }, 4000);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  // Cart Handlers
-  const addToCart = (item: Omit<CartItem, 'id'>) => {
-    // Generate simple composite ID
-    const customKey = `${item.product.slug}-${item.roseColor}-${item.boxColor}-${item.size || ''}-${item.lid || ''}-${item.card || ''}`;
-    
-    setCart((prevCart) => {
-      const existingIndex = prevCart.findIndex((i) => i.id === customKey);
-      if (existingIndex > -1) {
-        const updated = [...prevCart];
-        updated[existingIndex].quantity += item.quantity;
-        return updated;
-      }
-      return [...prevCart, { ...item, id: customKey }];
-    });
-    
-    addToast(`Added "${item.product.name}" to your cart.`, 'success');
-  };
-
-  const removeFromCart = (itemId: string) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== itemId));
-    addToast('Item removed from cart.', 'info');
-  };
-
-  const updateCartQuantity = (itemId: string, qty: number) => {
-    if (qty <= 0) {
-      removeFromCart(itemId);
-      return;
-    }
-    setCart((prevCart) =>
-      prevCart.map((item) => (item.id === itemId ? { ...item, quantity: qty } : item))
-    );
-  };
-
-  const clearCart = () => {
-    setCart([]);
-  };
-
-  const getCartTotal = () => {
-    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
-  };
-
-  const getCartCount = () => {
-    return cart.reduce((count, item) => count + item.quantity, 0);
-  };
-
-  // Wishlist Handlers
-  const toggleWishlist = (slug: string) => {
-    setWishlist((prev) => {
-      const inWishlist = prev.includes(slug);
-      if (inWishlist) {
-        addToast('Removed from wishlist.', 'info');
-        return prev.filter((s) => s !== slug);
-      } else {
-        addToast('Saved to wishlist.', 'success');
-        return [...prev, slug];
-      }
-    });
-  };
-
-  // Customizer Handlers
-  const updateCustomizer = (updates: Partial<CustomArrangementState>) => {
-    setCustomizer((prev) => ({ ...prev, ...updates }));
-  };
-
-  const resetCustomizer = () => {
-    setCustomizer(defaultCustomizer);
-  };
+  const updateCustomizer = (updates: Partial<CustomArrangementState>) => setCustomizer((prev) => ({ ...prev, ...updates }));
+  const resetCustomizer = () => setCustomizer(defaultCustomizer);
 
   return (
     <AppContext.Provider
       value={{
         cart,
+        cartLoading,
         wishlist,
         isCartOpen,
         isWishlistOpen,
@@ -241,6 +349,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         removeFromCart,
         updateCartQuantity,
         clearCart,
+        refreshCart,
         setCartOpen,
         getCartTotal,
         getCartCount,

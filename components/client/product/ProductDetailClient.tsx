@@ -1,11 +1,17 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Star, ChevronRight, Minus, Plus, ChevronDown, Check, ChevronLeft, ArrowUp, ArrowDown } from 'lucide-react'
+import { Star, ChevronRight, Minus, Plus, ChevronDown, Check, ChevronLeft } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '@/context/AppContext'
+import ProductGallery from './ProductGallery'
+import AddOnsSelector from './AddOnsSelector'
+import DeliveryScheduler from './DeliveryScheduler'
+import GreetingCardSelector, { DEFAULT_GREETING_STYLE, type GreetingStyle } from './GreetingCardSelector'
+import PriceSummary from './PriceSummary'
+import { usePriceCalculator, type AddOn } from '@/hooks/useProductOptions'
 
 // Define the colors from the user prompt
 const PALETTE = {
@@ -39,45 +45,53 @@ const MOCK_RECOMMENDATIONS = [
 export default function ProductDetailClient({ product }: { product: any }) {
   const { addToCart, setCartOpen } = useApp()
 
-  // Default states based on the first variant if available
   const defaultVariant = product.variants?.[0]
+  const defaultColor = defaultVariant?.colorVariants?.[0]
   const [selectedVariantId, setSelectedVariantId] = useState<string>(defaultVariant?.id || '')
-  const [selectedSize, setSelectedSize] = useState<string>('Small')
+  const [selectedColorId, setSelectedColorId] = useState<string>(defaultColor?.id || '')
   const [colorView, setColorView] = useState<'Grid' | 'List'>('Grid')
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   const [quantity, setQuantity] = useState(1)
-  const [activeImage, setActiveImage] = useState(0)
-  const [openSection, setOpenSection] = useState<string | null>('description')
+  const [openSection, setOpenSection] = useState<string | null>('description');
+
+  // M05: gift add-ons, delivery schedule, greeting card
+  const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([])
+  const [deliveryDate, setDeliveryDate] = useState<string | null>(null)
+  const [deliveryTime, setDeliveryTime] = useState<string | null>(null)
+  const [greetingTemplateId, setGreetingTemplateId] = useState<string | null>(null)
+  const [greetingMessage, setGreetingMessage] = useState('')
+  const [greetingStyle, setGreetingStyle] = useState<GreetingStyle>(DEFAULT_GREETING_STYLE)
 
   const selectedVariant = product.variants?.find((v: any) => v.id === selectedVariantId) || defaultVariant
+  const selectedColor = selectedVariant?.colorVariants?.find((c: any) => c.id === selectedColorId) || selectedVariant?.colorVariants?.[0]
 
-  const allImages = selectedVariant?.images?.length > 0
-    ? selectedVariant.images
-    : (selectedVariant?.hoverImage ? [{ url: selectedVariant.hoverImage }] : (defaultVariant?.images?.length > 0 ? defaultVariant.images : [{ url: '/images/category_bouquets_1782290106325.png' }]))
+  const allImages = selectedColor?.galleryImages?.length > 0
+    ? selectedColor.galleryImages
+    : (selectedColor?.hoverImage ? [{ url: selectedColor.hoverImage }] : [{ url: '/images/category_bouquets_1782290106325.png' }])
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'ArrowRight') {
-      setActiveImage((prev) => (prev + 1) % allImages.length)
-    } else if (e.key === 'ArrowLeft') {
-      setActiveImage((prev) => (prev - 1 + allImages.length) % allImages.length)
-    }
-  }, [allImages.length])
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  const basePrice = Number(selectedColor?.salePrice || selectedColor?.price || 0)
+  const pricing = usePriceCalculator(basePrice, quantity, selectedAddOns)
 
   const handleAddToCart = () => {
-    if (!selectedVariant) return
+    if (!selectedVariant || !selectedColor) return
     addToCart({
-      product: { slug: product.slug, name: product.name, price: Number(selectedVariant.salePrice || selectedVariant.price) },
+      product: { id: product.id, slug: product.slug, name: product.name, price: pricing.unitPrice, image: allImages?.[0]?.url },
       quantity,
-      roseColor: selectedVariant.color || 'Default',
-      boxColor: selectedVariant.material || 'Standard',
-      boxShape: selectedSize,
-      price: Number(selectedVariant.salePrice || selectedVariant.price)
+      roseColor: selectedColor.colorName || 'Default',
+      boxColor: 'Standard',
+      boxShape: selectedVariant.variantName,
+      variantId: selectedVariant.id,
+      colorId: selectedColor.id,
+      price: pricing.unitPrice,
+      // M05 selections (persisted into the cart selection JSON)
+      addOns: selectedAddOns.map((a) => ({ id: a.id, name: a.name, price: a.price })),
+      deliveryDate: deliveryDate || undefined,
+      deliveryTime: deliveryTime || undefined,
+      greetingTemplateId: greetingTemplateId || undefined,
+      greetingMessage: greetingTemplateId ? greetingMessage || undefined : undefined,
+      greetingStyle: greetingTemplateId ? greetingStyle : undefined,
+      calculatedPrice: pricing.subtotal,
     })
     setCartOpen(true)
   }
@@ -88,8 +102,8 @@ export default function ProductDetailClient({ product }: { product: any }) {
 
   const displayTitle = selectedVariant?.variantName || product.name
   const displaySubtitle = product.category?.name || "Premium Collection"
-  const price = Number(selectedVariant?.price || 299)
-  const salePrice = Number(selectedVariant?.salePrice || 0)
+  const price = Number(selectedColor?.price || 299)
+  const salePrice = Number(selectedColor?.salePrice || 0)
   const isSale = salePrice > 0 && salePrice < price
 
   return (
@@ -110,69 +124,9 @@ export default function ProductDetailClient({ product }: { product: any }) {
       <div className="max-w-[1440px] mx-auto px-0 md:px-12 pb-16 lg:pb-24 flex flex-col lg:flex-row gap-0 lg:gap-16 pt-32 lg:pt-40">
 
         {/* LEFT COLUMN: IMAGES */}
-        <div className="w-full lg:w-[60%] flex flex-col gap-4 relative pr-0 lg:pr-8">
-          <div className="w-full flex items-center gap-4 lg:gap-6">
-            <div className="relative flex-grow w-full aspect-[4/5] bg-[#FAFAFA] overflow-hidden group rounded-sm">
-              <AnimatePresence initial={false}>
-                <motion.div
-                  key={`${selectedVariantId}-${activeImage}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0"
-                >
-                  <Image
-                    src={allImages[activeImage]?.url || '/images/category_bouquets_1782290106325.png'}
-                    alt={displayTitle}
-                    fill
-                    priority
-                    className="object-contain lg:object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    sizes="(max-width: 1024px) 100vw, 60vw"
-                  />
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Vertical Dots Navigation - Desktop (Moved to Right Side) */}
-            {allImages.length > 1 && (
-              <div className="hidden lg:flex flex-col items-center gap-4 flex-shrink-0 z-10 pr-4">
-                <button
-                  onClick={() => setActiveImage(prev => (prev - 1 + allImages.length) % allImages.length)}
-                  className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-gray-50 transition-colors bg-white"
-                  style={{ borderColor: PALETTE.divider, color: PALETTE.textSecondary }}
-                >
-                  <ArrowUp size={14} strokeWidth={1.5} />
-                </button>
-
-                <div className="flex flex-col gap-3 py-2">
-                  {allImages.map((_: any, idx: number) => (
-                    <button
-                      key={idx}
-                      onClick={() => setActiveImage(idx)}
-                      className="w-[6px] h-[6px] rounded-full transition-colors"
-                      style={{ backgroundColor: activeImage === idx ? PALETTE.textPrimary : '#D5D5D5' }}
-                    />
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setActiveImage(prev => (prev + 1) % allImages.length)}
-                  className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-gray-50 transition-colors bg-white"
-                  style={{ borderColor: PALETTE.divider, color: PALETTE.textPrimary }}
-                >
-                  <ArrowDown size={14} strokeWidth={1.5} />
-                </button>
-              </div>
-            )}
-
-            {/* Dots for mobile */}
-            <div className="flex lg:hidden absolute bottom-6 left-0 right-0 justify-center gap-2 px-4 z-10">
-              {allImages.map((_: any, idx: number) => (
-                <div key={idx} className={`w-[6px] h-[6px] rounded-full transition-colors ${activeImage === idx ? 'bg-black' : 'bg-gray-300'}`} />
-              ))}
-            </div>
-          </div>
+        <div className="w-full lg:w-[60%] flex flex-col gap-4 relative px-4 md:px-0 lg:pr-8">
+          {/* M05: enhanced gallery (thumbnail strip, keyboard, swipe, hover-zoom, fullscreen lightbox) */}
+          <ProductGallery key={selectedColorId} images={allImages} productName={product.name} />
         </div>
 
         {/* RIGHT COLUMN: DETAILS */}
@@ -213,33 +167,37 @@ export default function ProductDetailClient({ product }: { product: any }) {
           {/* Arrangement Size Selector */}
           <div className="mb-8">
             <span className="font-sans text-[11px] font-semibold uppercase tracking-widest mb-4 block" style={{ color: PALETTE.textPrimary }}>
-              <span style={{ color: PALETTE.textSecondary }}>FLORAL : </span>
-              {selectedSize === 'Mini' ? 'PEONY POÉSIE' : selectedSize === 'Small' ? 'PEONIES' : 'PEONY ÉTOILE'}
+              <span style={{ color: PALETTE.textSecondary }}>SIZE : </span>
+              {selectedVariant?.variantName}
             </span>
             <div className="border border-[#EBEBEB] p-6 flex flex-wrap gap-8 items-start">
-              {['Mini', 'Small', 'Large'].map((size) => (
+              {product.variants?.map((variant: any) => (
                 <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
+                  key={variant.id}
+                  onClick={() => {
+                    setSelectedVariantId(variant.id)
+                    const newColor = variant.colorVariants?.find((c: any) => c.colorName === selectedColor?.colorName) || variant.colorVariants?.[0]
+                    if (newColor) setSelectedColorId(newColor.id)
+                  }}
                   className="flex flex-col items-center gap-3 group"
                 >
                   <div
                     className="relative w-[70px] h-[70px] rounded-full flex items-center justify-center transition-all"
                     style={{
-                      border: selectedSize === size ? `1px solid ${PALETTE.gold}` : `1px solid transparent`
+                      border: selectedVariantId === variant.id ? `1px solid ${PALETTE.gold}` : `1px solid transparent`
                     }}
                   >
                     <div className="relative w-[60px] h-[60px] rounded-full overflow-hidden">
                       <Image
                         src="/images/category_bouquets_1782290106325.png"
-                        alt={size}
+                        alt={variant.variantName}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                     </div>
                   </div>
                   <span className="font-serif text-[12px] tracking-[0.05em]" style={{ color: PALETTE.textPrimary }}>
-                    {size === 'Mini' ? 'Peony Poésie' : size === 'Small' ? 'Peonies' : 'Peony Étoile'}
+                    {variant.variantName}
                   </span>
                 </button>
               ))}
@@ -253,11 +211,11 @@ export default function ProductDetailClient({ product }: { product: any }) {
             <div className="flex justify-between items-center mb-4">
               <span className="font-sans text-[11px] font-semibold uppercase tracking-widest block" style={{ color: PALETTE.textPrimary }}>
                 <span style={{ color: PALETTE.textSecondary }}>COLOR : </span>
-                {selectedVariant?.color || 'CRÈME CHANTILLY'}
+                {selectedColor?.colorName || 'Default'}
               </span>
-              
+
               <div className="flex bg-[#FAFAFA] rounded-full p-[2px]">
-                <button 
+                <button
                   onClick={() => setColorView('Grid')}
                   className="px-4 py-1 rounded-full font-serif text-[11px] transition-all"
                   style={{
@@ -268,7 +226,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
                 >
                   Grid
                 </button>
-                <button 
+                <button
                   onClick={() => setColorView('List')}
                   className="px-4 py-1 rounded-full font-serif text-[11px] transition-all"
                   style={{
@@ -283,65 +241,78 @@ export default function ProductDetailClient({ product }: { product: any }) {
             </div>
 
             <div className={`border border-[#EBEBEB] p-6 flex ${colorView === 'Grid' ? 'flex-wrap gap-8 items-start' : 'flex-col gap-4'}`}>
-              {product.variants?.map((v: any) => {
-                // Helper to render a fallback color based on name
-                const getFallbackColor = (name: string) => {
-                  if (!name) return '#CCCCCC';
-                  const lower = name.toLowerCase();
-                  if (lower.includes('red')) return '#900000';
-                  if (lower.includes('white')) return '#F8F8F8';
-                  if (lower.includes('pink')) return '#FFB6C1';
-                  if (lower.includes('blue')) return '#000080';
-                  if (lower.includes('black')) return '#1A1A1A';
-                  if (lower.includes('purple')) return '#4B0082';
-                  if (lower.includes('yellow')) return '#FFD700';
-                  return '#CCCCCC';
-                };
-
-                const getColorImage = (name: string) => {
-                  if (!name) return null;
-                  const lower = name.toLowerCase();
-                  if (lower.includes('red')) return '/images/red rosses.png';
-                  if (lower.includes('white')) return '/images/rosses.png';
-                  if (lower.includes('pink')) return '/images/lillies.png';
-                  return null;
-                };
-
-                const displayColor = v.colorCode || getFallbackColor(v.color);
-                const imageUrl = v.swatchImage || v.hoverImage || v.images?.[0]?.url || getColorImage(v.color);
+              {selectedVariant?.colorVariants?.map((cv: any) => {
+                const displayColor = cv.colorCode || '#CCCCCC';
+                const imageUrl = cv.swatchImage || cv.hoverImage || cv.galleryImages?.[0]?.url;
 
                 return (
-                  <div key={v.id} className={`${colorView === 'Grid' ? 'flex flex-col items-center' : 'w-full'}`}>
+                  <div key={cv.id} className={`${colorView === 'Grid' ? 'flex flex-col items-center' : 'w-full'}`}>
                     <button
                       onClick={() => {
-                        setSelectedVariantId(v.id)
-                        setActiveImage(0)
+                        setSelectedColorId(cv.id)
                       }}
                       className={`group flex ${colorView === 'Grid' ? 'flex-col items-center gap-3 w-16' : 'items-center gap-4 w-full'}`}
-                      title={v.color}
+                      title={cv.colorName}
                     >
                       <div
                         className="relative w-[70px] h-[70px] flex items-center justify-center rounded-full transition-all flex-shrink-0"
                         style={{
-                          border: selectedVariantId === v.id ? `1px solid ${PALETTE.gold}` : `1px solid transparent`
+                          border: selectedColorId === cv.id ? `1px solid ${PALETTE.gold}` : `1px solid transparent`
                         }}
                       >
                         <div
                           className="relative w-[60px] h-[60px] rounded-full overflow-hidden border border-gray-200"
                           style={{ backgroundColor: displayColor }}
                         >
-                          {imageUrl && <Image src={imageUrl} alt={v.color || 'Color swatch'} fill className="object-cover" />}
+                          {imageUrl && <Image src={imageUrl} alt={cv.colorName || 'Color swatch'} fill className="object-cover" />}
                         </div>
                       </div>
 
                       <span className={`font-serif text-[12px] leading-tight tracking-[0.05em] capitalize ${colorView === 'Grid' ? 'text-center' : 'text-left'}`} style={{ color: PALETTE.textPrimary }}>
-                        {(v.color || 'Soft Pink')}
+                        {cv.colorName}
                       </span>
                     </button>
                   </div>
                 )
               })}
             </div>
+          </div>
+
+          <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
+
+          {/* M05: Gift Add-ons */}
+          <div className="mb-8">
+            <span className="font-sans text-[11px] font-semibold uppercase tracking-widest mb-4 block" style={{ color: PALETTE.textPrimary }}>
+              <span style={{ color: PALETTE.textSecondary }}>ADD A GIFT</span>
+            </span>
+            <AddOnsSelector selected={selectedAddOns} onChange={setSelectedAddOns} />
+          </div>
+
+          {/* M05: Delivery schedule */}
+          <div className="mb-8">
+            <DeliveryScheduler
+              date={deliveryDate}
+              slot={deliveryTime}
+              onDate={(d) => { setDeliveryDate(d); setDeliveryTime(null); }}
+              onSlot={setDeliveryTime}
+            />
+          </div>
+
+          {/* M05: Greeting card */}
+          <div className="mb-8">
+            <GreetingCardSelector
+              templateId={greetingTemplateId}
+              message={greetingMessage}
+              style={greetingStyle}
+              onTemplate={(id) => { setGreetingTemplateId(id); if (!id) setGreetingMessage('') }}
+              onMessage={setGreetingMessage}
+              onStyle={setGreetingStyle}
+            />
+          </div>
+
+          {/* M05: Live price summary */}
+          <div className="mb-6">
+            <PriceSummary basePrice={basePrice} quantity={quantity} addOns={selectedAddOns} subtotal={pricing.subtotal} />
           </div>
 
           {/* Add To Cart */}
@@ -395,9 +366,61 @@ export default function ProductDetailClient({ product }: { product: any }) {
           <div className="w-full max-w-[500px]">
             <h2 className="font-serif text-[24px] tracking-widest uppercase mb-10" style={{ color: PALETTE.textPrimary }}>Product Information</h2>
             {[
-              { id: 'description', title: 'PRODUCT DESCRIPTION', content: selectedVariant?.description || 'Classic and elegant, our Porcelain Vase arrangements bring a touch of sophistication to any space. Hand-arranged with precision, these Eternity® Roses require no water and can last up to a year or more with proper care. The ceramic vase features a smooth matte finish, elevating the presentation of our immaculate blooms.' },
-              { id: 'details', title: 'PRODUCT DETAILS', content: selectedVariant?.details || 'Dimensions: 6" W x 6.5" H. Includes 16-20 premium Eternity Roses. Handcrafted porcelain vessel.' },
-              { id: 'care', title: 'PRODUCT CARE', content: selectedVariant?.productCare || 'Do not water. Keep out of direct sunlight and high humidity. Gentle dusting only.' }
+              {
+                id: 'description', title: 'PRODUCT DESCRIPTION', content: (
+                  <div className="whitespace-pre-line leading-relaxed">
+                    {selectedVariant?.description || product.description || 'A timeless preserved arrangement, hand-selected and handcrafted to last for years with no water and minimal care.'}
+                  </div>
+                )
+              },
+              {
+                id: 'details', title: 'PRODUCT DETAILS', content: (
+                  <div className="space-y-4">
+                    {selectedVariant?.specifications?.length > 0 && (
+                      <div className="space-y-1.5">
+                        {selectedVariant.specifications.map((s: any) => (
+                          <p key={s.id || s.title} className="leading-relaxed">
+                            <span className="font-semibold text-gray-900">{s.title}:</span>{' '}
+                            <span className="text-gray-600">{s.value}</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <p className="leading-relaxed text-gray-600">
+                      <span className="font-semibold text-gray-900">Disclaimer:</span>{' '}
+                      Please note that variations will occur since all of our arrangements are uniquely handmade by our in-house designers.
+                    </p>
+                  </div>
+                )
+              },
+              {
+                id: 'care', title: 'PRODUCT CARE', content: (
+                  (selectedVariant?.productCare?.dos?.length || selectedVariant?.productCare?.donts?.length) ? (
+                    <div className="space-y-8">
+                      {selectedVariant?.productCare?.dos?.length > 0 && (
+                        <div>
+                          <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-900 mb-4">DO:</p>
+                          <ul className="space-y-2.5 list-disc pl-5 marker:text-gray-400">
+                            {(selectedVariant.productCare.dos as string[]).map((item, i) => (
+                              <li key={i} className="font-serif text-[15px] leading-relaxed text-gray-700">{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {selectedVariant?.productCare?.donts?.length > 0 && (
+                        <div>
+                          <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-900 mb-4">DON&apos;T:</p>
+                          <ul className="space-y-2.5 list-disc pl-5 marker:text-gray-400">
+                            {(selectedVariant.productCare.donts as string[]).map((item, i) => (
+                              <li key={i} className="font-serif text-[15px] leading-relaxed text-gray-700">{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : 'Do not water. Keep out of direct sunlight and high humidity. Gentle dusting only.'
+                )
+              }
             ].map(section => (
               <div key={section.id} className="border-b" style={{ borderColor: PALETTE.divider }}>
                 <button
@@ -420,9 +443,9 @@ export default function ProductDetailClient({ product }: { product: any }) {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <p className="font-serif text-[15px] leading-[1.8] pb-8 text-gray-600">
+                      <div className="font-serif text-[15px] leading-[1.8] pb-8 text-gray-600">
                         {section.content}
-                      </p>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -448,7 +471,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
             THE VENUS EXPERIENCE
           </h2>
           <p className="font-serif text-[18px] italic mb-20 text-gray-800">
-            "Immerse in the luxury of our Eternity® flowers..."
+            &ldquo;Immerse in the luxury of our Eternity® flowers...&rdquo;
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 w-full">
@@ -539,8 +562,8 @@ export default function ProductDetailClient({ product }: { product: any }) {
           <div className="w-full flex flex-col mb-12">
             {/* Filter Header */}
             <div className={`w-full flex ${filtersOpen ? 'flex-col items-start gap-8' : 'flex-row justify-between items-center'} pb-4 border-b border-gray-200`}>
-              
-              <button 
+
+              <button
                 onClick={() => setFiltersOpen(!filtersOpen)}
                 className="flex items-center gap-2 font-sans text-[11px] font-bold tracking-[0.1em] uppercase text-gray-700 hover:text-black transition-colors"
               >
@@ -591,7 +614,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
                   <div className="flex text-[#D4A843] mb-4">
                     {[...Array(review.rating)].map((_, i) => <Star key={i} size={12} fill="currentColor" strokeWidth={0} />)}
                   </div>
-                  
+
                   <h4 className="font-serif text-[14px] text-gray-800 mb-3">{review.title}</h4>
                   <p className="font-serif text-[14px] text-gray-800 leading-relaxed">{review.content}</p>
                 </div>

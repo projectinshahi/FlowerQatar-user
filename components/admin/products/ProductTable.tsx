@@ -82,7 +82,35 @@ export default function ProductTable({ products, pagination }: { products: any[]
             {products.length === 0 ? (
               <tr><td colSpan={6} className="text-center py-10 text-gray-500">No products found.</td></tr>
             ) : products.map((product) => {
-              const primaryImage = product.variants?.[0]?.images?.[0]?.url;
+              const variants = Array.isArray(product.variants) ? product.variants : [];
+              const allColors = variants.flatMap((v: any) => v?.colorVariants || []);
+              const firstColor = allColors[0];
+              const galleryImages = firstColor?.galleryImages || [];
+              const primaryImage =
+                (galleryImages.find((img: any) => img.isPrimary) || galleryImages[0])?.url ||
+                firstColor?.swatchImage ||
+                firstColor?.hoverImage;
+
+              // Price range across all color variants (effective = salePrice ?? price)
+              const effectivePrices = allColors
+                .map((cv: any) => (cv?.salePrice ?? cv?.price))
+                .filter((p: any) => p != null)
+                .map((p: any) => Number(p));
+              const minPrice = effectivePrices.length ? Math.min(...effectivePrices) : null;
+              const maxPrice = effectivePrices.length ? Math.max(...effectivePrices) : null;
+              const basePrice = firstColor?.price != null ? Number(firstColor.price) : null;
+              const salePrice = firstColor?.salePrice != null ? Number(firstColor.salePrice) : null;
+              const onSale = basePrice != null && salePrice != null && salePrice < basePrice;
+
+              const colorCount = allColors.length;
+
+              const flags = [
+                product.isFeatured && "Featured",
+                product.isBestSeller && "Best Seller",
+                product.isTrending && "Trending",
+                product.isNewArrival && "New Arrival",
+              ].filter(Boolean) as string[];
+
               return (
                 <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-center">
@@ -100,29 +128,65 @@ export default function ProductTable({ products, pagination }: { products: any[]
                           <div className="h-full w-full flex items-center justify-center text-gray-400 text-xs">No img</div>
                         )}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium text-gray-900 line-clamp-1">{product.name}</p>
-                        <p className="text-xs text-gray-500">{product.variants?.length || 0} variants</p>
+                        <p className="text-xs text-gray-500 line-clamp-1">
+                          {product.sku ? <span className="font-mono">{product.sku}</span> : "No SKU"}
+                          <span className="mx-1.5 text-gray-300">·</span>
+                          {variants.length} {variants.length === 1 ? "variant" : "variants"}
+                          <span className="mx-1.5 text-gray-300">·</span>
+                          {colorCount} {colorCount === 1 ? "color" : "colors"}
+                        </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{product.category?.name || "—"}</td>
-                  <td className="px-4 py-3 text-gray-900 font-medium">QAR {Number(product.basePrice).toFixed(2)}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium ${
-                      product.status === 'PUBLISHED' ? 'bg-green-50 text-green-700' : 
-                      product.status === 'DRAFT' ? 'bg-gray-100 text-gray-700' : 
-                      'bg-orange-50 text-orange-700'
-                    }`}>
-                      {product.status}
-                    </span>
+                    {minPrice == null ? (
+                      <span className="text-gray-400">—</span>
+                    ) : onSale ? (
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-gray-900 font-medium">QAR {salePrice!.toFixed(2)}</span>
+                        <span className="text-xs text-gray-400 line-through">QAR {basePrice!.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-900 font-medium">
+                        QAR {minPrice.toFixed(2)}
+                        {maxPrice != null && maxPrice !== minPrice && ` – ${maxPrice.toFixed(2)}`}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1.5">
+                      <span className={`inline-flex w-fit px-2 py-1 text-xs rounded-full font-medium ${
+                        product.status === 'PUBLISHED' ? 'bg-green-50 text-green-700' :
+                        product.status === 'DRAFT' ? 'bg-gray-100 text-gray-700' :
+                        'bg-orange-50 text-orange-700'
+                      }`}>
+                        {product.status}
+                      </span>
+                      {flags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {flags.map((f) => (
+                            <span key={f} className="inline-flex px-1.5 py-0.5 text-[10px] rounded font-medium bg-indigo-50 text-indigo-700">
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      <Link href={`/admin/products/${product.id}/edit`} className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+                      {product.slug && (
+                        <Link href={`/product/${product.slug}`} target="_blank" className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors" title="View on storefront">
+                          <Eye size={16} />
+                        </Link>
+                      )}
+                      <Link href={`/admin/products/${product.id}/edit`} className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors" title="Edit">
                         <Edit size={16} />
                       </Link>
-                      <button onClick={() => handleDelete(product.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                      <button onClick={() => handleDelete(product.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete">
                         <Trash size={16} />
                       </button>
                     </div>

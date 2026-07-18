@@ -192,7 +192,7 @@ export default function CategoryList() {
                     </td>
                     <td className="p-4">
                       <span className="text-sm text-gray-600">
-                        {new Date(category.createdAt).toLocaleDateString()}
+                        {new Date(category.createdAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
                       </span>
                     </td>
                     <td className="p-4 text-right">

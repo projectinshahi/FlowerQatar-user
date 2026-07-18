@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ShoppingBag } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
+import { motion, AnimatePresence, type Transition, type Variants } from 'framer-motion'
+import { Menu, X, ShoppingBag, ChevronRight, ArrowLeft, Search, Heart, User, Phone, MapPin, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -9,67 +9,269 @@ import { useApp } from '../../context/AppContext'
 import TopAnnouncementBar from '../../components/TopAnnouncementBar'
 
 const leftLinks = ['CONTACT US', 'BOUTIQUES']
-const subNavLinks = ['FLOWERS', 'GIFTS', 'EXPLORE']
 
-const flowerCategories = [
-  { name: 'SHOP ALL', image: '/images/category_bouquets_1782290106325.png' },
-  { name: 'ROSES', image: '/images/category_bouquets_1782290106325.png' },
-  { name: 'MIXED FLORALS', image: '/images/category_bouquets_1782290106325.png' },
-  { name: 'SUMMER BLOOMS', image: '/images/category_bouquets_1782290106325.png' },
-  { name: 'HYDRANGEAS', image: '/images/category_bouquets_1782290106325.png' },
-  { name: 'PEONIES', image: '/images/category_bouquets_1782290106325.png' },
-]
+/* ─────────────── Mega menu data ───────────────
+ * Each mega menu is a category list (left) + one featured image (right).
+ * Images are existing project assets — swap `image` for real photography per menu.
+ */
+type MegaKey = 'GIFT COMBOS' | 'SHOP BY OCCASION' | 'BIRTHDAY' | 'FLOWER'
+type MenuKey = MegaKey | 'EXPLORE'
+/** A collection tile in the top strip. Omit `image` → placeholder until photography exists. */
+interface StripCategory {
+  name: string;
+  image?: string;
+}
 
-const flowerMenuLists = [
-  {
-    title: '',
-    items: ['BEST SELLERS', 'NEW! EVIL EYE COLLECTION', 'NEW ARRIVALS', 'DESIGN YOUR OWN', 'SAME DAY DELIVERY - NEW YORK', 'SAME DAY DELIVERY - NEW JERSEY']
-  },
-  {
-    title: 'FLOWERS BY VESSEL',
-    items: ['Heirloom Wicker', 'Hat Box', 'Porcelain', 'Stone', 'NEW! Evil Eye Collection', 'Le Petit VEF Toile Print']
-  },
-  {
-    title: 'BESPOKE COLLECTIONS',
-    items: ['Long Stem Roses', 'Floral Frames', 'Flower Letters']
-  },
-  {
-    title: 'SHOP BY COLOR',
-    items: ['Yellow', 'Red', 'Pink', 'Lavender', 'White']
-  }
-]
+interface MegaMenu {
+  links: string[];
+  image: string;
+  imageAlt: string;
+  /** Renders a circular collection strip as the FIRST row of the panel. */
+  strip?: StripCategory[];
+  /** Hero aspect box — match the source ratio so object-cover never crops. */
+  imageAspect?: string;
+  /** Desktop hero width classes. Keeps a square hero from dominating the panel. */
+  imageWidth?: string;
+}
 
-const giftMenuLists = [
-  {
-    title: '',
-    items: ['ALL GIFTS', 'MOST GIFTED', 'GIFT SETS', 'GIFT CARDS', 'ASCEND DIFFUSER', 'HOME FRAGRANCE', 'FLOWER LETTERS', 'FLORAL FRAMES']
+const megaMenus: Record<MegaKey, MegaMenu> = {
+  'GIFT COMBOS': {
+    links: ['All Combos', 'Flower Combos', 'Cake Combos', 'Chocolate Combos', 'Perfume Combos', 'Balloon Combos', 'Plant Combos', 'Luxury Combos'],
+    image: '/images/category_gift_boxes_1782290153364.png',
+    imageAlt: 'Luxury gift combo with flowers, chocolates and elegant wrapping',
   },
-  {
-    title: 'BY PRICE',
-    items: ['Gifts Under QAR 199', 'Gifts Under QAR 299', 'Gifts Under QAR 500', 'Extraordinary Gifts']
+  'SHOP BY OCCASION': {
+    links: ['Birthday', 'Anniversary', 'Graduation', 'New Baby', 'Get Well Soon', 'Welcome Home', 'Mother’s Day', 'Father’s Day', 'Congratulations', 'Love & Romance', 'Corporate Gifts', 'Ramadan & Eid'],
+    image: '/images/occation.png',
+    imageAlt: 'Elegant luxury gifting moment for every occasion',
   },
-  {
-    title: 'BY OCCASION',
-    items: ['Newborn', 'Birthdays', 'Graduation', 'Just Because', 'Sympathy', 'Thank You']
-  }
+  BIRTHDAY: {
+    links: ['All Birthday Gifts', 'Birthday Gifts for Him', 'Birthday Gifts for Her', 'Birthday Gifts for Husband', 'Birthday Gifts for Wife', 'Birthday Gifts for Girlfriend', 'Birthday Gifts for Boyfriend', 'Birthday Gifts for Kids'],
+    image: '/images/category_chocolates_1782290122821.png',
+    imageAlt: 'Premium birthday celebration with cake, flowers and gift boxes',
+  },
+  FLOWER: {
+    links: ['All Flowers', 'Roses', 'Lilies', 'Tulips', 'Mixed Flowers'],
+    // TODO: add photography for the 5 tiles below that have no `image` —
+    // /images/tulips.png, sunflowers.png, carnations.png, gerberas.png, babys-breath.png
+    strip: [
+      { name: 'All Flowers', image: '/images/category_bouquets_1782290106325.png' },
+      { name: 'Roses', image: '/images/rosses.png' },
+      { name: 'Lilies', image: '/images/lillies.png' },
+      { name: 'Tulips' },
+      { name: 'Mixed Flowers', image: '/images/explore_eternity_flowers_1782905757139.png' },
+      { name: 'Orchids', image: '/images/orchid.png' },
+      { name: 'Sunflowers' },
+      { name: 'Carnations' },
+      { name: 'Gerberas' },
+      { name: 'Baby’s Breath' },
+    ],
+    image: '/images/category_bouquets_1782290106325.png',
+    imageAlt: 'Luxury bouquet of roses, lilies and tulips',
+    // Source is 1024×1024 — a square box keeps it uncropped, sized so it doesn't dominate.
+    imageAspect: 'aspect-square',
+    imageWidth: 'w-[200px] md:w-[230px] lg:w-[260px]',
+  },
+}
+
+// Each sub-nav item either opens a mega-menu (`menu`) or links straight to a page (`href`).
+type SubNavLink = { label: string; menu?: MenuKey; href?: string }
+const subNavLinks: SubNavLink[] = [
+  { label: 'GIFT COMBOS', menu: 'GIFT COMBOS' },
+  { label: 'SHOP BY OCCASION', menu: 'SHOP BY OCCASION' },
+  { label: 'BIRTHDAY', menu: 'BIRTHDAY' },
+  { label: 'FLOWER', menu: 'FLOWER' },
+  { label: 'LUXURY GIFTS', href: '/shop' },
+  { label: 'EXPLORE', menu: 'EXPLORE' },
 ]
 
 const exploreMenuLists = [
-  { image: '/images/ART.png', title: 'OUR LOVE STORY', link: '#' },
-  { image: '/images/explore_eternity_flowers_1782905757139.png', title: 'ETERNITY FLOWERS', link: '#' },
-  { image: '/images/explore_corporate_1782905768818.png', title: 'CORPORATE GIFTING & EVENTS', link: '#' },
-  { image: '/images/explore_stores_1782905783786.png', title: 'VISIT OUR STORES', link: '#' },
+  { image: '/images/cake.png', title: 'Cake', link: '#' },
+  { image: '/images/perfume.png', title: 'Perfume', link: '#' },
+  { image: '/images/toys.png', title: 'Toys', link: '#' },
 ]
+
+// Shared open/close motion: opacity + transform only (GPU accelerated), 240ms.
+const MEGA_TRANSITION: Transition = { duration: 0.28, ease: [0.16, 1, 0.3, 1] }
+const MEGA_PANEL_ID = 'mega-menu-panel'
+
+// Collection strip: tiles fade/rise in 40ms apart as the panel opens.
+const STRIP_CONTAINER: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } }
+const STRIP_ITEM: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } },
+}
+
+/** One category row: GPU-accelerated text shift + arrow reveal on hover. */
+const MegaLink = memo(function MegaLink({ label, onNavigate }: { label: string; onNavigate?: () => void }) {
+  return (
+    <Link
+      href="#"
+      onClick={onNavigate}
+      className="group/link flex min-h-[44px] items-center justify-between gap-3 rounded-sm px-3 py-2 font-serif text-[15px] md:text-[16px] text-secondary transition-colors duration-200 hover:bg-secondary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+    >
+      <span className="transition-transform duration-200 will-change-transform group-hover/link:translate-x-1.5">
+        {label}
+      </span>
+      <ChevronRight
+        size={14}
+        strokeWidth={1.5}
+        aria-hidden="true"
+        className="-translate-x-1 opacity-0 transition-all duration-200 group-hover/link:translate-x-0 group-hover/link:opacity-60"
+      />
+    </Link>
+  )
+})
+
+/**
+ * Collection strip — the first row of the panel. One centred row on xl;
+ * snap-scrolls horizontally below that (tablet) with the scrollbar hidden.
+ */
+const CategoryStrip = memo(function CategoryStrip({ items }: { items: StripCategory[] }) {
+  const [active, setActive] = useState(items[0]?.name ?? '')
+
+  return (
+    <motion.ul
+      variants={STRIP_CONTAINER}
+      initial="hidden"
+      animate="show"
+      className="flex gap-4 lg:gap-5 overflow-x-auto xl:overflow-visible xl:justify-center snap-x snap-mandatory px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {items.map((c) => {
+        const isActive = active === c.name
+        return (
+          <motion.li key={c.name} variants={STRIP_ITEM} className="shrink-0 snap-start">
+            <Link
+              href="#"
+              onClick={() => setActive(c.name)}
+              aria-current={isActive ? 'true' : undefined}
+              className="group/cat flex w-[80px] md:w-[86px] lg:w-[96px] flex-col items-center gap-2 rounded-sm p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+            >
+              <span
+                className={`relative block h-[64px] w-[64px] md:h-[72px] md:w-[72px] lg:h-[84px] lg:w-[84px] overflow-hidden rounded-full border transition-all duration-300 ease-out will-change-transform group-hover/cat:scale-[1.08] group-hover/cat:border-primary group-hover/cat:shadow-[0_10px_28px_rgba(97,0,11,0.18)] ${
+                  isActive
+                    ? 'border-primary shadow-[0_0_0_3px_rgba(97,0,11,0.08),0_8px_24px_rgba(97,0,11,0.16)]'
+                    : 'border-primary/8 shadow-sm'
+                }`}
+              >
+                {c.image ? (
+                  <Image src={c.image} alt={c.name} fill sizes="96px" className="object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center bg-cream font-serif text-[20px] text-primary/25">
+                    {c.name.charAt(0)}
+                  </span>
+                )}
+              </span>
+              <span className="flex min-h-[26px] flex-col items-center gap-1">
+                <span
+                  className={`text-center text-[10px] uppercase leading-tight tracking-[0.12em] transition-colors duration-300 ${
+                    isActive ? 'font-semibold text-primary' : 'font-medium text-primary/75 group-hover/cat:text-primary'
+                  }`}
+                >
+                  {c.name}
+                </span>
+                <span
+                  className={`block h-[1px] w-4 origin-center bg-primary transition-transform duration-300 ${
+                    isActive ? 'scale-x-100' : 'scale-x-0 group-hover/cat:scale-x-100'
+                  }`}
+                />
+              </span>
+            </Link>
+          </motion.li>
+        )
+      })}
+    </motion.ul>
+  )
+})
+
+/** Desktop mega panel: collection strip on top, then category list (left) + hero image (right). */
+const MegaPanel = memo(function MegaPanel({ data }: { data: MegaMenu }) {
+  const hasStrip = !!data.strip
+  return (
+    <div className="max-w-[1440px] mx-auto px-4 md:px-12 pt-5 pb-6 md:pb-8">
+      {data.strip && <CategoryStrip items={data.strip} />}
+      <div
+        className={`grid items-center gap-6 md:gap-10 lg:gap-14 ${
+          hasStrip
+            // Strip menus: list flexes, hero keeps its intrinsic width — side-by-side from md
+            // so tablets don't stack into a double-height panel.
+            ? 'grid-cols-1 md:grid-cols-[1fr_auto] mt-6 border-t border-primary/8 pt-6'
+            : 'grid-cols-1 lg:grid-cols-2 py-2'
+        }`}
+      >
+        <div className={`grid gap-x-8 gap-y-0.5 ${data.links.length > 6 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+          {data.links.map((label) => (
+            <MegaLink key={label} label={label} />
+          ))}
+        </div>
+        {/* aspect box reserves space → no CLS; lazy-loaded by default */}
+        <div
+          className={`relative mx-auto overflow-hidden rounded-lg bg-secondary/5 shadow-[0_16px_48px_rgba(97,0,11,0.12)] ${
+            data.imageAspect ?? 'aspect-[16/10]'
+          } ${data.imageWidth ?? 'w-full'}`}
+        >
+          <Image
+            src={data.image}
+            alt={data.imageAlt}
+            fill
+            sizes={hasStrip ? '260px' : '(max-width: 1024px) 100vw, 50vw'}
+            className="object-cover"
+          />
+        </div>
+      </div>
+    </div>
+  )
+})
+
+/* ─── Mobile drawer styling tokens (kept in one place so rows stay identical) ─── */
+const DRAWER_EASE = [0.4, 0, 0.2, 1] as const
+const SCROLL_PANEL =
+  'absolute inset-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+const PRIMARY_ROW =
+  'group/row flex w-full min-h-[56px] items-center justify-between gap-4 rounded-sm py-3 text-left transition-colors duration-200 active:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40'
+const PRIMARY_LABEL =
+  'font-serif font-light uppercase leading-[1.2] tracking-[0.18em] text-primary text-[18px] min-[360px]:text-[20px] min-[390px]:text-[22px] min-[430px]:text-[24px]'
+const PRIMARY_CHEVRON =
+  'shrink-0 text-primary transition-transform duration-200 group-hover/row:translate-x-1.5 group-active/row:translate-x-1.5'
+const SECONDARY_ROW =
+  'flex w-full min-h-[48px] items-center gap-3.5 rounded-sm font-sans text-[13px] font-normal uppercase tracking-[0.14em] text-primary transition-colors duration-200 active:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40'
+
+/** One EXPLORE tile (square image + overlaid label) — shared by desktop grid and mobile drawer. */
+const ExploreTile = memo(function ExploreTile({
+  item, onNavigate, sizes,
+}: { item: { image: string; title: string; link: string }; onNavigate?: () => void; sizes: string }) {
+  return (
+    <Link href={item.link} onClick={onNavigate} className="flex flex-col items-center group overflow-hidden">
+      <div className="w-full aspect-square overflow-hidden bg-secondary/5 relative rounded-sm">
+        <Image src={item.image} alt={item.title} fill sizes={sizes} className="object-cover group-hover:scale-105 transition-transform duration-700" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+        <div className="absolute bottom-6 left-0 w-full text-center px-4">
+          <span className="font-serif text-[16px] md:text-[20px] text-white tracking-wide uppercase">{item.title}</span>
+        </div>
+      </div>
+    </Link>
+  )
+})
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [activeMegaMenu, setActiveMegaMenu] = useState<string | null>(null)
-  
+  const [activeMegaMenu, setActiveMegaMenu] = useState<MenuKey | null>(null)
+  // Which category's submenu page the drawer is showing (null = root list).
+  const [mobileSubmenu, setMobileSubmenu] = useState<MenuKey | null>(null)
+  // Measured navbar height — the drawer starts below it so the navbar stays visible.
+  const [headerH, setHeaderH] = useState(0)
+  // Hover-to-open only on real pointer devices; touch/tablet uses tap-to-toggle.
+  const [canHover, setCanHover] = useState(false)
+
   // Authenticated state
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false)
-  
+
+  const headerRef = useRef<HTMLElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const navItemRefs = useRef<(HTMLDivElement | null)[]>([])
+
   const { setCartOpen, setAccountOpen, setSearchOpen, user, setUser, addToast } = useApp()
   const pathname = usePathname()
 
@@ -80,6 +282,86 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanHover(window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+  }, [])
+
+  // Track the navbar's height so the drawer can start exactly below it (measured up-front,
+  // so the first open never flashes over the navbar).
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const measure = () => setHeaderH(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // ESC closes the mega menu from anywhere.
+  useEffect(() => {
+    if (!activeMegaMenu) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveMegaMenu(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [activeMegaMenu])
+
+  // Mobile drawer: open on the root list, sit below the navbar, lock body scroll, ESC closes.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMobileSubmenu(null)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [isMobileMenuOpen])
+
+  // Tap/click outside closes (tablet + touch, where mouseleave never fires).
+  useEffect(() => {
+    if (!activeMegaMenu) return
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) setActiveMegaMenu(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('touchstart', onDown)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('touchstart', onDown)
+    }
+  }, [activeMegaMenu])
+
+  const focusNavItem = useCallback((idx: number) => {
+    navItemRefs.current[idx]?.querySelector<HTMLElement>('a, button')?.focus()
+  }, [])
+
+  const handleTriggerKey = useCallback((e: React.KeyboardEvent, idx: number, link: SubNavLink) => {
+    const count = subNavLinks.length
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      focusNavItem((idx + 1) % count)
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      focusNavItem((idx - 1 + count) % count)
+    } else if (e.key === 'ArrowDown' && link.menu) {
+      e.preventDefault()
+      setActiveMegaMenu(link.menu)
+      // Panel mounts this commit; focus its first row on the next tick.
+      setTimeout(() => panelRef.current?.querySelector<HTMLElement>('a')?.focus(), 0)
+    } else if (e.key === 'Escape') {
+      setActiveMegaMenu(null)
+    }
+  }, [focusNavItem])
 
   const handleLogout = async () => {
     try {
@@ -93,56 +375,106 @@ export default function Navbar() {
     }
   };
 
+  const closeMobileMenu = useCallback(() => setIsMobileMenuOpen(false), [])
+
   const rightLinks = ['WISHLIST', 'SEARCH', user ? 'MY ACCOUNT' : 'ACCOUNT', 'CART']
+
+  // Drawer secondary links — identical destinations/actions to before, now icon-led.
+  const secondaryItems: { label: string; Icon: LucideIcon; href?: string; action?: () => void }[] = [
+    { label: 'SEARCH', Icon: Search, action: () => { setSearchOpen(true); closeMobileMenu() } },
+    { label: 'WISHLIST', Icon: Heart, href: '/wishlist' },
+    { label: 'CART', Icon: ShoppingBag, action: () => { setCartOpen(true); closeMobileMenu() } },
+    ...(user ? [] : [{ label: 'ACCOUNT', Icon: User, action: () => { setAccountOpen(true); closeMobileMenu() } }]),
+    { label: 'CONTACT US', Icon: Phone, href: '/contact' },
+    { label: 'BOUTIQUES', Icon: MapPin, href: '/boutiques' },
+  ]
+
+  // Submenu rows come straight from the existing menu data — nothing hardcoded here.
+  const submenuItems: { label: string; href: string }[] = !mobileSubmenu
+    ? []
+    : mobileSubmenu === 'EXPLORE'
+      ? exploreMenuLists.map((i) => ({ label: i.title, href: i.link }))
+      : megaMenus[mobileSubmenu].links.map((l) => ({ label: l, href: '#' }))
+
+  // While the drawer is open the navbar must be SOLID cream: it sits above the dark scrim,
+  // so the usual translucent bg-cream/95 would let the scrim tint it and no longer match the
+  // drawer beneath it. Solid = navbar + drawer read as one continuous surface.
+  const headerSurface = isMobileMenuOpen
+    ? 'bg-cream text-secondary'
+    : !isHomePage || isScrolled || isHovered || activeMegaMenu !== null || isAccountDropdownOpen
+      ? 'bg-cream/95 backdrop-blur-md text-secondary'
+      : 'bg-transparent text-white'
 
   return (
     <>
       <header
+        ref={headerRef}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => { setIsHovered(false); setActiveMegaMenu(null); }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-500 flex flex-col ${
-          !isHomePage || isScrolled || isMobileMenuOpen || isHovered || activeMegaMenu !== null || isAccountDropdownOpen ? 'bg-cream/95 backdrop-blur-md text-secondary' : 'bg-transparent text-white'
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-500 flex flex-col ${headerSurface}`}
       >
         <TopAnnouncementBar />
         <div className="max-w-[1440px] mx-auto relative w-full px-4 md:px-12 pt-4 pb-4 flex flex-col justify-between">
-          
+
           {/* Mobile Menu Button */}
           <button
             className="md:hidden absolute top-4 left-4 z-10"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle menu"
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-drawer"
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
           {/* Mobile Cart Icon */}
-          <button 
+          <button
             className="md:hidden absolute top-4 right-4 z-10"
             onClick={() => setCartOpen(true)}
+            aria-label="Open cart"
           >
             <ShoppingBag size={20} />
           </button>
 
+          {/* Top row — left links · logo · right links.
+              Flex (not absolute) so the groups can never overlap the logo at any width;
+              the equal flex-1 sides keep the logo optically centred on every screen. */}
+          <div className="flex items-center gap-3 mb-3 md:mb-4">
+
           {/* Top Left Links (Desktop) */}
-          <div 
-            className="absolute top-4 left-4 md:left-12 hidden md:flex items-center gap-8 z-10"
+          <div
+            className="flex flex-1 min-w-0 items-center gap-3 lg:gap-6 xl:gap-8 z-10"
             onMouseEnter={() => setActiveMegaMenu(null)}
           >
-            {leftLinks.map((link) => {
-              const href = link === 'CONTACT US' ? '/contact' : link === 'BOUTIQUES' ? '/boutiques' : '#';
-              return <NavLink key={link} href={href}>{link}</NavLink>;
-            })}
+            <div className="hidden md:flex items-center gap-3 lg:gap-6 xl:gap-8 whitespace-nowrap">
+              {leftLinks.map((link) => {
+                const href = link === 'CONTACT US' ? '/contact' : link === 'BOUTIQUES' ? '/boutiques' : '#';
+                return <NavLink key={link} href={href}>{link}</NavLink>;
+              })}
+            </div>
           </div>
 
-          {/* Top Right Links (Desktop) */}
-          <div 
-            className="absolute top-4 right-4 md:right-12 hidden md:flex items-center gap-8 z-10"
+          {/* Logo */}
+          <div
+            className="shrink-0 flex flex-col items-center justify-center z-0"
             onMouseEnter={() => setActiveMegaMenu(null)}
           >
+            <Link href="/" className="flex items-center group">
+              <span className="font-serif text-3xl md:text-[30px] lg:text-[36px] font-light tracking-[0.2em] whitespace-nowrap">LEBAMI</span>
+            </Link>
+          </div>
+
+          {/* Top Right Links (Desktop) — wrapper mirrors the left side so both flex-1 columns
+              stay equal and the logo is centred at every width (incl. mobile, where the inner
+              link rows are hidden but the columns still balance). */}
+          <div
+            className="flex flex-1 min-w-0 items-center justify-end z-10"
+            onMouseEnter={() => setActiveMegaMenu(null)}
+          >
+            <div className="hidden md:flex items-center gap-2.5 lg:gap-6 xl:gap-8 whitespace-nowrap">
             {rightLinks.map((link) => (
               <div key={link} className="relative group">
-                <NavLink 
+                <NavLink
                   href={link === 'WISHLIST' ? '/wishlist' : '#'}
                   onClick={(e) => {
                     if (link === 'CART') {
@@ -168,9 +500,9 @@ export default function Navbar() {
                   <AnimatePresence>
                     {isAccountDropdownOpen && (
                       <>
-                        <div 
-                          className="fixed inset-0 z-40" 
-                          onClick={(e) => { e.stopPropagation(); setIsAccountDropdownOpen(false); }} 
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={(e) => { e.stopPropagation(); setIsAccountDropdownOpen(false); }}
                         />
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
@@ -182,8 +514,8 @@ export default function Navbar() {
                         <div className="px-5 py-3 border-b border-secondary/10 mb-2">
                           <p className="font-serif text-sm text-primary capitalize truncate">Hi, {user?.firstName}</p>
                         </div>
-                        <Link href="#" className="px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5">PROFILE</Link>
-                        <Link href="#" className="px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5">ORDERS</Link>
+                        <Link href="/account/profile" onClick={() => setIsAccountDropdownOpen(false)} className="px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5">PROFILE</Link>
+                        <Link href="/account/addresses" onClick={() => setIsAccountDropdownOpen(false)} className="px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5">ADDRESSES</Link>
                         <button onClick={handleLogout} className="text-left px-5 py-2 mt-2 border-t border-secondary/10 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5 w-full">
                           LOGOUT
                         </button>
@@ -194,247 +526,238 @@ export default function Navbar() {
                 )}
               </div>
             ))}
+            </div>
           </div>
 
-          {/* Logo */}
-          <div 
-            className="flex flex-col items-center justify-center mb-3 md:mb-4 z-0"
-            onMouseEnter={() => setActiveMegaMenu(null)}
-          >
-            <Link href="/" className="flex items-center group">
-              <span className="font-serif text-3xl md:text-[36px] font-light tracking-[0.2em]">LEBAMI</span>
-            </Link>
           </div>
 
           {/* Sub Navigation (Desktop) */}
-          <div className={`hidden md:flex justify-center gap-12 lg:gap-24 w-full z-10 transition-opacity duration-500`}>
-            {subNavLinks.map((link) => (
-              <div 
-                key={link}
-                onMouseEnter={() => {
-                  if (link === 'FLOWERS' || link === 'GIFTS' || link === 'EXPLORE') setActiveMegaMenu(link)
-                  else setActiveMegaMenu(null)
-                }}
-                onClick={() => {
-                  if (link === 'FLOWERS' || link === 'GIFTS' || link === 'EXPLORE') setActiveMegaMenu(activeMegaMenu === link ? null : link)
-                }}
-                className="cursor-pointer"
-              >
-                <NavLink href="#">{link}</NavLink>
-              </div>
-            ))}
-          </div>
+          <nav
+            aria-label="Main"
+            className={`hidden md:flex flex-wrap justify-center gap-x-6 gap-y-2 lg:gap-x-12 w-full z-10 transition-opacity duration-500`}
+          >
+            {subNavLinks.map((link, idx) => {
+              const isOpen = activeMegaMenu === link.menu
+              return (
+                <div
+                  key={link.label}
+                  ref={(el) => { navItemRefs.current[idx] = el }}
+                  onMouseEnter={() => { if (canHover) setActiveMegaMenu(link.menu ?? null) }}
+                  onKeyDown={(e) => handleTriggerKey(e, idx, link)}
+                  className="cursor-pointer whitespace-nowrap"
+                >
+                  {link.menu ? (
+                    <NavTrigger
+                      isOpen={isOpen}
+                      onClick={() => setActiveMegaMenu(isOpen ? null : link.menu!)}
+                    >
+                      {link.label}
+                    </NavTrigger>
+                  ) : (
+                    <NavLink href={link.href ?? '#'}>{link.label}</NavLink>
+                  )}
+                </div>
+              )
+            })}
+          </nav>
         </div>
 
-        {/* Mega Menu */}
+        {/* Mega Menu — single panel stays mounted while switching between items (no flicker) */}
         <AnimatePresence>
-          {activeMegaMenu === 'FLOWERS' && (
+          {activeMegaMenu && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
+              ref={panelRef}
+              id={MEGA_PANEL_ID}
+              role="region"
+              aria-label={`${activeMegaMenu} menu`}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="absolute top-full left-0 w-full bg-cream/95 backdrop-blur-md border-t border-secondary/20 shadow-lg text-secondary"
+              exit={{ opacity: 0, y: -8 }}
+              transition={MEGA_TRANSITION}
+              className="absolute top-full left-0 w-full bg-cream/95 backdrop-blur-md border-t border-secondary/20 shadow-lg text-secondary will-change-[opacity,transform]"
             >
-              <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-5 md:py-6 flex flex-col">
-                
-                {/* Top Section: Images */}
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-4 justify-items-center pb-5 md:pb-6 border-b border-secondary/20">
-                  {flowerCategories.map((cat, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-2 md:gap-3 cursor-pointer group">
-                      <div className="w-[80px] h-[80px] md:w-[90px] md:h-[90px] rounded-full overflow-hidden border border-secondary/10 group-hover:scale-105 transition-transform duration-500">
-                        <Image src={cat.image} alt={cat.name} width={90} height={90} className="w-full h-full object-cover" />
-                      </div>
-                      <span className="font-sans text-[9px] md:text-[10px] text-center uppercase tracking-widest group-hover:text-primary transition-colors">{cat.name}</span>
-                    </div>
-                  ))}
+              {activeMegaMenu === 'EXPLORE' ? (
+                <div className="max-w-[1440px] mx-auto px-4 md:px-12 py-8 md:py-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 w-full max-w-[1080px] mx-auto">
+                    {exploreMenuLists.map((item) => (
+                      <ExploreTile key={item.title} item={item} sizes="(max-width: 640px) 100vw, 33vw" />
+                    ))}
+                  </div>
                 </div>
-
-                {/* Bottom Section: Links */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-12 pt-5 md:pt-6 px-2 md:px-4">
-                  {flowerMenuLists.map((list, idx) => (
-                    <div key={idx} className="flex flex-col gap-2 md:gap-3">
-                      {list.title ? (
-                        <h4 className="font-sans text-[10px] md:text-[11px] uppercase tracking-widest text-secondary mb-1">{list.title}</h4>
-                      ) : (
-                        <div className="hidden md:block h-[15px] mb-1"></div>
-                      )}
-                      <div className="flex flex-col gap-2 md:gap-3">
-                        {list.items.map((item, itemIdx) => (
-                          <Link 
-                            key={itemIdx} 
-                            href="#" 
-                            className={`hover:text-primary transition-colors ${idx === 0 ? 'font-sans text-[9px] md:text-[10px] uppercase tracking-widest' : 'font-serif text-[13px] md:text-[15px]'}`}
-                          >
-                            {item}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-              </div>
-            </motion.div>
-          )}
-
-          {activeMegaMenu === 'GIFTS' && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="absolute top-full left-0 w-full bg-cream/95 backdrop-blur-md border-t border-secondary/20 shadow-lg text-secondary"
-            >
-              <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8 md:py-10 flex flex-col items-center">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 w-full px-2 md:px-4">
-                  {giftMenuLists.map((list, idx) => (
-                    <div key={idx} className="flex flex-col gap-4 md:gap-5 items-center">
-                      {list.title ? (
-                        <h4 className="font-sans text-[10px] md:text-[11px] uppercase tracking-widest text-secondary mb-1">{list.title}</h4>
-                      ) : (
-                        <div className="hidden md:block h-[15px] mb-1"></div>
-                      )}
-                      <div className="flex flex-col gap-3 md:gap-4 items-center text-center">
-                        {list.items.map((item, itemIdx) => (
-                          <Link 
-                            key={itemIdx} 
-                            href="#" 
-                            className={`hover:text-primary transition-colors ${idx === 0 ? 'font-sans text-[9px] md:text-[10px] uppercase tracking-widest' : 'font-serif text-[14px] md:text-[16px]'}`}
-                          >
-                            {item}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {activeMegaMenu === 'EXPLORE' && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="absolute top-full left-0 w-full bg-cream/95 backdrop-blur-md border-t border-secondary/20 shadow-lg text-secondary"
-            >
-              <div className="max-w-[1440px] mx-auto px-4 md:px-12 py-8 md:py-10">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full">
-                  {exploreMenuLists.map((item, idx) => (
-                    <Link key={idx} href={item.link} className="flex flex-col items-center group overflow-hidden">
-                      <div className="w-full aspect-square overflow-hidden bg-secondary/5 relative">
-                        <Image src={item.image} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-                        <div className="absolute bottom-6 left-0 w-full text-center px-4">
-                          <span className="font-serif text-[16px] md:text-[20px] text-white tracking-wide uppercase">{item.title}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              ) : (
+                <MegaPanel data={megaMenus[activeMegaMenu]} />
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Navigation Drawer */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="fixed inset-0 z-40 bg-cream pt-[100px] px-6 h-screen overflow-y-auto"
-          >
+          <>
+            {/* Scrim */}
             <motion.div
-              initial="hidden"
-              animate="show"
-              variants={{
-                hidden: { opacity: 0 },
-                show: {
-                  opacity: 1,
-                  transition: { staggerChildren: 0.1 }
-                }
-              }}
-              className="flex flex-col items-center gap-8 pb-20"
+              key="drawer-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.32, ease: 'easeInOut' }}
+              onClick={closeMobileMenu}
+              aria-hidden="true"
+              // z-40 keeps the scrim under the navbar (z-50) so the logo/close/cart stay visible.
+              className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]"
+            />
+
+            {/* Drawer — starts below the navbar (z-[45] < header z-50) so the logo, the
+                close (X) and the cart icon stay visible and usable while it's open. */}
+            <motion.div
+              key="drawer"
+              id="mobile-drawer"
+              role="dialog"
+              aria-label="Main menu"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ duration: 0.32, ease: DRAWER_EASE }}
+              className="md:hidden fixed bottom-0 left-0 z-[45] flex w-[88%] max-w-[400px] flex-col bg-cream shadow-2xl will-change-transform"
+              style={{ top: headerH, paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-              {[...leftLinks, ...subNavLinks, 'WISHLIST', 'SEARCH', 'CART'].map((link) => (
-                <motion.div
-                  key={link}
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] } }
-                  }}
-                >
-                  <Link
-                    href={link === 'WISHLIST' ? '/wishlist' : '#'}
-                    className="font-sans text-lg uppercase tracking-[0.2em] text-secondary hover:text-secondary transition-colors duration-400"
-                    onClick={(e) => {
-                      if (link === 'CART') {
-                        e.preventDefault();
-                        setCartOpen(true);
-                        setIsMobileMenuOpen(false);
-                      } else if (link === 'SEARCH') {
-                        e.preventDefault();
-                        setSearchOpen(true);
-                        setIsMobileMenuOpen(false);
-                      } else if (link !== 'WISHLIST') {
-                        setIsMobileMenuOpen(false);
-                      } else {
-                        setIsMobileMenuOpen(false);
-                      }
-                    }}
-                  >
-                    {link}
-                  </Link>
-                </motion.div>
-              ))}
 
-              {/* Mobile Auth Section */}
-              <div className="w-full border-t border-secondary/20 pt-8 mt-4 flex flex-col items-center gap-6">
-                {!user ? (
-                   <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
-                     <button
-                       onClick={() => {
-                         setAccountOpen(true);
-                         setIsMobileMenuOpen(false);
-                       }}
-                       className="font-sans text-lg uppercase tracking-[0.2em] text-secondary hover:text-secondary transition-colors duration-400"
-                     >
-                       ACCOUNT
-                     </button>
-                   </motion.div>
-                ) : (
-                  <>
-                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
-                      <p className="font-serif text-xl text-primary capitalize mb-2 text-center">Hi, {user.firstName}</p>
+              {/* Root list ⇄ submenu page */}
+              <div className="relative flex-1 overflow-hidden">
+                <AnimatePresence initial={false}>
+                  {mobileSubmenu ? (
+                    <motion.div
+                      key="submenu"
+                      initial={{ x: '100%' }}
+                      animate={{ x: 0 }}
+                      exit={{ x: '100%' }}
+                      transition={{ duration: 0.28, ease: DRAWER_EASE }}
+                      className={SCROLL_PANEL}
+                    >
+                      <div className="px-7 pt-6 pb-14">
+                        <button
+                          type="button"
+                          onClick={() => setMobileSubmenu(null)}
+                          className="mb-8 flex min-h-[48px] items-center gap-3 rounded-sm text-primary transition-colors duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+                        >
+                          <ArrowLeft size={18} strokeWidth={1.5} aria-hidden="true" />
+                          <span className="font-serif text-[18px] min-[390px]:text-[20px] font-light uppercase tracking-[0.18em]">
+                            {mobileSubmenu}
+                          </span>
+                        </button>
+                        <ul className="flex flex-col gap-1">
+                          {submenuItems.map(({ label, href }) => (
+                            <li key={label}>
+                              <Link href={href} onClick={closeMobileMenu} className={`${PRIMARY_ROW} min-h-[52px]`}>
+                                <span className="font-serif text-[16px] min-[390px]:text-[17px] font-light uppercase leading-[1.2] tracking-[0.14em] text-primary">
+                                  {label}
+                                </span>
+                                <ChevronRight
+                                  size={16}
+                                  strokeWidth={1.5}
+                                  aria-hidden="true"
+                                  className="shrink-0 text-primary/40 transition-transform duration-200 group-hover/row:translate-x-1"
+                                />
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </motion.div>
-                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
-                      <Link href="#" onClick={() => setIsMobileMenuOpen(false)} className="font-sans text-lg uppercase tracking-[0.2em] text-secondary hover:text-secondary transition-colors duration-400">
-                        PROFILE
-                      </Link>
+                  ) : (
+                    <motion.div
+                      key="root"
+                      initial={{ x: '-25%', opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: '-25%', opacity: 0 }}
+                      transition={{ duration: 0.28, ease: DRAWER_EASE }}
+                      className={SCROLL_PANEL}
+                    >
+                      <div className="px-7 pt-8 pb-14">
+                        {/* Primary categories — driven by the existing subNavLinks */}
+                        <nav aria-label="Categories">
+                          <ul className="flex flex-col gap-2">
+                            {subNavLinks.map((link) => (
+                              <li key={link.label}>
+                                {link.menu ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setMobileSubmenu(link.menu!)}
+                                    aria-haspopup="true"
+                                    className={PRIMARY_ROW}
+                                  >
+                                    <span className={PRIMARY_LABEL}>{link.label}</span>
+                                    <ChevronRight size={19} strokeWidth={1.5} aria-hidden="true" className={PRIMARY_CHEVRON} />
+                                  </button>
+                                ) : (
+                                  <Link href={link.href ?? '#'} onClick={closeMobileMenu} className={PRIMARY_ROW}>
+                                    <span className={PRIMARY_LABEL}>{link.label}</span>
+                                    <ChevronRight size={19} strokeWidth={1.5} aria-hidden="true" className={PRIMARY_CHEVRON} />
+                                  </Link>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </nav>
+
+                        <div className="mt-10 mb-8 h-px bg-divider" />
+
+                        {/* Secondary */}
+                        <nav aria-label="Account and support">
+                          <ul className="flex flex-col gap-1">
+                            {secondaryItems.map(({ label, Icon, href, action }) => (
+                              <li key={label}>
+                                {href ? (
+                                  <Link href={href} onClick={closeMobileMenu} className={SECONDARY_ROW}>
+                                    <Icon size={18} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
+                                    <span>{label}</span>
+                                  </Link>
+                                ) : (
+                                  <button type="button" onClick={action} className={SECONDARY_ROW}>
+                                    <Icon size={18} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
+                                    <span>{label}</span>
+                                  </button>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </nav>
+
+                        {/* Signed-in account block (unchanged destinations) */}
+                        {user && (
+                          <div className="mt-8 border-t border-divider pt-8">
+                            <p className="mb-4 font-serif text-[17px] capitalize text-primary">Hi, {user.firstName}</p>
+                            <ul className="flex flex-col gap-1">
+                              <li>
+                                <Link href="#" onClick={closeMobileMenu} className={SECONDARY_ROW}>
+                                  <User size={18} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
+                                  <span>PROFILE</span>
+                                </Link>
+                              </li>
+                              <li>
+                                <Link href="#" onClick={closeMobileMenu} className={SECONDARY_ROW}>
+                                  <ShoppingBag size={18} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
+                                  <span>ORDERS</span>
+                                </Link>
+                              </li>
+                              <li>
+                                <button type="button" onClick={handleLogout} className={SECONDARY_ROW}>
+                                  <ArrowLeft size={18} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
+                                  <span>LOGOUT</span>
+                                </button>
+                              </li>
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </motion.div>
-                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
-                      <Link href="#" onClick={() => setIsMobileMenuOpen(false)} className="font-sans text-lg uppercase tracking-[0.2em] text-secondary hover:text-secondary transition-colors duration-400">
-                        ORDERS
-                      </Link>
-                    </motion.div>
-                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}>
-                      <button onClick={handleLogout} className="font-sans text-lg uppercase tracking-[0.2em] text-secondary hover:text-secondary transition-colors duration-400">
-                        LOGOUT
-                      </button>
-                    </motion.div>
-                  </>
-                )}
+                  )}
+                </AnimatePresence>
               </div>
-
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>
@@ -447,5 +770,22 @@ function NavLink({ href, children, onClick }: { href: string, children: React.Re
       {children}
       <span className="absolute -bottom-1 left-0 w-full h-[1px] bg-current scale-x-0 origin-center group-hover:scale-x-100 transition-transform duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" />
     </Link>
+  )
+}
+
+/** Same visual language as NavLink, but a real button — it opens a panel, it doesn't navigate. */
+function NavTrigger({ children, isOpen, onClick }: { children: React.ReactNode; isOpen: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-haspopup="true"
+      aria-expanded={isOpen}
+      aria-controls={MEGA_PANEL_ID}
+      className="relative group font-sans text-[11px] uppercase tracking-[0.2em] pointer-events-none md:pointer-events-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-sm"
+    >
+      {children}
+      <span className={`absolute -bottom-1 left-0 w-full h-[1px] bg-current origin-center transition-transform duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${isOpen ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+    </button>
   )
 }

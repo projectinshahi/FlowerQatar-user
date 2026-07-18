@@ -1,15 +1,183 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// ==================================================
-// ENUMS
-// ==================================================
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  firstName           String?                    @db.VarChar(50)
+  lastName            String?                    @db.VarChar(50)
+  email               String                     @unique @db.VarChar(255)
+  phone               String?                    @unique @db.VarChar(20)
+  profileImage        String?
+  dateOfBirth         DateTime?                  @db.Date
+  country             String?                    @db.VarChar(100)
+  state               String?                    @db.VarChar(100)
+  city                String?                    @db.VarChar(100)
+  timezone            String?                    @db.VarChar(50)
+  language            String?                    @default("en") @db.VarChar(10)
+  password            String?
+  provider            AuthProvider               @default(EMAIL)
+  providerId          String?                    @db.VarChar(255)
+  role                Role                       @default(USER)
+  isEmailVerified     Boolean                    @default(false)
+  isActive            Boolean                    @default(true)
+  isBlocked           Boolean                    @default(false)
+  isDeleted           Boolean                    @default(false)
+  failedLoginAttempts Int                        @default(0) @db.SmallInt
+  lockUntil           DateTime?                  @db.Timestamptz(6)
+  refreshTokenVersion Int                        @default(1)
+  lastLogin           DateTime?                  @db.Timestamptz(6)
+  deletedAt           DateTime?                  @db.Timestamptz(6)
+  createdAt           DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime                   @updatedAt @db.Timestamptz(6)
+  createdBy           String?                    @db.Uuid
+  updatedBy           String?                    @db.Uuid
+  orders              Order[]
+  otps                Otp[]
+  subscriptions       Subscription[]
+  subNotifications    SubscriptionNotification[]
+  // Shopping cart stored as a JSON array on the user (login-only cart).
+  // Shape: { id, productId, variant, quantity, unitPrice, meta }[]
+  cart                Json                       @default("[]")
+  // Saved addresses stored as a JSON array on the user (no separate table).
+  // Shape: { id, addressType, fullName, addressLine1, addressLine2?, city, state,
+  //   postalCode, country, isDefault }[] — exactly one item has isDefault=true.
+  addresses           Json                       @default("[]")
+  // GDPR consent flags: { marketingEmails, promotionalNotifications, analyticsCookies, personalization }.
+  // Missing keys fall back to defaults in lib/gdpr.ts.
+  consent             Json                       @default("{}")
+
+  @@unique([provider, providerId])
+  @@index([email])
+  @@index([role])
+  @@index([isActive, isDeleted])
+}
+
+model Otp {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  otp       String   @db.VarChar(255)
+  type      OtpType
+  expiresAt DateTime @db.Timestamptz(6)
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0) @db.SmallInt
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+}
+
+model Order {
+  id             String      @id @default(uuid()) @db.Uuid
+  userId         String      @db.Uuid
+  totalAmount    Decimal     @db.Decimal(10, 2)
+  status         OrderStatus @default(PENDING)
+  trackingNumber String?     @db.VarChar(100)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(6)
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items          OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  orderId    String   @db.Uuid
+  productId  String   @db.Uuid
+  // Snapshot of the chosen variant/color at purchase time (variants now live in Product.variants JSON)
+  variantSku String?  @db.VarChar(100)
+  colorName  String?  @db.VarChar(100)
+  quantity   Int
+  price      Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Category {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String    @unique @db.VarChar(100)
+  slug          String    @unique @db.VarChar(255)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(6)
+  displayOrder  Int       @default(0)
+  exploreMore   Boolean   @default(false)
+  hoverColor    String    @db.VarChar(20)
+  image         String
+  imagePublicId String    @db.VarChar(255)
+  status        Boolean   @default(true)
+  products      Product[]
+}
+
+model Brand {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(255)
+  slug      String   @unique @db.VarChar(255)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model Product {
+  id                String                    @id @default(uuid()) @db.Uuid
+  name              String                    @db.VarChar(255)
+  slug              String                    @unique @db.VarChar(255)
+  sku               String?                   @unique @db.VarChar(100)
+  shortDescription  String?
+  description       String?
+  categoryId        String?                   @db.Uuid
+  status            ProductStatus             @default(DRAFT)
+  isFeatured        Boolean                   @default(false)
+  isBestSeller      Boolean                   @default(false)
+  isTrending        Boolean                   @default(false)
+  isNewArrival      Boolean                   @default(false)
+  // All variants (and their nested color variants, specifications, images) are stored as JSON.
+  // Shape: Variant[] where each Variant = { id, variantName, sku, description, pros[], cons[],
+  //   specifications: { title, value }[], colorVariants: ColorVariant[] }
+  // ColorVariant = { id, colorName, colorCode, price, salePrice, swatchImage, hoverImage,
+  //   galleryImages: { url, publicId, isPrimary, order }[] }
+  variants          Json                      @default("[]")
+  createdAt         DateTime                  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime                  @updatedAt @db.Timestamptz(6)
+  orderItems        OrderItem[]
+  subscriptions     Subscription[]
+  occasions         OccasionProduct[]
+  subscriptionPlans SubscriptionPlanProduct[]
+  category          Category?                 @relation(fields: [categoryId], references: [id])
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([status])
+}
+
+/// Video banners shown in the storefront hero/banner section. Each banner is a single video media.
+model Banner {
+  id            String   @id @default(uuid()) @db.Uuid
+  title         String?  @db.VarChar(255)
+  subheading    String?  @db.VarChar(255)
+  description   String?
+  videoUrl      String
+  videoPublicId String?  @db.VarChar(255)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([isActive, sortOrder])
+}
 
 enum AuthProvider {
   EMAIL
@@ -31,79 +199,28 @@ enum OtpType {
   PHONE_VERIFY
 }
 
-// ==================================================
-// MODELS
-// ==================================================
-
-model User {
-  id String @id @default(uuid()) @db.Uuid
-
-  // Profile Information
-  firstName    String? @db.VarChar(50)
-  lastName     String? @db.VarChar(50)
-  email        String  @unique @db.VarChar(255)
-  phone        String? @unique @db.VarChar(20)
-  profileImage String? @db.Text
-  country      String? @db.VarChar(100)
-  state        String? @db.VarChar(100)
-  city         String? @db.VarChar(100)
-  timezone     String? @db.VarChar(50)
-  language     String? @default("en") @db.VarChar(10)
-
-  // Authentication
-  password   String?      @db.Text
-  provider   AuthProvider @default(EMAIL)
-  providerId String?      @db.VarChar(255)
-
-  // Security & Status
-  role            Role    @default(USER)
-  isEmailVerified Boolean @default(false)
-  isActive        Boolean @default(true)
-  isBlocked       Boolean @default(false)
-  isDeleted       Boolean @default(false)
-
-  // Rate Limiting & Account Security
-  failedLoginAttempts Int       @default(0) @db.SmallInt
-  lockUntil           DateTime? @db.Timestamptz
-  refreshTokenVersion Int       @default(1)
-  lastLogin           DateTime? @db.Timestamptz
-
-  // Audit
-  deletedAt DateTime? @db.Timestamptz
-  createdAt DateTime  @default(now()) @db.Timestamptz
-  updatedAt DateTime  @updatedAt @db.Timestamptz
-  createdBy String?   @db.Uuid
-  updatedBy String?   @db.Uuid
-
-  // Relations
-  otps   Otp[]
-  orders Order[]
-
-  // Indexes and Constraints
-  @@unique([provider, providerId])
-  @@index([email])
-  @@index([role])
-  @@index([isActive, isDeleted])
+enum OtpPurpose {
+  REGISTER
+  PASSWORD_RESET
+  CHANGE_EMAIL
+  TWO_FACTOR
 }
 
-model Otp {
-  id     String @id @default(uuid()) @db.Uuid
-  userId String @db.Uuid
+/// Email-based one-time passwords, used BEFORE a User row exists (e.g. registration).
+/// Reusable for password reset / change email / 2FA via `purpose`. The `otp` column
+/// stores a bcrypt hash of the 6-digit code — the plaintext is only ever emailed.
+model EmailOTP {
+  id        String     @id @default(uuid()) @db.Uuid
+  email     String     @db.VarChar(255)
+  otp       String     @db.VarChar(255)
+  purpose   OtpPurpose @default(REGISTER)
+  expiresAt DateTime   @db.Timestamptz(6)
+  isUsed    Boolean    @default(false)
+  attempts  Int        @default(0) @db.SmallInt
+  createdAt DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @db.Timestamptz(6)
 
-  otp       String   @db.VarChar(255)
-  type      OtpType
-  expiresAt DateTime @db.Timestamptz
-  verified  Boolean  @default(false)
-  attempts  Int      @default(0) @db.SmallInt
-
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Indexes
-  @@index([userId, type])
+  @@index([email, purpose])
   @@index([expiresAt])
 }
 
@@ -115,187 +232,411 @@ enum OrderStatus {
   CANCELLED
 }
 
-model Order {
-  id             String      @id @default(uuid()) @db.Uuid
-  userId         String      @db.Uuid
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  totalAmount    Decimal     @db.Decimal(10, 2)
-  status         OrderStatus @default(PENDING)
-  trackingNumber String?     @db.VarChar(100)
-  createdAt      DateTime    @default(now()) @db.Timestamptz
-  updatedAt      DateTime    @updatedAt @db.Timestamptz
-  items          OrderItem[]
-
-  @@index([userId])
-  @@index([status])
-}
-
-model OrderItem {
-  id               String          @id @default(uuid()) @db.Uuid
-  orderId          String          @db.Uuid
-  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId        String          @db.Uuid
-  product          Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productVariantId String?         @db.Uuid
-  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
-  quantity         Int             @db.Integer
-  price            Decimal         @db.Decimal(10, 2)
-  createdAt        DateTime        @default(now()) @db.Timestamptz
-  updatedAt        DateTime        @updatedAt @db.Timestamptz
-
-  @@index([orderId])
-  @@index([productId])
-  @@index([productVariantId])
-}
-
-model Category {
-  id            String  @id @default(uuid()) @db.Uuid
-  name          String  @unique @db.VarChar(100)
-  slug          String  @unique @db.VarChar(255)
-  image         String  @db.Text
-  imagePublicId String  @db.VarChar(255)
-  exploreMore   Boolean @default(false)
-  hoverColor    String  @db.VarChar(20)
-  status        Boolean @default(true)
-  displayOrder  Int     @default(0)
-
-  products Product[]
-
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-}
-
-model Brand {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @db.VarChar(255)
-  slug      String    @unique @db.VarChar(255)
-  products  Product[]
-  createdAt DateTime  @default(now()) @db.Timestamptz
-  updatedAt DateTime  @updatedAt @db.Timestamptz
-}
-
 enum ProductStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
 }
 
-model Product {
-  id               String        @id @default(uuid()) @db.Uuid
-  name             String        @db.VarChar(255)
-  slug             String        @unique @db.VarChar(255)
-  sku              String?       @unique @db.VarChar(100)
-  shortDescription String?       @db.Text
-  description      String?       @db.Text
-  categoryId       String?       @db.Uuid
-  category         Category?     @relation(fields: [categoryId], references: [id])
-  brandId          String?       @db.Uuid
-  brand            Brand?        @relation(fields: [brandId], references: [id])
-  status           ProductStatus @default(DRAFT)
-  isFeatured       Boolean       @default(false)
-  isBestSeller     Boolean       @default(false)
-  isTrending       Boolean       @default(false)
-  isNewArrival     Boolean       @default(false)
+enum DiscountType {
+  FLAT
+  PERCENTAGE
+}
 
-  // Relations
-  variants       ProductVariant[]
-  specifications ProductSpecification[]
-  faqs           ProductFAQ[]
-  seo            ProductSEO?
-  orderItems     OrderItem[]
+enum OfferStatus {
+  ACTIVE
+  INACTIVE
+}
 
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+enum PromotionType {
+  FESTIVAL
+  WEEKEND
+  FLASH_SALE
+  SEASON_SALE
+  BIRTHDAY
+  ANNIVERSARY
+  CHRISTMAS
+  NEW_YEAR
+  DIWALI
+  EID
+  BLACK_FRIDAY
+  CYBER_MONDAY
+  CUSTOM
+}
 
-  @@index([slug])
-  @@index([categoryId])
-  @@index([brandId])
+model Coupon {
+  id                   String        @id @default(uuid()) @db.Uuid
+  code                 String        @unique @db.VarChar(50)
+  name                 String        @db.VarChar(255)
+  description          String?
+  type                 DiscountType  @default(PERCENTAGE)
+  discountValue        Decimal       @db.Decimal(10, 2)
+  maxDiscount          Decimal?      @db.Decimal(10, 2)
+  minOrderAmount       Decimal       @default(0) @db.Decimal(10, 2)
+  startDate            DateTime      @db.Timestamptz(6)
+  endDate              DateTime      @db.Timestamptz(6)
+  usageLimit           Int?
+  usagePerCustomer     Int?
+  currentUsage         Int           @default(0)
+  applicableCategories String[]      @db.Uuid
+  applicableProducts   String[]      @db.Uuid
+  excludedProducts     String[]      @db.Uuid
+  excludedCategories   String[]      @db.Uuid
+  autoApply            Boolean       @default(false)
+  freeDelivery         Boolean       @default(false)
+  status               OfferStatus   @default(ACTIVE)
+  priority             Int           @default(0)
+  createdBy            String?       @db.Uuid
+  createdAt            DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime      @updatedAt @db.Timestamptz(6)
+  usages               CouponUsage[]
+
+  @@index([code])
   @@index([status])
+  @@index([startDate, endDate])
+  @@index([autoApply])
 }
 
-model ProductVariant {
+model CouponUsage {
+  id       String   @id @default(uuid()) @db.Uuid
+  couponId String   @db.Uuid
+  userId   String?  @db.Uuid
+  orderId  String?  @db.Uuid
+  discount Decimal  @db.Decimal(10, 2)
+  usedAt   DateTime @default(now()) @db.Timestamptz(6)
+  coupon   Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+  @@index([userId])
+  @@index([couponId, userId])
+}
+
+model Promotion {
+  id                   String        @id @default(uuid()) @db.Uuid
+  title                String        @db.VarChar(255)
+  description          String?
+  promotionType        PromotionType @default(CUSTOM)
+  banner               String?
+  bannerPublicId       String?       @db.VarChar(255)
+  startDate            DateTime      @db.Timestamptz(6)
+  endDate              DateTime      @db.Timestamptz(6)
+  discountType         DiscountType  @default(PERCENTAGE)
+  discountValue        Decimal       @db.Decimal(10, 2)
+  maxDiscount          Decimal?      @db.Decimal(10, 2)
+  applicableCategories String[]      @db.Uuid
+  applicableProducts   String[]      @db.Uuid
+  excludedProducts     String[]      @db.Uuid
+  excludedCategories   String[]      @db.Uuid
+  autoApply            Boolean       @default(true)
+  status               OfferStatus   @default(ACTIVE)
+  priority             Int           @default(0)
+  createdAt            DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([promotionType])
+  @@index([startDate, endDate])
+}
+
+model FreeDeliveryCampaign {
+  id                   String      @id @default(uuid()) @db.Uuid
+  name                 String      @db.VarChar(255)
+  minOrderAmount       Decimal     @default(0) @db.Decimal(10, 2)
+  startDate            DateTime    @db.Timestamptz(6)
+  endDate              DateTime    @db.Timestamptz(6)
+  applicableCategories String[]    @db.Uuid
+  applicableProducts   String[]    @db.Uuid
+  status               OfferStatus @default(ACTIVE)
+  priority             Int         @default(0)
+  createdAt            DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime    @updatedAt @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+// ─────────────────────────── Subscriptions (Subscribe & Save) ───────────────────────────
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  COMPLETED
+}
+
+enum SubscriptionFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  EVERY_X_DAYS
+  EVERY_X_WEEKS
+  EVERY_X_MONTHS
+  SPECIFIC_WEEKDAY
+  SPECIFIC_MONTH_DATE
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  SKIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum SubscriptionAction {
+  CREATED
+  PAUSED
+  RESUMED
+  SKIPPED
+  CANCELLED
+  UPDATED
+  COMPLETED
+  DELIVERY_GENERATED
+}
+
+enum SubNotificationType {
+  SUBSCRIPTION_CREATED
+  UPCOMING_DELIVERY
+  DELIVERY_TODAY
+  SUBSCRIPTION_PAUSED
+  SUBSCRIPTION_RESUMED
+  SUBSCRIPTION_CANCELLED
+  DELIVERY_SKIPPED
+}
+
+/// A customer's recurring subscription to a product. Recurrence (plan + schedule) is
+/// embedded here; concrete delivery instances live in SubscriptionDelivery.
+model Subscription {
+  id               String                     @id @default(uuid()) @db.Uuid
+  userId           String                     @db.Uuid
+  productId        String                     @db.Uuid
+  variantId        String?                    @db.VarChar(100)
+  colorId          String?                    @db.VarChar(100)
+  // Display snapshot (live product data stays in Product.variants JSON)
+  productName      String                     @db.VarChar(255)
+  productImage     String?
+  variantLabel     String?                    @db.VarChar(255)
+  quantity         Int                        @default(1)
+  unitPrice        Decimal                    @db.Decimal(10, 2)
+  discountPercent  Int                        @default(0)
+  // Recurrence config
+  frequency        SubscriptionFrequency
+  intervalCount    Int                        @default(1)
+  weekday          Int?                       @db.SmallInt
+  monthDate        Int?                       @db.SmallInt
+  // Duration (totalDeliveries null = unlimited)
+  totalDeliveries  Int?
+  startDate        DateTime                   @db.Date
+  endDate          DateTime?                  @db.Date
+  nextDeliveryDate DateTime?                  @db.Date
+  status           SubscriptionStatus         @default(ACTIVE)
+  pausedAt         DateTime?                  @db.Timestamptz(6)
+  resumeDate       DateTime?                  @db.Date
+  cancelledAt      DateTime?                  @db.Timestamptz(6)
+  cancelReason     String?
+  deliveryAddress  Json
+  createdAt        DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime                   @updatedAt @db.Timestamptz(6)
+  user             User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product          Product                    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  deliveries       SubscriptionDelivery[]
+  history          SubscriptionHistory[]
+  notifications    SubscriptionNotification[]
+
+  @@index([userId, status])
+  @@index([status, nextDeliveryDate])
+  @@index([productId])
+}
+
+/// One concrete scheduled delivery within a subscription.
+model SubscriptionDelivery {
+  id             String         @id @default(uuid()) @db.Uuid
+  subscriptionId String         @db.Uuid
+  sequence       Int
+  scheduledDate  DateTime       @db.Date
+  status         DeliveryStatus @default(SCHEDULED)
+  orderId        String?        @db.Uuid
+  deliveredAt    DateTime?      @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(6)
+  subscription   Subscription   @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, sequence])
+  @@index([subscriptionId, scheduledDate])
+  @@index([status, scheduledDate])
+}
+
+/// Immutable lifecycle audit trail for a subscription.
+model SubscriptionHistory {
+  id             String             @id @default(uuid()) @db.Uuid
+  subscriptionId String             @db.Uuid
+  action         SubscriptionAction
+  note           String?
+  metadata       Json?
+  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
+  subscription   Subscription       @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, createdAt])
+}
+
+/// In-app notifications tied to subscription events.
+model SubscriptionNotification {
+  id             String              @id @default(uuid()) @db.Uuid
+  userId         String              @db.Uuid
+  subscriptionId String?             @db.Uuid
+  type           SubNotificationType
+  title          String              @db.VarChar(255)
+  body           String?
+  isRead         Boolean             @default(false)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(6)
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription   Subscription?       @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([subscriptionId])
+}
+
+// ─────────────────────────── M05: Gift add-ons & greeting cards (global catalogs) ───────────────────────────
+
+/// Global gift add-ons (chocolate, teddy, balloons…) selectable on the product page.
+model AddOn {
   id            String   @id @default(uuid()) @db.Uuid
-  productId     String   @db.Uuid
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  variantName   String   @db.VarChar(255)
-  sku           String   @unique @db.VarChar(100)
-  color         String?  @db.VarChar(100)
-  colorCode     String?  @db.VarChar(20)
-  material      String?  @db.VarChar(100)
+  name          String   @db.VarChar(100)
+  description   String?
   price         Decimal  @db.Decimal(10, 2)
-  salePrice     Decimal? @db.Decimal(10, 2)
-  isDefault     Boolean  @default(false)
+  image         String?
+  imagePublicId String?  @db.VarChar(255)
   isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
 
-  description   String?  @db.Text
-  details       String?  @db.Text
-  productCare   String?  @db.Text
-  hoverImage    String?  @db.Text
-  videoUrl      String?  @db.Text
-  swatchImage   String?  @db.Text
+  @@index([isActive, sortOrder])
+}
 
+/// Greeting-card templates the customer can pick + write a message on.
+model GreetingCardTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(100)
+  image     String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  images     ProductVariantImage[]
-  orderItems OrderItem[]
+  @@index([isActive, sortOrder])
+}
 
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+/// A merchandising section on the home page (e.g. "Birthday Gifts") with a
+/// hand-picked set of existing products. Products are referenced, never copied.
+model Occasion {
+  id           String            @id @default(uuid()) @db.Uuid
+  title        String            @db.VarChar(100)
+  slug         String            @unique @db.VarChar(255)
+  subtitle     String            @db.VarChar(250)
+  description  String?
+  bannerImage  String?
+  /// Optional override; falls back to /occasion/[slug].
+  buttonText   String?           @db.VarChar(50)
+  buttonLink   String?           @db.VarChar(255)
+  /// The single collection promoted above New Arrivals on the home page.
+  isFeatured   Boolean           @default(false)
+  displayOrder Int               @default(0)
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime          @updatedAt @db.Timestamptz(6)
+  products     OccasionProduct[]
 
+  @@index([isActive, displayOrder])
+  @@index([isActive, isFeatured, displayOrder])
+  @@index([slug])
+}
+
+/// Join table: one Occasion ↔ many Products (a Product may appear in many Occasions).
+/// Cascades delete the mapping rows only — Products are never deleted.
+model OccasionProduct {
+  id         String   @id @default(uuid()) @db.Uuid
+  occasionId String   @db.Uuid
+  productId  String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  occasion Occasion @relation(fields: [occasionId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // DB-level guarantee against duplicate product selection within an occasion.
+  @@unique([occasionId, productId])
+  @@index([occasionId])
   @@index([productId])
-  @@index([sku])
 }
 
-model ProductVariantImage {
-  id               String         @id @default(uuid()) @db.Uuid
-  productVariantId String         @db.Uuid
-  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
-  url              String         @db.Text
-  publicId         String         @db.VarChar(255)
-  isPrimary        Boolean        @default(false)
-  isHover          Boolean        @default(false)
-  isGallery        Boolean        @default(true)
-  order            Int            @default(0)
-
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-
-  @@index([productVariantId])
+/// A "why choose us" feature card (icon + title + description + bullet points + CTA),
+/// managed from the admin panel and rendered on the storefront.
+/// The three permanent subscription tiers. Rows are seeded once and never added/deleted.
+enum PlanType {
+  SILVER
+  GOLD
+  PLATINUM
 }
 
-model ProductSpecification {
-  id        String  @id @default(uuid()) @db.Uuid
-  productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  title     String  @db.VarChar(255)
-  value     String  @db.Text
+/// A fixed subscription plan (Silver / Gold / Platinum). Exactly three rows exist —
+/// `planType` is unique so the set can never grow. Only the single `featurePoints`
+/// number, the validity, and the applicable products are editable; the plan name
+/// (planType) is read-only.
+model SubscriptionPlan {
+  id             String                    @id @default(uuid()) @db.Uuid
+  planType       PlanType                  @unique
+  /// A single number for the plan (e.g. loyalty/feature points). Exactly one per plan.
+  featurePoints  Int                       @default(0)
+  /// Plan price (QAR).
+  price          Decimal                   @default(0) @db.Decimal(10, 2)
+  validityYears  Int                       @default(0)
+  validityMonths Int                       @default(0)
+  validityDays   Int                       @default(0)
+  createdAt      DateTime                  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime                  @updatedAt @db.Timestamptz(6)
+  products       SubscriptionPlanProduct[]
+}
 
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+/// Join: which existing Products a SubscriptionPlan applies to (referenced, never
+/// copied). A Product may belong to many plans; mapping rows cascade, Products never do.
+model SubscriptionPlanProduct {
+  id                 String           @id @default(uuid()) @db.Uuid
+  subscriptionPlanId String           @db.Uuid
+  productId          String           @db.Uuid
+  createdAt          DateTime         @default(now()) @db.Timestamptz(6)
+  plan               SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id], onDelete: Cascade)
+  product            Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  @@unique([subscriptionPlanId, productId])
+  @@index([subscriptionPlanId])
   @@index([productId])
 }
 
-model ProductFAQ {
-  id        String  @id @default(uuid()) @db.Uuid
-  productId String  @db.Uuid
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  question  String  @db.Text
-  answer    String  @db.Text
-
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-
-  @@index([productId])
+/// Delivery charge calculation type.
+enum ChargeType {
+  FIXED
+  PERCENTAGE
 }
 
-model ProductSEO {
-  id              String  @id @default(uuid()) @db.Uuid
-  productId       String  @unique @db.Uuid
-  product         Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  seoTitle        String? @db.VarChar(255)
-  metaDescription String? @db.Text
-  keywords        String? @db.Text
+/// Global delivery-charge configuration — a singleton. The unique `singleton` column
+/// (always true) means the table can never hold more than one row, even if a duplicate
+/// insert bypasses the API. Only this one record is ever read/updated.
+model DeliveryCharge {
+  id         String     @id @default(uuid()) @db.Uuid
+  chargeType ChargeType @default(FIXED)
+  value      Decimal    @db.Decimal(10, 2)
+  singleton  Boolean    @unique @default(true)
+  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @db.Timestamptz(6)
+}
 
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+/// Storefront welcome popup — a singleton config (heading + description). The unique
+/// `singleton` column (always true) guarantees the table can never hold more than one row.
+model WelcomePopup {
+  id          String   @id @default(uuid()) @db.Uuid
+  heading     String   @db.VarChar(100)
+  description String   @db.VarChar(400)
+  singleton   Boolean  @unique @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
 }

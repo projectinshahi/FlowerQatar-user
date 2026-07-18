@@ -1,95 +1,98 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { ProductFormValues } from "@/lib/validations/product";
+import { productSchema, ProductFormValues } from "@/lib/validations/product";
 import { ProductStatus } from "@prisma/client";
+import { deleteCloudinaryImage } from "@/lib/cloudinary";
+import { requireAdmin } from "@/lib/admin-guard";
+
+/**
+ * Normalizes the validated variants into the JSON shape stored on Product.variants.
+ * Assigns stable ids to variants / color variants / gallery images so the storefront
+ * and edit form can reference them.
+ */
+function buildVariantsJson(variants: ProductFormValues["variants"]) {
+  return variants.map((variant) => ({
+    id: variant.id || randomUUID(),
+    variantName: variant.variantName,
+    sku: variant.sku,
+    description: variant.description ?? null,
+    productCare: {
+      dos: variant.productCare?.dos ?? [],
+      donts: variant.productCare?.donts ?? [],
+    },
+    isDefault: variant.isDefault ?? false,
+    isActive: variant.isActive ?? true,
+    specifications: (variant.specifications || []).map((spec) => ({
+      id: spec.id || randomUUID(),
+      title: spec.title,
+      value: spec.value,
+    })),
+    colorVariants: variant.colorVariants.map((cv) => ({
+      id: cv.id || randomUUID(),
+      colorName: cv.colorName,
+      colorCode: cv.colorCode,
+      price: cv.price,
+      salePrice: cv.salePrice ?? null,
+      swatchImage: cv.swatchImage || null,
+      hoverImage: cv.hoverImage || null,
+      isDefault: cv.isDefault ?? false,
+      isActive: cv.isActive ?? true,
+      galleryImages: (cv.galleryImages || []).map((img) => ({
+        id: img.id || randomUUID(),
+        url: img.url,
+        publicId: img.publicId,
+        isPrimary: img.isPrimary ?? false,
+        order: img.order ?? 0,
+      })),
+    })),
+  }));
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
 
 export async function createProduct(data: ProductFormValues) {
   try {
-    const product = await prisma.$transaction(async (tx: any) => {
-      const productName = data.name || data.variants[0]?.variantName || "Untitled Product";
-      let finalSlug = data.slug || productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-      
-      if (!data.slug) {
-        const existingProduct = await tx.product.findUnique({ where: { slug: finalSlug } });
-        if (existingProduct) {
-          finalSlug = `${finalSlug}-${Date.now()}`;
-        }
-      }
+    await requireAdmin();
+    const parsed = productSchema.parse(data);
 
-      // Create product
-      const newProduct = await tx.product.create({
-        data: {
-          name: productName,
-          slug: finalSlug,
+    const productName =
+      parsed.name || parsed.variants[0]?.variantName || "Untitled Product";
+    let finalSlug = parsed.slug ? slugify(parsed.slug) : slugify(productName);
 
-          categoryId: data.categoryId || null,
-          brandId: data.brandId || null,
-          status: data.status as ProductStatus,
+    // Ensure slug uniqueness
+    const existing = await prisma.product.findUnique({ where: { slug: finalSlug } });
+    if (existing) {
+      finalSlug = `${finalSlug}-${Date.now()}`;
+    }
 
-
-
-          
-          seo: data.seo ? {
-            create: {
-              seoTitle: data.seo.seoTitle,
-              metaDescription: data.seo.metaDescription,
-              keywords: data.seo.keywords,
-            }
-          } : undefined,
-
-          specifications: {
-            create: data.specifications.map(spec => ({
-              title: spec.title,
-              value: spec.value
-            }))
-          },
-
-          faqs: {
-            create: data.faqs.map(faq => ({
-              question: faq.question,
-              answer: faq.answer
-            }))
-          },
-
-          variants: {
-            create: data.variants.map(variant => ({
-              variantName: variant.variantName,
-              sku: variant.sku,
-              color: variant.color,
-              colorCode: variant.colorCode,
-              material: variant.material,
-              price: variant.price,
-              salePrice: variant.salePrice,
-              isDefault: variant.isDefault,
-              isActive: variant.isActive,
-              description: variant.description,
-              details: variant.details,
-              productCare: variant.productCare,
-              hoverImage: variant.hoverImage,
-              videoUrl: variant.videoUrl,
-              swatchImage: variant.swatchImage,
-              images: {
-                create: variant.images.map(img => ({
-                  url: img.url,
-                  publicId: img.publicId,
-                  isPrimary: img.isPrimary,
-                  isHover: img.isHover,
-                  isGallery: img.isGallery,
-                  order: img.order,
-                }))
-              }
-            }))
-          }
-        }
-      });
-
-      return newProduct;
+    const product = await prisma.product.create({
+      data: {
+        name: productName,
+        slug: finalSlug,
+        sku: parsed.sku || null,
+        shortDescription: parsed.shortDescription || null,
+        description: parsed.description || null,
+        categoryId: parsed.categoryId || null,
+        status: parsed.status as ProductStatus,
+        isFeatured: parsed.isFeatured,
+        isBestSeller: parsed.isBestSeller,
+        isTrending: parsed.isTrending,
+        isNewArrival: parsed.isNewArrival,
+        variants: buildVariantsJson(parsed.variants),
+      },
     });
 
     revalidatePath("/admin/products");
     revalidatePath("/products");
+    revalidatePath("/"); // homepage New Arrivals reflects flag changes immediately
     return { success: true, data: product };
   } catch (error: any) {
     console.error("Failed to create product:", error);
@@ -99,90 +102,54 @@ export async function createProduct(data: ProductFormValues) {
 
 export async function updateProduct(id: string, data: ProductFormValues) {
   try {
-    const product = await prisma.$transaction(async (tx: any) => {
-      // Delete existing relations first (simplest way to handle updates of nested arrays)
-      await tx.productVariant.deleteMany({ where: { productId: id } });
-      await tx.productSpecification.deleteMany({ where: { productId: id } });
-      await tx.productFAQ.deleteMany({ where: { productId: id } });
-      await tx.productSEO.deleteMany({ where: { productId: id } });
+    await requireAdmin();
+    const parsed = productSchema.parse(data);
 
-      const productName = data.name || data.variants[0]?.variantName || "Untitled Product";
-      let finalSlug = data.slug || productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    const current = await prisma.product.findUnique({ where: { id } });
+    if (!current) {
+      return { success: false, error: "Product not found" };
+    }
 
-      // Update product and recreate relations
-      const updatedProduct = await tx.product.update({
-        where: { id },
-        data: {
-          name: productName,
-          slug: finalSlug,
+    const productName =
+      parsed.name || parsed.variants[0]?.variantName || "Untitled Product";
 
-          categoryId: data.categoryId || null,
-          brandId: data.brandId || null,
-          status: data.status as ProductStatus,
+    // Resolve slug: keep current unless a new one is provided or the name changed
+    let finalSlug = current.slug;
+    if (parsed.slug && slugify(parsed.slug) !== current.slug) {
+      finalSlug = slugify(parsed.slug);
+    } else if (!parsed.slug && productName !== current.name) {
+      finalSlug = slugify(productName);
+    }
 
+    if (finalSlug !== current.slug) {
+      const clash = await prisma.product.findUnique({ where: { slug: finalSlug } });
+      if (clash && clash.id !== id) {
+        finalSlug = `${finalSlug}-${Date.now()}`;
+      }
+    }
 
-
-          
-          seo: data.seo ? {
-            create: {
-              seoTitle: data.seo.seoTitle,
-              metaDescription: data.seo.metaDescription,
-              keywords: data.seo.keywords,
-            }
-          } : undefined,
-
-          specifications: {
-            create: data.specifications.map(spec => ({
-              title: spec.title,
-              value: spec.value
-            }))
-          },
-
-          faqs: {
-            create: data.faqs.map(faq => ({
-              question: faq.question,
-              answer: faq.answer
-            }))
-          },
-
-          variants: {
-            create: data.variants.map(variant => ({
-              variantName: variant.variantName,
-              sku: variant.sku,
-              color: variant.color,
-              colorCode: variant.colorCode,
-              material: variant.material,
-              price: variant.price,
-              salePrice: variant.salePrice,
-              isDefault: variant.isDefault,
-              isActive: variant.isActive,
-              description: variant.description,
-              details: variant.details,
-              productCare: variant.productCare,
-              hoverImage: variant.hoverImage,
-              videoUrl: variant.videoUrl,
-              swatchImage: variant.swatchImage,
-              images: {
-                create: variant.images.map(img => ({
-                  url: img.url,
-                  publicId: img.publicId,
-                  isPrimary: img.isPrimary,
-                  isHover: img.isHover,
-                  isGallery: img.isGallery,
-                  order: img.order,
-                }))
-              }
-            }))
-          }
-        }
-      });
-
-      return updatedProduct;
+    const product = await prisma.product.update({
+      where: { id },
+      data: {
+        name: productName,
+        slug: finalSlug,
+        sku: parsed.sku || null,
+        shortDescription: parsed.shortDescription || null,
+        description: parsed.description || null,
+        categoryId: parsed.categoryId || null,
+        status: parsed.status as ProductStatus,
+        isFeatured: parsed.isFeatured,
+        isBestSeller: parsed.isBestSeller,
+        isTrending: parsed.isTrending,
+        isNewArrival: parsed.isNewArrival,
+        variants: buildVariantsJson(parsed.variants),
+      },
     });
 
     revalidatePath("/admin/products");
     revalidatePath("/products");
-    revalidatePath(`/products/${data.slug}`);
+    revalidatePath(`/product/${product.slug}`);
+    revalidatePath("/"); // homepage New Arrivals reflects flag changes immediately
     return { success: true, data: product };
   } catch (error: any) {
     console.error("Failed to update product:", error);
@@ -194,27 +161,19 @@ export async function getProducts(params: {
   search?: string;
   status?: ProductStatus;
   categoryId?: string;
-  brandId?: string;
   sortBy?: "newest" | "oldest" | "price_asc" | "price_desc" | "name_asc" | "stock_asc";
   page?: number;
   limit?: number;
 }) {
   try {
-    const { search, status, categoryId, brandId, sortBy = "newest", page = 1, limit = 10 } = params;
-    
+    const { search, status, categoryId, sortBy = "newest", page = 1, limit = 10 } = params;
+
     const where: any = {};
     if (search) {
       where.name = { contains: search, mode: "insensitive" };
     }
-    if (status) {
-      where.status = status;
-    }
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-    if (brandId) {
-      where.brandId = brandId;
-    }
+    if (status) where.status = status;
+    if (categoryId) where.categoryId = categoryId;
 
     const orderBy: any = {};
     switch (sortBy) {
@@ -230,20 +189,9 @@ export async function getProducts(params: {
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-        include: {
-          category: true,
-          brand: true,
-          variants: {
-            include: {
-              images: {
-                where: { isPrimary: true },
-                take: 1
-              }
-            }
-          }
-        }
+        include: { category: true },
       }),
-      prisma.product.count({ where })
+      prisma.product.count({ where }),
     ]);
 
     return {
@@ -254,9 +202,9 @@ export async function getProducts(params: {
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+          totalPages: Math.ceil(total / limit),
+        },
+      },
     };
   } catch (error: any) {
     console.error("Failed to fetch products:", error);
@@ -268,18 +216,7 @@ export async function getProductById(id: string) {
   try {
     const product = await prisma.product.findUnique({
       where: { id },
-      include: {
-        seo: true,
-        specifications: true,
-        faqs: true,
-        variants: {
-          include: {
-            images: {
-              orderBy: { order: 'asc' }
-            }
-          }
-        }
-      }
+      include: { category: true },
     });
 
     if (!product) return { success: false, error: "Product not found" };
@@ -295,128 +232,41 @@ export async function getProductBySlug(slug: string) {
   try {
     const product = await prisma.product.findUnique({
       where: { slug },
-      include: {
-        category: true,
-        brand: true,
-        seo: true,
-        specifications: true,
-        faqs: true,
-        variants: {
-          include: {
-            images: {
-              orderBy: { order: 'asc' }
-            }
-          }
-        }
-      }
+      include: { category: true },
     });
 
-    // Generate dummy product if not found in DB
-    const dummyProduct = {
-      id: "dummy-1",
-      slug,
-      name: slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-      description: "Discover the timeless elegance of our exclusive collection. Each piece is thoughtfully curated to bring an essence of Parisian luxury and protective energy into your home.",
-      category: { name: "Signature Collection" },
-      brand: { name: "Venus Et Fleur" },
-      variants: [
-        {
-          id: "v1",
-          color: "Red",
-          material: "Suede",
-          price: 299,
-          salePrice: null,
-          images: [
-            { url: "/images/category_gift_boxes_1782290153364.png", order: 1 },
-            { url: "/images/product_master_1_1782290164345.png", order: 2 }
-          ]
-        },
-        {
-          id: "v2",
-          color: "White",
-          material: "Classic",
-          price: 199,
-          salePrice: null,
-          images: [
-            { url: "/images/category_bouquets_1782290106325.png", order: 1 }
-          ]
-        }
-      ],
-      specifications: [
-        { name: "Dimensions", value: "8\" x 8\" x 8\"" },
-        { name: "Lifespan", value: "Up to 1 year" }
-      ],
-      faqs: [
-        { question: "How long do they last?", answer: "Our eternity roses last up to a year or more with proper care." }
-      ],
-      seo: {
-        seoTitle: "Luxury Roses - " + slug,
-        metaDescription: "Beautiful luxury roses that last a year."
-      }
-    };
-
-    if (!product) {
-      console.log(`Product ${slug} not found in DB, using dummy data fallback`);
-      return { success: true, data: dummyProduct };
-    }
+    if (!product) return { success: false, error: "Product not found" };
 
     return { success: true, data: product };
   } catch (error: any) {
-    console.error("Failed to fetch product by slug, using dummy data fallback:", error);
-    
-    // Fallback to dummy data on Prisma crash
-    const dummyProduct = {
-      id: "dummy-1",
-      slug,
-      name: slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-      description: "Discover the timeless elegance of our exclusive collection. Each piece is thoughtfully curated to bring an essence of Parisian luxury and protective energy into your home.",
-      category: { name: "Signature Collection" },
-      brand: { name: "Venus Et Fleur" },
-      variants: [
-        {
-          id: "v1",
-          color: "Red",
-          material: "Suede",
-          price: 299,
-          salePrice: null,
-          images: [
-            { url: "/images/category_gift_boxes_1782290153364.png", order: 1 },
-            { url: "/images/product_master_1_1782290164345.png", order: 2 }
-          ]
-        },
-        {
-          id: "v2",
-          color: "White",
-          material: "Classic",
-          price: 199,
-          salePrice: null,
-          images: [
-            { url: "/images/category_bouquets_1782290106325.png", order: 1 }
-          ]
-        }
-      ],
-      specifications: [
-        { name: "Dimensions", value: "8\" x 8\" x 8\"" },
-        { name: "Lifespan", value: "Up to 1 year" }
-      ],
-      faqs: [
-        { question: "How long do they last?", answer: "Our eternity roses last up to a year or more with proper care." }
-      ],
-      seo: {
-        seoTitle: "Luxury Roses - " + slug,
-        metaDescription: "Beautiful luxury roses that last a year."
-      }
-    };
-    
-    return { success: true, data: dummyProduct };
-    return { success: true, data: dummyProduct };
+    console.error("Failed to fetch product by slug:", error);
+    return { success: false, error: "Failed to fetch product" };
   }
 }
 
 export async function deleteProduct(id: string) {
   try {
+    await requireAdmin();
+    const product = await prisma.product.findUnique({ where: { id } });
+
+    // Best-effort cleanup of gallery images from Cloudinary (they carry a publicId)
+    const variants = (product?.variants as any[]) || [];
+    for (const variant of variants) {
+      for (const cv of variant?.colorVariants || []) {
+        for (const img of cv?.galleryImages || []) {
+          if (img?.publicId) {
+            await deleteCloudinaryImage(img.publicId).catch((err) =>
+              console.error("Failed to delete Cloudinary image:", err)
+            );
+          }
+        }
+      }
+    }
+
     await prisma.product.delete({ where: { id } });
     revalidatePath("/admin/products");
+    revalidatePath("/products");
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     console.error("Failed to delete product:", error);
@@ -426,11 +276,14 @@ export async function deleteProduct(id: string) {
 
 export async function bulkUpdateProductStatus(ids: string[], status: ProductStatus) {
   try {
+    await requireAdmin();
     await prisma.product.updateMany({
       where: { id: { in: ids } },
-      data: { status }
+      data: { status },
     });
     revalidatePath("/admin/products");
+    revalidatePath("/products");
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     console.error("Failed to bulk update products:", error);
@@ -440,10 +293,11 @@ export async function bulkUpdateProductStatus(ids: string[], status: ProductStat
 
 export async function bulkDeleteProducts(ids: string[]) {
   try {
-    await prisma.product.deleteMany({
-      where: { id: { in: ids } }
-    });
+    await requireAdmin();
+    await prisma.product.deleteMany({ where: { id: { in: ids } } });
     revalidatePath("/admin/products");
+    revalidatePath("/products");
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     console.error("Failed to bulk delete products:", error);

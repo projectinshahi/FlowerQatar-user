@@ -1,6 +1,26 @@
 import crypto from 'crypto';
 
-export async function deleteCloudinaryImage(publicId: string) {
+/**
+ * Builds a signed set of params the browser can use to upload directly to Cloudinary.
+ * The client MUST send the SAME `folder` value or Cloudinary rejects the signature.
+ */
+export function signUpload(folder: string) {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error('Cloudinary credentials missing');
+  }
+
+  const timestamp = Math.round(Date.now() / 1000);
+  const stringToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+  const signature = crypto.createHash('sha1').update(stringToSign).digest('hex');
+
+  return { timestamp, signature, apiKey, cloudName, folder };
+}
+
+export async function deleteCloudinaryImage(publicId: string, resourceType: 'image' | 'video' = 'image') {
   try {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
@@ -20,7 +40,7 @@ export async function deleteCloudinaryImage(publicId: string) {
     formData.append('timestamp', timestamp.toString());
     formData.append('signature', signature);
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/destroy`, {
       method: 'POST',
       body: formData,
     });

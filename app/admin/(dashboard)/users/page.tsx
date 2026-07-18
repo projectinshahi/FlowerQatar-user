@@ -183,7 +183,7 @@ export default function AdminUsers() {
 
                     {/* Joined Column */}
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {new Date(user.createdAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
                     </td>
 
                     {/* Actions Column */}

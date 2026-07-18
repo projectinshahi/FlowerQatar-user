@@ -9,19 +9,12 @@ import { createProduct, updateProduct } from "@/lib/actions/product.actions";
 import { Loader2, Check, ArrowRight, ArrowLeft } from "lucide-react";
 
 import VariantsStep from "@/components/admin/products/steps/VariantsStep";
-import SpecificationsStep from "@/components/admin/products/steps/SpecificationsStep";
-import FAQStep from "@/components/admin/products/steps/FAQStep";
-import SEOStep from "@/components/admin/products/steps/SEOStep";
 
 const STEPS = [
-
-  { id: "variants", title: "Variants & Images" },
-  { id: "specs", title: "Specifications" },
-  { id: "faqs", title: "FAQs" },
-  { id: "seo", title: "SEO Settings" },
+  { id: "variants", title: "Variants, Specs & Images" },
 ];
 
-export default function ProductForm({ categories, brands, initialData }: { categories?: any[], brands?: any[], initialData?: any }) {
+export default function ProductForm({ categories, initialData }: { categories?: any[], initialData?: any }) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,21 +30,37 @@ export default function ProductForm({ categories, brands, initialData }: { categ
     defaultValues: initialData || {
       name: "",
       slug: "",
+      sku: "",
+      shortDescription: "",
+      description: "",
       categoryId: "",
-      brandId: "",
       status: "DRAFT",
+      isFeatured: false,
+      isBestSeller: false,
+      isTrending: false,
+      isNewArrival: false,
       variants: [{
-        variantName: "Default",
+        variantName: "Default Variant",
         sku: "",
-        price: 0,
-
+        description: "",
+        productCare: { dos: [], donts: [] },
         isDefault: true,
         isActive: true,
-        images: []
+        specifications: [],
+        colorVariants: [
+          {
+            colorName: "",
+            colorCode: "#000000",
+            price: "",
+            salePrice: "",
+            swatchImage: "",
+            hoverImage: "",
+            isActive: true,
+            isDefault: true,
+            galleryImages: []
+          }
+        ]
       }],
-      specifications: [],
-      faqs: [],
-      seo: { seoTitle: "", metaDescription: "", keywords: "" },
     },
   });
 
@@ -73,10 +82,10 @@ export default function ProductForm({ categories, brands, initialData }: { categ
     setIsSubmitting(true);
     setError(null);
     try {
-      const result = initialData?.id 
-        ? await updateProduct(initialData.id, data) 
+      const result = initialData?.id
+        ? await updateProduct(initialData.id, data)
         : await createProduct(data);
-        
+
       if (result.success) {
         router.push("/admin/products");
         router.refresh();
@@ -108,11 +117,10 @@ export default function ProductForm({ categories, brands, initialData }: { categ
           const isCompleted = idx < currentStep;
           return (
             <div key={step.id} className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                isActive ? "bg-gray-900 text-white" : 
-                isCompleted ? "bg-green-100 text-green-700" : 
-                "bg-gray-200 text-gray-500"
-              }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${isActive ? "bg-gray-900 text-white" :
+                  isCompleted ? "bg-green-100 text-green-700" :
+                    "bg-gray-200 text-gray-500"
+                }`}>
                 {isCompleted ? <Check size={16} /> : idx + 1}
               </div>
               <span className={`text-sm font-medium ${isActive ? "text-gray-900" : "text-gray-500"}`}>
@@ -127,7 +135,7 @@ export default function ProductForm({ categories, brands, initialData }: { categ
       <div className="flex-1 p-6 md:p-8">
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            
+
             {error && (
               <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm border border-red-100">
                 {error}
@@ -148,9 +156,6 @@ export default function ProductForm({ categories, brands, initialData }: { categ
 
             <div className="min-h-[400px]">
               {currentStep === 0 && <VariantsStep categories={categories} />}
-              {currentStep === 1 && <SpecificationsStep />}
-              {currentStep === 2 && <FAQStep />}
-              {currentStep === 3 && <SEOStep />}
             </div>
 
             <div className="pt-6 border-t border-gray-100 flex items-center justify-between">

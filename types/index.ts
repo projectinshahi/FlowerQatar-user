@@ -1,6 +1,8 @@
 export interface ProductColor {
   name: string;
   hex: string;
+  image?: string; // this color variant's primary image
+  hoverImage?: string; // this color variant's secondary/hover image
 }
 
 export interface Product {

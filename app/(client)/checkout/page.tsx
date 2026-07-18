@@ -1,19 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import Link from 'next/link';
 import { ChevronRight, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag, Eye, EyeOff } from 'lucide-react';
 import Image from '../../../components/LuxuryImage';
+import CouponBox from '../../../components/checkout/CouponBox';
 
 interface FormErrors {
   [key: string]: string;
 }
 
+interface AppliedCoupon {
+  code: string;
+  discount: number;
+  freeDelivery: boolean;
+}
+
 export default function CheckoutPage() {
-  const { cart, getCartTotal, clearCart } = useApp();
+  const { cart, getCartTotal, clearCart, user } = useApp();
   const [step, setStep] = useState(1);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
 
   // Form Fields State
   const [email, setEmail] = useState('');
@@ -33,11 +41,34 @@ export default function CheckoutPage() {
 
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // Pre-fill the form with the signed-in user's saved details (without overwriting typed input).
+  useEffect(() => {
+    if (!user) return;
+    setEmail((v) => v || user.email || '');
+    setFirstName((v) => v || user.firstName || '');
+    setLastName((v) => v || user.lastName || '');
+    setPhone((v) => v || user.phone || '');
+    setCity((v) => v || user.city || '');
+  }, [user]);
+
   const subtotal = getCartTotal();
   const baseShippingFee = subtotal >= 150 ? 0 : 15;
   const shippingFee = shippingMethod === 'courier' ? baseShippingFee + 35 : baseShippingFee;
   const tax = Math.round(subtotal * 0.08);
-  const total = subtotal + shippingFee + tax;
+
+  // Coupon-derived adjustments (default to no-ops when no coupon is applied).
+  const couponDiscount = appliedCoupon?.discount ?? 0;
+  const effectiveShipping = appliedCoupon?.freeDelivery ? 0 : shippingFee;
+  const total = Math.max(0, subtotal + effectiveShipping + tax - couponDiscount);
+
+  // Map cart lines to the shape the coupon APIs expect, skipping items with no product id.
+  const couponItems = cart
+    .map((item) =>
+      'id' in item.product && item.product.id
+        ? { productId: item.product.id, quantity: item.quantity, price: item.price }
+        : null
+    )
+    .filter((x): x is { productId: string; quantity: number; price: number } => x !== null);
 
   const validateStep = () => {
     const tempErrors: FormErrors = {};
@@ -532,15 +563,26 @@ export default function CheckoutPage() {
               ))}
             </div>
 
+            {/* Coupon */}
+            <div className="border-t border-divider pt-4">
+              <CouponBox items={couponItems} onApplied={setAppliedCoupon} />
+            </div>
+
             {/* Price Calculations */}
             <div className="border-t border-divider pt-4 space-y-2 text-xs">
               <div className="flex justify-between text-muted">
                 <span>Subtotal</span>
                 <span>${subtotal}</span>
               </div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-green-600 font-medium">
+                  <span>Coupon{appliedCoupon?.code ? ` (${appliedCoupon.code})` : ''}</span>
+                  <span>-${couponDiscount}</span>
+                </div>
+              )}
               <div className="flex justify-between text-muted">
                 <span>Shipping</span>
-                <span>{shippingFee === 0 ? 'Complimentary' : `$${shippingFee}`}</span>
+                <span>{effectiveShipping === 0 ? 'Complimentary' : `$${effectiveShipping}`}</span>
               </div>
               <div className="flex justify-between text-muted">
                 <span>Estimated Taxes</span>

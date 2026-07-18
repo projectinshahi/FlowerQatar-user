@@ -8,7 +8,7 @@ import { Trash2, Plus, Minus, ShieldCheck, Truck, ShoppingBag, ArrowLeft } from 
 import Breadcrumbs from '../../../components/Breadcrumbs';
 
 export default function CartPage() {
-  const { cart, updateCartQuantity, removeFromCart, getCartTotal } = useApp();
+  const { cart, cartLoading, updateCartQuantity, removeFromCart, getCartTotal } = useApp();
 
   const subtotal = getCartTotal();
   const shipping = subtotal >= 150 ? 0 : 15;
@@ -24,7 +24,28 @@ export default function CartPage() {
         Your Atelier Cart
       </h1>
 
-      {cart.length === 0 ? (
+      {cartLoading && cart.length === 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-pulse">
+          <div className="lg:col-span-8 space-y-6">
+            <div className="border border-divider/60 divide-y divide-divider">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="p-6 flex gap-6 bg-white">
+                  <div className="w-24 h-28 bg-cream flex-shrink-0 border border-divider/40" />
+                  <div className="flex-grow space-y-3">
+                    <div className="h-3 w-1/2 bg-cream" />
+                    <div className="h-2 w-1/3 bg-cream" />
+                    <div className="h-2 w-2/3 bg-cream" />
+                    <div className="h-8 w-32 bg-cream mt-6" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="lg:col-span-4">
+            <div className="border border-divider/60 p-6 bg-cream/40 h-64" />
+          </div>
+        </div>
+      ) : cart.length === 0 ? (
         <div className="text-center py-20 bg-cream border border-divider/60 rounded-none space-y-6">
           <p className="text-muted text-sm italic">Your luxury cart is currently empty.</p>
           <p className="text-xs text-muted/80 max-w-sm mx-auto leading-relaxed">

@@ -6,9 +6,9 @@ import { useFormContext } from "react-hook-form";
 
 // In a real application, you would use next-cloudinary or similar for the actual upload logic.
 // This component simulates the upload process and manages the form state.
-export default function VariantImageUploader({ variantIndex }: { variantIndex: number }) {
+export default function VariantImageUploader({ variantIndex, colorVariantIndex }: { variantIndex: number; colorVariantIndex: number }) {
   const { watch, setValue } = useFormContext();
-  const images = watch(`variants.${variantIndex}.images`) || [];
+  const images = watch(`variants.${variantIndex}.colorVariants.${colorVariantIndex}.galleryImages`) || [];
   const [isUploading, setIsUploading] = useState(false);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,11 +52,9 @@ export default function VariantImageUploader({ variantIndex }: { variantIndex: n
         url: uploadData.secure_url,
         publicId: uploadData.public_id,
         isPrimary: images.length === 0,
-        isHover: images.length === 1,
-        isGallery: true,
         order: images.length
       };
-      setValue(`variants.${variantIndex}.images`, [...images, newImage]);
+      setValue(`variants.${variantIndex}.colorVariants.${colorVariantIndex}.galleryImages`, [...images, newImage]);
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Failed to upload image. Please try again.');
@@ -72,7 +70,7 @@ export default function VariantImageUploader({ variantIndex }: { variantIndex: n
     if (images[index].isPrimary && newImages.length > 0) {
       newImages[0].isPrimary = true;
     }
-    setValue(`variants.${variantIndex}.images`, newImages);
+    setValue(`variants.${variantIndex}.colorVariants.${colorVariantIndex}.galleryImages`, newImages);
   };
 
   const setPrimary = (index: number) => {
@@ -80,21 +78,13 @@ export default function VariantImageUploader({ variantIndex }: { variantIndex: n
       ...img,
       isPrimary: i === index
     }));
-    setValue(`variants.${variantIndex}.images`, newImages);
-  };
-
-  const setHover = (index: number) => {
-    const newImages = images.map((img: any, i: number) => ({
-      ...img,
-      isHover: i === index
-    }));
-    setValue(`variants.${variantIndex}.images`, newImages);
+    setValue(`variants.${variantIndex}.colorVariants.${colorVariantIndex}.galleryImages`, newImages);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-700">Variant Images</h4>
+        <h4 className="text-sm font-medium text-gray-700">Gallery Images</h4>
         <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors">
           {isUploading ? "Uploading..." : "Upload Image"}
           <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={isUploading} />
@@ -105,8 +95,8 @@ export default function VariantImageUploader({ variantIndex }: { variantIndex: n
       {images.length === 0 ? (
         <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-500 bg-gray-50">
           <Upload size={24} className="mx-auto mb-2 text-gray-400" />
-          <p className="text-sm font-medium">No images uploaded yet</p>
-          <p className="text-xs mt-1">Upload primary, hover, and gallery images</p>
+          <p className="text-sm font-medium">No gallery images uploaded</p>
+          <p className="text-xs mt-1">Upload multiple gallery images for this color</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -131,14 +121,6 @@ export default function VariantImageUploader({ variantIndex }: { variantIndex: n
                   >
                     <Star size={10} className={img.isPrimary ? 'fill-white' : ''} />
                     Primary
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setHover(idx)}
-                    className={`flex-1 py-1 rounded text-[10px] font-medium flex items-center justify-center gap-1 ${img.isHover ? 'bg-blue-500 text-white' : 'bg-white/20 text-white hover:bg-white/40'}`}
-                  >
-                    <MousePointer2 size={10} className={img.isHover ? 'fill-white' : ''} />
-                    Hover
                   </button>
                 </div>
               </div>

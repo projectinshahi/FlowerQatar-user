@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { categorySchema } from '@/lib/validations/category';
 import { z } from 'zod';
+import { guardAdmin } from '@/lib/admin-guard';
+import { revalidatePath } from 'next/cache';
 
 export async function GET(request: Request) {
   try {
@@ -42,9 +44,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = await guardAdmin();
+  if (denied) return denied;
   try {
     const body = await request.json();
-    
+
     // Validate request body
     const validatedData = categorySchema.parse(body);
     
@@ -78,6 +82,8 @@ export async function POST(request: Request) {
       }
     });
 
+    revalidatePath('/');
+    revalidatePath('/shop');
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
     console.error('Failed to create category:', error);

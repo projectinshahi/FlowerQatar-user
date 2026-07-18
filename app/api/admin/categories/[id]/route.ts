@@ -3,6 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { categorySchema } from '@/lib/validations/category';
 import { z } from 'zod';
 import { deleteCloudinaryImage } from '@/lib/cloudinary';
+import { guardAdmin } from '@/lib/admin-guard';
+import { revalidatePath } from 'next/cache';
+
+// Category changes affect the storefront home ("Explore Our Gardens") and shop.
+function revalidateStorefront() {
+  revalidatePath('/');
+  revalidatePath('/shop');
+}
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,10 +31,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardAdmin();
+  if (denied) return denied;
   try {
     const resolvedParams = await params;
     const body = await request.json();
-    
+
     // Validate request body
     const validatedData = categorySchema.parse(body);
 
@@ -72,6 +82,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }
     });
 
+    revalidateStorefront();
     return NextResponse.json(updatedCategory);
   } catch (error) {
     console.error('Failed to update category:', error);
@@ -83,9 +94,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guardAdmin();
+  if (denied) return denied;
   try {
     const resolvedParams = await params;
-    
+
     const category = await prisma.category.findUnique({
       where: { id: resolvedParams.id },
       include: {
@@ -113,6 +126,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       where: { id: resolvedParams.id }
     });
 
+    revalidateStorefront();
     return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error) {
     console.error('Failed to delete category:', error);
