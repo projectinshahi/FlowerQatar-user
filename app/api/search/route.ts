@@ -20,10 +20,10 @@ export async function GET(req: Request) {
           { shortDescription: { contains: q, mode: "insensitive" } },
           { description: { contains: q, mode: "insensitive" } },
           { sku: { contains: q, mode: "insensitive" } },
-          { category: { name: { contains: q, mode: "insensitive" } } },
+          { subcategory: { name: { contains: q, mode: "insensitive" } } },
         ],
       },
-      include: { category: true },
+      include: { subcategory: true },
       orderBy: { createdAt: "desc" },
       take: 12,
     });

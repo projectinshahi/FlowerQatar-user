@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 import ProductCard from '../../../components/ProductCard';
 import QuickViewModal from '../../../components/QuickViewModal';
@@ -11,11 +10,18 @@ import { ROSE_COLORS } from '../../../data/products';
 
 type CategoryOption = { name: string; slug: string };
 
-function ShopContent({ products, categories }: { products: Product[]; categories: CategoryOption[] }) {
-  const searchParams = useSearchParams();
-  const initialCollection = searchParams.get('collection') || '';
-
-  const [selectedShape, setSelectedShape] = useState<string>(initialCollection);
+function ShopContent({
+  products,
+  categories,
+  heroTitle,
+}: {
+  products: Product[];
+  categories: CategoryOption[];
+  heroTitle: string;
+}) {
+  // Navbar-driven filters (category/collection/tab) are already applied on the server;
+  // the sidebar below refines the result (collection, colour, price, sort).
+  const [selectedShape, setSelectedShape] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedPriceRange, setSelectedPriceRange] = useState<number>(600);
   const [selectedOccasion, setSelectedOccasion] = useState<string>('');
@@ -29,13 +35,6 @@ function ShopContent({ products, categories }: { products: Product[]; categories
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
-
-  useEffect(() => {
-    if (initialCollection) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedShape(initialCollection);
-    }
-  }, [initialCollection]);
 
   useEffect(() => {
     let result = [...products];
@@ -107,8 +106,8 @@ function ShopContent({ products, categories }: { products: Product[]; categories
           <span className="text-[10px] uppercase tracking-[0.25em] text-[#C1A87D] font-semibold block mb-3">
             Lebami Collection
           </span>
-          <h1 className="font-serif text-4xl md:text-5xl font-medium tracking-wide text-[#800000] mb-4">
-            The Collection
+          <h1 className="font-serif text-4xl md:text-5xl font-medium tracking-wide text-[#800000] mb-4 capitalize">
+            {heroTitle}
           </h1>
           <p className="text-xs md:text-sm text-white/95 max-w-md mx-auto leading-relaxed">
             Explore our signature boxes of preserved Eternity® Roses. Handcrafted to order and designed to bloom in your space for a full year.
@@ -284,14 +283,22 @@ function ShopContent({ products, categories }: { products: Product[]; categories
   );
 }
 
-export default function ShopClient({ products, categories }: { products: Product[]; categories: CategoryOption[] }) {
+export default function ShopClient({
+  products,
+  categories,
+  heroTitle = 'The Collection',
+}: {
+  products: Product[];
+  categories: CategoryOption[];
+  heroTitle?: string;
+}) {
   return (
     <Suspense fallback={
       <div className="max-w-7xl mx-auto px-6 md:px-12 py-24 text-center font-sans text-muted">
         Loading Atelier Collection...
       </div>
     }>
-      <ShopContent products={products} categories={categories} />
+      <ShopContent products={products} categories={categories} heroTitle={heroTitle} />
     </Suspense>
   );
 }

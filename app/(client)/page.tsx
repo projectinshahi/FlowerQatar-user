@@ -1,9 +1,10 @@
 import dynamic from 'next/dynamic'
 import Hero from '../sections/Hero'
 import BannerSection from '../sections/BannerSection'
-import { getNewArrivalItems, getExploreCategories } from '../../lib/store-products'
+import { getNewArrivalItems, getExploreGardenItems } from '../../lib/store-products'
 import { getActiveBanners } from '../../lib/actions/banner.actions'
 import { getFeaturedOccasion } from '../../lib/occasions'
+import { getActivePromotions } from '../../lib/promotions'
 import { getSubscriptionPlans } from '../../lib/subscription-plans'
 import ShopByOccasion from '../../components/home/ShopByOccasion'
 import SubscriptionPlans from '../../components/home/SubscriptionPlans'
@@ -20,23 +21,25 @@ const ArtTriptych = dynamic(() => import('../sections/ArtTriptych'))
 export const revalidate = 60
 
 export default async function Home() {
-  const [newArrivals, banners, exploreCategories, featuredOccasion, subscriptionPlans] = await Promise.all([
+  const [newArrivals, banners, exploreGarden, featuredOccasion, subscriptionPlans, promotions] = await Promise.all([
     getNewArrivalItems(8),
     getActiveBanners(),
-    getExploreCategories(),
+    getExploreGardenItems(),
     getFeaturedOccasion(),
     getSubscriptionPlans(),
+    getActivePromotions(),
   ])
+  const promoTitles = promotions.map((p) => p.title)
 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Admin-managed banner is the hero. Falls back to the marketing Hero when no active banner exists. */}
-      {banners.length > 0 ? <BannerSection banners={banners} /> : <Hero />}
+      {banners.length > 0 ? <BannerSection banners={banners} promotions={promoTitles} /> : <Hero />}
       {/* Admin's featured collection. Renders nothing when none is featured. */}
       <ShopByOccasion occasion={featuredOccasion} />
       <NewArrivals items={newArrivals} />
       <SignatureCollections />
-      <ExploreGardens items={exploreCategories} />
+      <ExploreGardens items={exploreGarden} />
       {/* The three fixed subscription plans (Silver / Gold / Platinum). */}
       <SubscriptionPlans plans={subscriptionPlans} />
       {/* <LovedByIcons /> */}

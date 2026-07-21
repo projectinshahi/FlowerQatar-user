@@ -2,14 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getPromotionById } from "@/lib/actions/marketing.actions";
-import { getTargetOptions } from "@/lib/marketing-options";
 import PromotionForm from "@/components/admin/marketing/PromotionForm";
 
 export const metadata = { title: "Edit Promotion | Marketing" };
 
 export default async function EditPromotionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [res, { productOptions, categoryOptions }] = await Promise.all([getPromotionById(id), getTargetOptions()]);
+  const res = await getPromotionById(id);
 
   if (!res.success || !res.data) notFound();
 
@@ -22,7 +21,7 @@ export default async function EditPromotionPage({ params }: { params: Promise<{ 
           <p className="text-gray-500 text-sm">{res.data.title}</p>
         </div>
       </div>
-      <PromotionForm productOptions={productOptions} categoryOptions={categoryOptions} initialData={res.data} />
+      <PromotionForm initialData={res.data} />
     </div>
   );
 }

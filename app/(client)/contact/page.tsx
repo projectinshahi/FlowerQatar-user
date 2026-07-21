@@ -72,7 +72,7 @@ export default function ContactPage() {
               type="text"
               required
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              autoComplete="name" onChange={(e) => setName(e.target.value)}
               className="border border-secondary/20 p-3 md:p-4 rounded-sm focus:outline-none focus:border-secondary transition-colors bg-transparent"
             />
           </div>
@@ -86,7 +86,7 @@ export default function ContactPage() {
               required
               placeholder="your@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email" inputMode="email" onChange={(e) => setEmail(e.target.value)}
               className="border border-secondary/20 p-3 md:p-4 rounded-sm focus:outline-none focus:border-secondary transition-colors placeholder:text-secondary/30 bg-transparent"
             />
           </div>

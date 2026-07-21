@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   }
 }
 
-type RawProduct = Parameters<typeof mapDbProductToStore>[0] & { category?: { name?: string } | null };
+type RawProduct = Parameters<typeof mapDbProductToStore>[0] & { subcategory?: { name?: string } | null };
 
 function toOption(raw: RawProduct) {
   const store = mapDbProductToStore(raw);
@@ -58,6 +58,6 @@ function toOption(raw: RawProduct) {
     name: store.name,
     image: store.image,
     price: store.price,
-    category: raw.category?.name || '—',
+    category: raw.subcategory?.name || '—',
   };
 }

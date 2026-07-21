@@ -89,41 +89,29 @@ export type CouponFormValues = z.infer<typeof couponSchema>;
 
 /* ─────────────────────── Promotion ─────────────────────────── */
 
-export const promotionSchema = z
-  .object({
-    id: z.string().optional(),
-    title: z.string().min(1, "Title is required").max(255),
-    description: z.string().optional().nullable(),
-    promotionType: z.enum(PROMOTION_TYPES),
-    banner: z.string().url("Invalid banner URL").optional().nullable().or(z.literal("")),
-    bannerPublicId: z.string().optional().nullable(),
-    startDate: z.coerce.date({ error: "Start date is required" }),
-    endDate: z.coerce.date({ error: "End date is required" }),
-    discountType: z.enum(DISCOUNT_TYPES),
-    discountValue: z.preprocess(
-      (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
-      z.number({ error: "Discount is required" }).positive("Discount must be positive")
-    ),
-    maxDiscount: optionalMoney,
-    autoApply: z.boolean().default(true),
-    status: z.enum(OFFER_STATUSES).default("ACTIVE"),
-    priority: z.preprocess(
-      (v) => (v === "" || v === null || v === undefined ? 0 : Number(v)),
-      z.number().int().min(0).default(0)
-    ),
-    applicableCategories: idArray,
-    applicableProducts: idArray,
-    excludedProducts: idArray,
-    excludedCategories: idArray,
-  })
-  .refine((d) => d.endDate > d.startDate, {
-    message: "End date must be after start date",
-    path: ["endDate"],
-  })
-  .refine((d) => d.discountType !== "PERCENTAGE" || d.discountValue <= 100, {
-    message: "Percentage discount cannot exceed 100",
-    path: ["discountValue"],
-  });
+// Promotions are managed with a single field — the Title. Everything else falls back to
+// sensible defaults so the (non-nullable) DB columns are always satisfied on create.
+export const promotionSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "Title is required").max(255).trim(),
+  description: z.string().optional().nullable().default(null),
+  promotionType: z.enum(PROMOTION_TYPES).default("CUSTOM"),
+  banner: z.string().optional().nullable().default(null),
+  bannerPublicId: z.string().optional().nullable().default(null),
+  // Runs indefinitely by default (from creation) — title-only promotions carry no schedule.
+  startDate: z.coerce.date().default(() => new Date()),
+  endDate: z.coerce.date().default(() => new Date("2099-12-31T00:00:00.000Z")),
+  discountType: z.enum(DISCOUNT_TYPES).default("PERCENTAGE"),
+  discountValue: z.coerce.number().min(0).default(0),
+  maxDiscount: optionalMoney,
+  autoApply: z.boolean().default(true),
+  status: z.enum(OFFER_STATUSES).default("ACTIVE"),
+  priority: z.coerce.number().int().min(0).default(0),
+  applicableCategories: idArray,
+  applicableProducts: idArray,
+  excludedProducts: idArray,
+  excludedCategories: idArray,
+});
 
 export type PromotionFormValues = z.infer<typeof promotionSchema>;
 

@@ -144,12 +144,12 @@ export default function AddressForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>State / Province</label>
-          <input {...register("stateName")} placeholder="State / Province" className={inputCls(!!errors.stateName)} />
+          <input {...register("stateName")} autoComplete="address-level1" aria-invalid={!!errors.stateName} placeholder="State / Province" className={inputCls(!!errors.stateName)} />
           {errors.stateName && <p className="text-[11px] text-red-500 mt-1">{errors.stateName.message}</p>}
         </div>
         <div>
           <label className={labelCls}>City *</label>
-          <input {...register("city")} placeholder="City" className={inputCls(!!errors.city)} />
+          <input {...register("city")} autoComplete="address-level2" aria-invalid={!!errors.city} placeholder="City" className={inputCls(!!errors.city)} />
           {errors.city && <p className="text-[11px] text-red-500 mt-1">{errors.city.message}</p>}
         </div>
       </div>
@@ -157,19 +157,19 @@ export default function AddressForm({
       {/* Postal */}
       <div className="sm:w-1/2 sm:pr-2">
         <label className={labelCls}>Postal Code{isPostalRequired(countryCode) ? " *" : " (optional)"}</label>
-        <input {...register("postalCode")} placeholder={postalExample(countryCode)} className={inputCls(!!errors.postalCode)} />
+        <input {...register("postalCode")} autoComplete="postal-code" aria-invalid={!!errors.postalCode} placeholder={postalExample(countryCode)} className={inputCls(!!errors.postalCode)} />
         {errors.postalCode && <p className="text-[11px] text-red-500 mt-1">{errors.postalCode.message}</p>}
       </div>
 
       {/* Address lines */}
       <div>
         <label className={labelCls}>Address Line 1 *</label>
-        <input {...register("addressLine1")} placeholder="House / building, street" className={inputCls(!!errors.addressLine1)} />
+        <input {...register("addressLine1")} autoComplete="address-line1" aria-invalid={!!errors.addressLine1} placeholder="House / building, street" className={inputCls(!!errors.addressLine1)} />
         {errors.addressLine1 && <p className="text-[11px] text-red-500 mt-1">{errors.addressLine1.message}</p>}
       </div>
       <div>
         <label className={labelCls}>Address Line 2</label>
-        <input {...register("addressLine2")} placeholder="Apartment, floor, landmark (optional)" className={inputCls(false)} />
+        <input {...register("addressLine2")} autoComplete="address-line2" placeholder="Apartment, floor, landmark (optional)" className={inputCls(false)} />
       </div>
 
       <label className="flex items-center gap-2 text-[13px] text-[#555] cursor-pointer select-none">

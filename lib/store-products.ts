@@ -2,6 +2,8 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
+import type { CategoryType } from "@prisma/client";
+import type { ProductFlag } from "@/lib/category-config";
 
 /**
  * Maps a DB product (single-table with nested `variants` JSON) into the storefront
@@ -66,7 +68,8 @@ export function mapDbProductToStore(db: any): Product {
     name: db.name,
     price: onSale ? sale! : price,
     originalPrice: onSale ? price : undefined,
-    collection: db.category?.slug || "signature",
+    // Browsing key: the product's subcategory slug (falls back to a generic bucket).
+    collection: db.subcategory?.slug || "signature",
     colors,
     image,
     hoverImage,
@@ -77,6 +80,9 @@ export function mapDbProductToStore(db: any): Product {
     description: db.shortDescription || db.description || "",
     isNew: !!db.isNewArrival,
     isBestSeller: !!db.isBestSeller,
+    isTrending: !!db.isTrending,
+    isFeatured: !!db.isFeatured,
+    categoryType: db.categoryType ?? undefined,
   };
 }
 
@@ -86,7 +92,7 @@ export const getStoreProducts = cache(async (): Promise<Product[]> => {
     const rows = await prisma.product.findMany({
       where: { status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
-      include: { category: true },
+      include: { subcategory: true },
     });
     return rows.map(mapDbProductToStore);
   } catch (e) {
@@ -94,6 +100,32 @@ export const getStoreProducts = cache(async (): Promise<Product[]> => {
     return [];
   }
 });
+
+/**
+ * Published products in a fixed category, optionally narrowed to one subcategory and/or
+ * a "collection" flag (best sellers / trending / new arrivals / featured). Powers the SEO
+ * category/subcategory listing pages and their tab filters. cache() dedupes per request.
+ */
+export const getProductsByCategory = cache(
+  async (categoryType: CategoryType, subcategoryId?: string, flag?: ProductFlag): Promise<Product[]> => {
+    try {
+      const rows = await prisma.product.findMany({
+        where: {
+          status: "PUBLISHED",
+          categoryType,
+          ...(subcategoryId ? { subcategoryId } : {}),
+          ...(flag ? { [flag]: true } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        include: { subcategory: true },
+      });
+      return rows.map(mapDbProductToStore);
+    } catch (e) {
+      logDbError(`getProductsByCategory(${categoryType})`, e);
+      return [];
+    }
+  }
+);
 
 export interface StoreCategory {
   id: string;
@@ -103,12 +135,16 @@ export interface StoreCategory {
   productCount: number;
 }
 
-/** Active categories with their published-product counts, for storefront browsing. */
+/**
+ * Active subcategories with published-product counts, for the shop filter chips and
+ * the /collections grid. Now sourced from the new subcategory system (was the legacy
+ * Category table). The shop matches these slugs against each product's `collection`.
+ */
 export const getStoreCategories = cache(async (): Promise<StoreCategory[]> => {
   try {
-    const cats = await prisma.category.findMany({
-      where: { status: true },
-      orderBy: { displayOrder: "asc" },
+    const subs = await prisma.subcategory.findMany({
+      where: { active: true },
+      orderBy: [{ categoryType: "asc" }, { pinned: "desc" }, { displayOrder: "asc" }, { name: "asc" }],
       select: {
         id: true,
         name: true,
@@ -117,12 +153,12 @@ export const getStoreCategories = cache(async (): Promise<StoreCategory[]> => {
         _count: { select: { products: { where: { status: "PUBLISHED" } } } },
       },
     });
-    return cats.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      image: c.image,
-      productCount: c._count.products,
+    return subs.map((s) => ({
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      image: s.image || PLACEHOLDER,
+      productCount: s._count.products,
     }));
   } catch (e) {
     logDbError("getStoreCategories", e);
@@ -154,36 +190,37 @@ function contrastText(hex: string): string {
   return lum > 0.6 ? "#111111" : "#FFFFFF";
 }
 
-export interface ExploreCategory {
+
+export interface ExploreGardenItem {
   id: string;
   name: string;
-  slug: string;
   image: string;
   hoverColor: string; // ready-to-use rgba() overlay
   textColor: string; // contrasting label color
+  href: string; // SEO route to the flower subcategory
 }
 
 /**
- * Categories the admin flagged "Explore More" (exploreMore=true) and left active,
- * for the home "Explore Our Gardens" section. Ordered by the admin's display order.
+ * Flower subcategories the admin flagged "Show in home garden" (explore=true, active),
+ * shaped for the home "Explore Our Garden" grid. Replaces the legacy category source.
  */
-export const getExploreCategories = cache(async (): Promise<ExploreCategory[]> => {
+export const getExploreGardenItems = cache(async (): Promise<ExploreGardenItem[]> => {
   try {
-    const cats = await prisma.category.findMany({
-      where: { status: true, exploreMore: true },
-      orderBy: { displayOrder: "asc" },
+    const rows = await prisma.subcategory.findMany({
+      where: { categoryType: "FLOWER", active: true, explore: true, pinned: false },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
       select: { id: true, name: true, slug: true, image: true, hoverColor: true },
     });
-    return cats.map((c) => ({
+    return rows.map((c) => ({
       id: c.id,
       name: c.name,
-      slug: c.slug,
-      image: c.image,
-      hoverColor: toOverlayColor(c.hoverColor),
-      textColor: contrastText(c.hoverColor),
+      image: c.image || PLACEHOLDER,
+      hoverColor: toOverlayColor(c.hoverColor || "#61000B"),
+      textColor: contrastText(c.hoverColor || "#61000B"),
+      href: `/shop?collection=${c.slug}`,
     }));
   } catch (e) {
-    console.error("Failed to load explore categories:", e);
+    logDbError("getExploreGardenItems", e);
     return [];
   }
 });

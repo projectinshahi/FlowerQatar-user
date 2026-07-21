@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import ProductForm from "@/components/admin/products/ProductForm";
 import { getProductById } from "@/lib/actions/product.actions";
-import { prisma } from "@/lib/prisma";
+import { getAdminSubcategoryOptions } from "@/lib/subcategories";
 
 export const metadata = {
   title: "Edit Product | Admin Dashboard",
@@ -10,10 +10,10 @@ export const metadata = {
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // Fetch product and categories
-  const [productResult, categories] = await Promise.all([
+  // Fetch product and the subcategory options for the category selector.
+  const [productResult, subcategories] = await Promise.all([
     getProductById(id),
-    prisma.category.findMany({ orderBy: { name: 'asc' } })
+    getAdminSubcategoryOptions(),
   ]);
 
   if (!productResult.success || !productResult.data) {
@@ -31,7 +31,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     sku: product.sku || "",
     shortDescription: product.shortDescription || "",
     description: product.description || "",
-    categoryId: product.categoryId || "",
+    categoryType: product.categoryType || "",
+    subcategoryId: product.subcategoryId || "",
     status: product.status,
     isFeatured: product.isFeatured,
     isBestSeller: product.isBestSeller,
@@ -82,7 +83,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       </div>
 
       <ProductForm
-        categories={categories}
+        subcategories={subcategories}
         initialData={initialData}
       />
     </div>

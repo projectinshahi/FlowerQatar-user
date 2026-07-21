@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, Truck, BarChart3, Film, CalendarHeart, Plus, LayoutGrid, Wallet, Sparkles } from 'lucide-react';
+import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, Truck, BarChart3, Film, CalendarHeart, Plus, LayoutGrid, Wallet, Sparkles, FolderTree } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -29,9 +29,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       items: [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
          { name: 'Banners', href: '/admin/banners', icon: Film },
-         { name: 'Categories', href: '/admin/categories', icon: Package },        
+        { name: 'Category System', href: '/admin/category-system', icon: FolderTree },
         { name: 'All Products', href: '/admin/products', icon: Package },
-        { name: 'Product Reviews', href: '/admin/reviews', icon: Package },
+        // { name: 'Product Reviews', href: '/admin/reviews', icon: Package },
            { name: 'Orders', href: '/admin/orders', icon: ShoppingCart }, 
         { name: 'Users', href: '/admin/users', icon: Users },
       ],
@@ -40,7 +40,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       heading: 'Content Management',
       items: [
         { name: 'Occasion Collections', href: '/admin/occasions', icon: CalendarHeart, exact: true },
-        { name: 'Add Collection', href: '/admin/occasions/new', icon: Plus },
+        // { name: 'Add Collection', href: '/admin/occasions/new', icon: Plus },
         { name: 'Subscription Plans', href: '/admin/subscription-plans', icon: LayoutGrid, exact: true },
       ],
     },
@@ -50,7 +50,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         // { name: 'Marketing Dashboard', href: '/admin/marketing', icon: BarChart3, exact: true },
         { name: 'Coupons', href: '/admin/marketing/coupons', icon: Ticket },
         { name: 'Promotions', href: '/admin/marketing/promotions', icon: Megaphone },
-        { name: 'Free Delivery', href: '/admin/marketing/free-delivery', icon: Truck },
+        // { name: 'Free Delivery', href: '/admin/marketing/free-delivery', icon: Truck },
       ],
     },
     {

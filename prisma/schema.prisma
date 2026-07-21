@@ -108,21 +108,6 @@ model OrderItem {
   @@index([productId])
 }
 
-model Category {
-  id            String    @id @default(uuid()) @db.Uuid
-  name          String    @unique @db.VarChar(100)
-  slug          String    @unique @db.VarChar(255)
-  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @db.Timestamptz(6)
-  displayOrder  Int       @default(0)
-  exploreMore   Boolean   @default(false)
-  hoverColor    String    @db.VarChar(20)
-  image         String
-  imagePublicId String    @db.VarChar(255)
-  status        Boolean   @default(true)
-  products      Product[]
-}
-
 model Brand {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @db.VarChar(255)
@@ -138,7 +123,6 @@ model Product {
   sku               String?                   @unique @db.VarChar(100)
   shortDescription  String?
   description       String?
-  categoryId        String?                   @db.Uuid
   status            ProductStatus             @default(DRAFT)
   isFeatured        Boolean                   @default(false)
   isBestSeller      Boolean                   @default(false)
@@ -152,15 +136,19 @@ model Product {
   variants          Json                      @default("[]")
   createdAt         DateTime                  @default(now()) @db.Timestamptz(6)
   updatedAt         DateTime                  @updatedAt @db.Timestamptz(6)
+  // Fixed-category system: one of the six CategoryType + a Subcategory within it.
+  categoryType      CategoryType?
+  subcategoryId     String?                   @db.Uuid
   orderItems        OrderItem[]
   subscriptions     Subscription[]
   occasions         OccasionProduct[]
   subscriptionPlans SubscriptionPlanProduct[]
-  category          Category?                 @relation(fields: [categoryId], references: [id])
+  subcategory       Subcategory?              @relation(fields: [subcategoryId], references: [id])
 
   @@index([slug])
-  @@index([categoryId])
   @@index([status])
+  @@index([subcategoryId])
+  @@index([categoryType])
 }
 
 /// Video banners shown in the storefront hero/banner section. Each banner is a single video media.
@@ -639,4 +627,40 @@ model WelcomePopup {
   singleton   Boolean  @unique @default(true)
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+}
+
+/// The six FIXED navigation categories. Never editable by the admin — they are a code
+/// constant; only their Subcategories are managed.
+enum CategoryType {
+  GIFT_COMBOS
+  SHOP_BY_OCCASION
+  BIRTHDAY
+  FLOWER
+  LUXURY_GIFTS
+  EXPLORE
+}
+
+/// A managed item inside one of the six fixed categories. `categoryType` is the fixed
+/// parent; the admin only adds/edits/reorders these rows. Slug is unique within a type
+/// (so /flowers/rose and /gift-combos/rose can coexist). `pinned` marks the "All X" row
+/// (first, non-deletable). `explore` (FLOWER only) drives "Explore Our Garden" on the home page.
+model Subcategory {
+  id            String       @id @default(uuid()) @db.Uuid
+  categoryType  CategoryType
+  name          String       @db.VarChar(120)
+  slug          String       @db.VarChar(255)
+  image         String?
+  imagePublicId String?      @db.VarChar(255)
+  hoverColor    String?      @db.VarChar(20)
+  explore       Boolean      @default(false)
+  pinned        Boolean      @default(false)
+  displayOrder  Int          @default(0)
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
+  products      Product[]
+
+  @@unique([categoryType, slug])
+  @@index([categoryType, active, displayOrder])
+  @@index([categoryType, explore])
 }

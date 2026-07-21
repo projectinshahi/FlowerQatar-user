@@ -81,7 +81,8 @@ export async function createProduct(data: ProductFormValues) {
         sku: parsed.sku || null,
         shortDescription: parsed.shortDescription || null,
         description: parsed.description || null,
-        categoryId: parsed.categoryId || null,
+        categoryType: parsed.categoryType || null,
+        subcategoryId: parsed.subcategoryId || null,
         status: parsed.status as ProductStatus,
         isFeatured: parsed.isFeatured,
         isBestSeller: parsed.isBestSeller,
@@ -93,7 +94,7 @@ export async function createProduct(data: ProductFormValues) {
 
     revalidatePath("/admin/products");
     revalidatePath("/products");
-    revalidatePath("/"); // homepage New Arrivals reflects flag changes immediately
+    revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
     return { success: true, data: product };
   } catch (error: any) {
     console.error("Failed to create product:", error);
@@ -137,7 +138,8 @@ export async function updateProduct(id: string, data: ProductFormValues) {
         sku: parsed.sku || null,
         shortDescription: parsed.shortDescription || null,
         description: parsed.description || null,
-        categoryId: parsed.categoryId || null,
+        categoryType: parsed.categoryType || null,
+        subcategoryId: parsed.subcategoryId || null,
         status: parsed.status as ProductStatus,
         isFeatured: parsed.isFeatured,
         isBestSeller: parsed.isBestSeller,
@@ -150,7 +152,7 @@ export async function updateProduct(id: string, data: ProductFormValues) {
     revalidatePath("/admin/products");
     revalidatePath("/products");
     revalidatePath(`/product/${product.slug}`);
-    revalidatePath("/"); // homepage New Arrivals reflects flag changes immediately
+    revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
     return { success: true, data: product };
   } catch (error: any) {
     console.error("Failed to update product:", error);
@@ -161,20 +163,20 @@ export async function updateProduct(id: string, data: ProductFormValues) {
 export async function getProducts(params: {
   search?: string;
   status?: ProductStatus;
-  categoryId?: string;
+  subcategoryId?: string;
   sortBy?: "newest" | "oldest" | "price_asc" | "price_desc" | "name_asc" | "stock_asc";
   page?: number;
   limit?: number;
 }) {
   try {
-    const { search, status, categoryId, sortBy = "newest", page = 1, limit = 10 } = params;
+    const { search, status, subcategoryId, sortBy = "newest", page = 1, limit = 10 } = params;
 
     const where: any = {};
     if (search) {
       where.name = { contains: search, mode: "insensitive" };
     }
     if (status) where.status = status;
-    if (categoryId) where.categoryId = categoryId;
+    if (subcategoryId) where.subcategoryId = subcategoryId;
 
     const orderBy: any = {};
     switch (sortBy) {
@@ -190,7 +192,7 @@ export async function getProducts(params: {
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-        include: { category: true },
+        include: { subcategory: true },
       }),
       prisma.product.count({ where }),
     ]);
@@ -217,7 +219,7 @@ export async function getProductById(id: string) {
   try {
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { category: true },
+      include: { subcategory: true },
     });
 
     if (!product) return { success: false, error: "Product not found" };
@@ -233,7 +235,7 @@ export async function getProductBySlug(slug: string) {
   try {
     const product = await prisma.product.findUnique({
       where: { slug },
-      include: { category: true },
+      include: { subcategory: true },
     });
 
     if (!product) return { success: false, error: "Product not found" };

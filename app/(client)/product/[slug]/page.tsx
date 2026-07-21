@@ -1,14 +1,21 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/actions/product.actions";
 import { mapDbProductToStore } from "@/lib/store-products";
-import { absoluteUrl, stripHtml } from "@/lib/site";
+import { CATEGORY_META, shopCategoryHref } from "@/lib/category-config";
+import type { CategoryType } from "@prisma/client";
+import { absoluteUrl, stripHtml, SITE_NAME, SITE_URL } from "@/lib/site";
+import { buildKeywords, productMetaDescription } from "@/lib/seo";
 import JsonLd from "@/components/seo/JsonLd";
 import ProductDetailClient from "@/components/client/product/ProductDetailClient";
 
+// Dedupe the DB read across generateMetadata + the page render (one query per request).
+const loadProduct = cache((slug: string) => getProductBySlug(slug));
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const resolvedParams = await params;
-  const result = await getProductBySlug(resolvedParams.slug);
+  const { slug } = await params;
+  const result = await loadProduct(slug);
 
   if (!result.success || !result.data) {
     return { title: "Product Not Found" };
@@ -16,24 +23,36 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const product = result.data;
   const store = mapDbProductToStore(product);
-  const description = stripHtml(product.description || product.shortDescription || "Discover our elegant collection of preserved Eternity® Roses.");
+  const categoryLabel = product.categoryType ? CATEGORY_META[product.categoryType as CategoryType].label : null;
+
+  const description = productMetaDescription(product.name, product.description || product.shortDescription);
+  const keywords = buildKeywords({
+    name: product.name,
+    subcategory: product.subcategory?.name,
+    categoryLabel,
+    colors: store.colors.map((c) => c.name),
+  });
   const url = `/product/${product.slug}`;
-  const image = store.image;
+  const image = store.image ? absoluteUrl(store.image) : undefined;
+  // The layout applies the "%s | Lebami" title template; OG/Twitter need the full title.
+  const ogTitle = `${product.name} | ${SITE_NAME}`;
 
   return {
     title: product.name,
     description,
+    keywords,
     alternates: { canonical: url },
     openGraph: {
       type: "website",
-      title: product.name,
+      siteName: SITE_NAME,
+      title: ogTitle,
       description,
       url,
       images: image ? [{ url: image, alt: product.name }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title: product.name,
+      title: ogTitle,
       description,
       images: image ? [image] : undefined,
     },
@@ -41,37 +60,71 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = await params;
-  const result = await getProductBySlug(resolvedParams.slug);
+  const { slug } = await params;
+  const result = await loadProduct(slug);
 
   if (!result.success || !result.data) {
     notFound();
   }
 
-  const store = mapDbProductToStore(result.data);
-  const product = JSON.parse(JSON.stringify(result.data));
+  const data = result.data;
+  const store = mapDbProductToStore(data);
+  const product = JSON.parse(JSON.stringify(data));
 
-  const productLd = {
+  const type = data.categoryType as CategoryType | null;
+  const categoryLabel = type ? CATEGORY_META[type].label : null;
+  const productUrl = absoluteUrl(`/product/${data.slug}`);
+  const inStock = data.status === "PUBLISHED";
+
+  const productLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: result.data.name,
-    description: stripHtml(result.data.description || result.data.shortDescription || ""),
+    name: data.name,
+    description: stripHtml(data.description || data.shortDescription || "", 500),
     image: store.image ? [absoluteUrl(store.image)] : undefined,
-    sku: result.data.sku || undefined,
-    brand: { "@type": "Brand", name: "Lebami" },
-    category: result.data.category?.name || undefined,
+    sku: data.sku || undefined,
+    brand: { "@type": "Brand", name: SITE_NAME },
+    category: data.subcategory?.name || categoryLabel || undefined,
+    itemCondition: "https://schema.org/NewCondition",
     offers: {
       "@type": "Offer",
       price: store.price,
       priceCurrency: "QAR",
-      availability: "https://schema.org/InStock",
-      url: absoluteUrl(`/product/${result.data.slug}`),
+      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
+      url: productUrl,
+      seller: { "@type": "Organization", name: SITE_NAME },
     },
+  };
+  // Only advertise ratings when there are real reviews (Google rejects fabricated ones).
+  if (store.reviewCount > 0) {
+    productLd.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: store.rating,
+      reviewCount: store.reviewCount,
+    };
+  }
+
+  // Breadcrumb trail: Home › [Category] › Product.
+  const crumbs = [
+    { name: "Home", item: SITE_URL },
+    ...(type && categoryLabel ? [{ name: categoryLabel, item: absoluteUrl(shopCategoryHref(type)) }] : []),
+    { name: data.name, item: productUrl },
+  ];
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      item: c.item,
+    })),
   };
 
   return (
     <>
-      <JsonLd data={productLd} />
+      <JsonLd data={[productLd, breadcrumbLd]} />
       <ProductDetailClient product={product} />
     </>
   );

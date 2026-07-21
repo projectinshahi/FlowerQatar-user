@@ -26,6 +26,9 @@ export interface Product {
   description: string;
   isNew?: boolean;
   isBestSeller?: boolean;
+  isTrending?: boolean;
+  isFeatured?: boolean;
+  categoryType?: string; // one of the six fixed CategoryType values (for shop category filtering)
   dimensions?: string;
   materials?: string;
   care?: string[];

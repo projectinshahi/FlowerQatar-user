@@ -14,7 +14,7 @@ const STEPS = [
   { id: "variants", title: "Variants, Specs & Images" },
 ];
 
-export default function ProductForm({ categories, initialData }: { categories?: any[], initialData?: any }) {
+export default function ProductForm({ subcategories, initialData }: { subcategories?: any[], initialData?: any }) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,7 +33,8 @@ export default function ProductForm({ categories, initialData }: { categories?: 
       sku: "",
       shortDescription: "",
       description: "",
-      categoryId: "",
+      categoryType: "",
+      subcategoryId: "",
       status: "DRAFT",
       isFeatured: false,
       isBestSeller: false,
@@ -69,7 +70,7 @@ export default function ProductForm({ categories, initialData }: { categories?: 
   const nextStep = async () => {
     // Validate current step fields before proceeding
     let fieldsToValidate: any = [];
-    if (currentStep === 0) fieldsToValidate = ['name', 'slug', 'categoryId'];
+    if (currentStep === 0) fieldsToValidate = ['name', 'slug', 'subcategoryId'];
     const isStepValid = await trigger(fieldsToValidate);
     if (isStepValid) {
       setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
@@ -155,7 +156,7 @@ export default function ProductForm({ categories, initialData }: { categories?: 
             )}
 
             <div className="min-h-[400px]">
-              {currentStep === 0 && <VariantsStep categories={categories} />}
+              {currentStep === 0 && <VariantsStep subcategories={subcategories} />}
             </div>
 
             <div className="pt-6 border-t border-gray-100 flex items-center justify-between">

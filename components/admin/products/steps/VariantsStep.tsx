@@ -6,9 +6,15 @@ import { useState } from "react";
 import ProductCareInput from "./ProductCareInput";
 import ColorVariantsFieldArray from "./ColorVariantsFieldArray";
 import VariantSpecifications from "./VariantSpecifications";
+import { CATEGORY_ORDER, CATEGORY_META } from "@/lib/category-config";
 
-export default function VariantsStep({ categories = [] }: { categories?: any[] }) {
+type SubOption = { id: string; categoryType: string; name: string };
+
+export default function VariantsStep({ subcategories = [] }: { subcategories?: SubOption[] }) {
   const { register, control, watch, setValue, getValues, formState: { errors } } = useFormContext();
+  // Subcategory options depend on the chosen category; changing the category clears the subcategory.
+  const selectedType = watch("categoryType");
+  const subOptions = subcategories.filter((s) => s.categoryType === selectedType);
   const { fields, append, remove } = useFieldArray({
     control,
     name: "variants",
@@ -95,14 +101,32 @@ export default function VariantsStep({ categories = [] }: { categories?: any[] }
               <option value="ARCHIVED">Archived</option>
             </select>
           </div>
+          {/* Category system: one of the six fixed categories + a subcategory within it. */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
             <select
-              {...register("categoryId")}
+              {...register("categoryType")}
+              onChange={(e) => {
+                setValue("categoryType", e.target.value, { shouldDirty: true });
+                setValue("subcategoryId", "", { shouldDirty: true }); // reset dependent select
+              }}
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white"
             >
               <option value="">Select Category</option>
-              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {CATEGORY_ORDER.map((key) => (
+                <option key={key} value={key}>{CATEGORY_META[key].label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Subcategory</label>
+            <select
+              {...register("subcategoryId")}
+              disabled={!selectedType}
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">{selectedType ? "Select Subcategory" : "Select a category first"}</option>
+              {subOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
         </div>

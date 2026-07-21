@@ -101,7 +101,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
   }
 
   const displayTitle = selectedVariant?.variantName || product.name
-  const displaySubtitle = product.category?.name || "Premium Collection"
+  const displaySubtitle = product.subcategory?.name || "Premium Collection"
   const price = Number(selectedColor?.price || 299)
   const salePrice = Number(selectedColor?.salePrice || 0)
   const isSale = salePrice > 0 && salePrice < price

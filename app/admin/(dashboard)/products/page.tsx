@@ -3,7 +3,7 @@ import { Plus, Search, Filter } from "lucide-react";
 import ProductTable from "@/components/admin/products/ProductTable";
 import ProductForm from "@/components/admin/products/ProductForm";
 import { getProducts, getProductById } from "@/lib/actions/product.actions";
-import { prisma } from "@/lib/prisma";
+import { getAdminSubcategoryOptions } from "@/lib/subcategories";
 
 export const metadata = {
   title: "Products | Admin Dashboard",
@@ -21,8 +21,8 @@ export default async function AdminProductsPage(props: {
   const editId = typeof searchParams.edit === "string" ? searchParams.edit : undefined;
 
   if (isNew || editId) {
-    const [categories, editProductResult] = await Promise.all([
-      prisma.category.findMany({ orderBy: { name: 'asc' } }),
+    const [subcategories, editProductResult] = await Promise.all([
+      getAdminSubcategoryOptions(),
       editId ? getProductById(editId) : Promise.resolve(null)
     ]);
 
@@ -36,7 +36,8 @@ export default async function AdminProductsPage(props: {
         sku: product.sku || "",
         shortDescription: product.shortDescription || "",
         description: product.description || "",
-        categoryId: product.categoryId || "",
+        categoryType: product.categoryType || "",
+        subcategoryId: product.subcategoryId || "",
         status: product.status,
         isFeatured: product.isFeatured,
         isBestSeller: product.isBestSeller,
@@ -91,7 +92,7 @@ export default async function AdminProductsPage(props: {
             Cancel
           </Link>
         </div>
-        <ProductForm categories={categories} initialData={initialData} />
+        <ProductForm subcategories={subcategories} initialData={initialData} />
       </div>
     );
   }

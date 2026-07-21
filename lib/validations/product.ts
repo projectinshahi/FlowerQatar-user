@@ -77,7 +77,12 @@ export const productSchema = z.object({
   sku: z.string().optional().nullable(),
   shortDescription: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
-  categoryId: z.string().optional().nullable(),
+  // Category system: one of the six fixed categories + a subcategory within it.
+  categoryType: z
+    .enum(["GIFT_COMBOS", "SHOP_BY_OCCASION", "BIRTHDAY", "FLOWER", "LUXURY_GIFTS", "EXPLORE"])
+    .optional()
+    .nullable(),
+  subcategoryId: z.string().optional().nullable(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
 
   isFeatured: z.boolean().default(false),

@@ -293,12 +293,12 @@ export default function AccountDrawer() {
                         <motion.div key="signIn" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="flex flex-col">
                           <form onSubmit={handleLogin}>
                             <div className="mb-8">
-                              <label className={labelCls}>YOUR EMAIL *</label>
-                              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+                              <label htmlFor="signin-email" className={labelCls}>YOUR EMAIL *</label>
+                              <input id="signin-email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
                             </div>
                             <div className="mb-12">
-                              <label className={labelCls}>PASSWORD *</label>
-                              <PasswordField value={password} onChange={setPassword} required autoComplete="current-password" />
+                              <label htmlFor="signin-password" className={labelCls}>PASSWORD *</label>
+                              <PasswordField id="signin-password" value={password} onChange={setPassword} required autoComplete="current-password" />
                             </div>
                             <button type="submit" disabled={loading} className={primaryBtn}>{loading ? 'PROCESSING...' : 'SIGN IN'}</button>
                             <div className="mt-5 text-center">
@@ -314,16 +314,16 @@ export default function AccountDrawer() {
                         <motion.div key="reg-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="flex flex-col">
                           <form onSubmit={handleSendOtp}>
                             <div className="mb-8">
-                              <label className={labelCls}>FIRST NAME *</label>
-                              <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
+                              <label htmlFor="reg-first" className={labelCls}>FIRST NAME *</label>
+                              <input id="reg-first" type="text" autoComplete="given-name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
                             </div>
                             <div className="mb-8">
-                              <label className={labelCls}>LAST NAME *</label>
-                              <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
+                              <label htmlFor="reg-last" className={labelCls}>LAST NAME *</label>
+                              <input id="reg-last" type="text" autoComplete="family-name" required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
                             </div>
                             <div className="mb-10">
-                              <label className={labelCls}>EMAIL ADDRESS *</label>
-                              <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className={inputCls} />
+                              <label htmlFor="reg-email" className={labelCls}>EMAIL ADDRESS *</label>
+                              <input id="reg-email" type="email" autoComplete="email" inputMode="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className={inputCls} />
                             </div>
                             <p className="font-serif text-[13px] text-primary mb-8 text-center leading-relaxed">
                               By signing up, you agree to our <Link href="#" className="underline decoration-1 underline-offset-4">Terms of Use and Privacy Policy</Link>.
@@ -368,8 +368,8 @@ export default function AccountDrawer() {
                         <motion.div key="reg-pw" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="flex flex-col">
                           <form onSubmit={handleCreateAccount}>
                             <div className="mb-6">
-                              <label className={labelCls}>PASSWORD *</label>
-                              <PasswordField value={regPassword} onChange={setRegPassword} required autoComplete="new-password" />
+                              <label htmlFor="reg-password" className={labelCls}>PASSWORD *</label>
+                              <PasswordField id="reg-password" value={regPassword} onChange={setRegPassword} required autoComplete="new-password" />
                             </div>
                             <ul className="mb-6 space-y-1.5">
                               {pwChecks.map((c) => (
@@ -380,11 +380,11 @@ export default function AccountDrawer() {
                               ))}
                             </ul>
                             <div className="mb-3">
-                              <label className={labelCls}>CONFIRM PASSWORD *</label>
-                              <PasswordField value={regConfirm} onChange={setRegConfirm} required autoComplete="new-password" />
+                              <label htmlFor="reg-confirm" className={labelCls}>CONFIRM PASSWORD *</label>
+                              <PasswordField id="reg-confirm" value={regConfirm} onChange={setRegConfirm} required autoComplete="new-password" aria-describedby="reg-confirm-err" />
                             </div>
                             {regConfirm.length > 0 && !pwMatch && (
-                              <p className="text-[11px] text-red-500 mb-6">Passwords do not match.</p>
+                              <p id="reg-confirm-err" role="alert" className="text-[11px] text-red-500 mb-6">Passwords do not match.</p>
                             )}
                             <button type="submit" disabled={loading || !pwValid || !pwMatch} className={`${primaryBtn} mt-6`}>{loading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}</button>
                           </form>

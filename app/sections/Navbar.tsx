@@ -7,89 +7,24 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useApp } from '../../context/AppContext'
 import TopAnnouncementBar from '../../components/TopAnnouncementBar'
+import type { CategoryType } from '@prisma/client'
+import { PRODUCT_TABS, type NavCategory, type NavItem } from '../../lib/category-config'
+
+/** The Flower menu lists collections (Best Sellers / Trending / …) that link to the shop,
+ *  filtered by that collection — the circular strip above covers browsing by flower. */
+function flowerTabItems(base: string): NavItem[] {
+  const sep = base.includes('?') ? '&' : '?'
+  return PRODUCT_TABS.map((t) => ({ name: t.label, href: `${base}${sep}tab=${t.slug}`, image: null, hoverColor: null }))
+}
 
 const leftLinks = ['CONTACT US', 'BOUTIQUES']
 
 /* ─────────────── Mega menu data ───────────────
- * Each mega menu is a category list (left) + one featured image (right).
- * Images are existing project assets — swap `image` for real photography per menu.
+ * The six categories + their subcategories now come from the database (admin-managed)
+ * via the `menu` prop. Layout per category: 'list' (text links + hero image),
+ * 'strip' (Flower — circular image strip + list + hero), 'tiles' (Explore — image grid).
+ * Every link is a real SEO route; the decorative hero art is code-config (see lib/subcategories).
  */
-type MegaKey = 'GIFT COMBOS' | 'SHOP BY OCCASION' | 'BIRTHDAY' | 'FLOWER'
-type MenuKey = MegaKey | 'EXPLORE'
-/** A collection tile in the top strip. Omit `image` → placeholder until photography exists. */
-interface StripCategory {
-  name: string;
-  image?: string;
-}
-
-interface MegaMenu {
-  links: string[];
-  image: string;
-  imageAlt: string;
-  /** Renders a circular collection strip as the FIRST row of the panel. */
-  strip?: StripCategory[];
-  /** Hero aspect box — match the source ratio so object-cover never crops. */
-  imageAspect?: string;
-  /** Desktop hero width classes. Keeps a square hero from dominating the panel. */
-  imageWidth?: string;
-}
-
-const megaMenus: Record<MegaKey, MegaMenu> = {
-  'GIFT COMBOS': {
-    links: ['All Combos', 'Flower Combos', 'Cake Combos', 'Chocolate Combos', 'Perfume Combos', 'Balloon Combos', 'Plant Combos', 'Luxury Combos'],
-    image: '/images/category_gift_boxes_1782290153364.png',
-    imageAlt: 'Luxury gift combo with flowers, chocolates and elegant wrapping',
-  },
-  'SHOP BY OCCASION': {
-    links: ['Birthday', 'Anniversary', 'Graduation', 'New Baby', 'Get Well Soon', 'Welcome Home', 'Mother’s Day', 'Father’s Day', 'Congratulations', 'Love & Romance', 'Corporate Gifts', 'Ramadan & Eid'],
-    image: '/images/occation.png',
-    imageAlt: 'Elegant luxury gifting moment for every occasion',
-  },
-  BIRTHDAY: {
-    links: ['All Birthday Gifts', 'Birthday Gifts for Him', 'Birthday Gifts for Her', 'Birthday Gifts for Husband', 'Birthday Gifts for Wife', 'Birthday Gifts for Girlfriend', 'Birthday Gifts for Boyfriend', 'Birthday Gifts for Kids'],
-    image: '/images/category_chocolates_1782290122821.png',
-    imageAlt: 'Premium birthday celebration with cake, flowers and gift boxes',
-  },
-  FLOWER: {
-    links: ['All Flowers', 'Roses', 'Lilies', 'Tulips', 'Mixed Flowers'],
-    // TODO: add photography for the 5 tiles below that have no `image` —
-    // /images/tulips.png, sunflowers.png, carnations.png, gerberas.png, babys-breath.png
-    strip: [
-      { name: 'All Flowers', image: '/images/category_bouquets_1782290106325.png' },
-      { name: 'Roses', image: '/images/rosses.png' },
-      { name: 'Lilies', image: '/images/lillies.png' },
-      { name: 'Tulips' },
-      { name: 'Mixed Flowers', image: '/images/explore_eternity_flowers_1782905757139.png' },
-      { name: 'Orchids', image: '/images/orchid.png' },
-      { name: 'Sunflowers' },
-      { name: 'Carnations' },
-      { name: 'Gerberas' },
-      { name: 'Baby’s Breath' },
-    ],
-    image: '/images/category_bouquets_1782290106325.png',
-    imageAlt: 'Luxury bouquet of roses, lilies and tulips',
-    // Source is 1024×1024 — a square box keeps it uncropped, sized so it doesn't dominate.
-    imageAspect: 'aspect-square',
-    imageWidth: 'w-[200px] md:w-[230px] lg:w-[260px]',
-  },
-}
-
-// Each sub-nav item either opens a mega-menu (`menu`) or links straight to a page (`href`).
-type SubNavLink = { label: string; menu?: MenuKey; href?: string }
-const subNavLinks: SubNavLink[] = [
-  { label: 'GIFT COMBOS', menu: 'GIFT COMBOS' },
-  { label: 'SHOP BY OCCASION', menu: 'SHOP BY OCCASION' },
-  { label: 'BIRTHDAY', menu: 'BIRTHDAY' },
-  { label: 'FLOWER', menu: 'FLOWER' },
-  { label: 'LUXURY GIFTS', href: '/shop' },
-  { label: 'EXPLORE', menu: 'EXPLORE' },
-]
-
-const exploreMenuLists = [
-  { image: '/images/cake.png', title: 'Cake', link: '#' },
-  { image: '/images/perfume.png', title: 'Perfume', link: '#' },
-  { image: '/images/toys.png', title: 'Toys', link: '#' },
-]
 
 // Shared open/close motion: opacity + transform only (GPU accelerated), 240ms.
 const MEGA_TRANSITION: Transition = { duration: 0.28, ease: [0.16, 1, 0.3, 1] }
@@ -103,10 +38,10 @@ const STRIP_ITEM: Variants = {
 }
 
 /** One category row: GPU-accelerated text shift + arrow reveal on hover. */
-const MegaLink = memo(function MegaLink({ label, onNavigate }: { label: string; onNavigate?: () => void }) {
+const MegaLink = memo(function MegaLink({ label, href, onNavigate }: { label: string; href: string; onNavigate?: () => void }) {
   return (
     <Link
-      href="#"
+      href={href}
       onClick={onNavigate}
       className="group/link flex min-h-[44px] items-center justify-between gap-3 rounded-sm px-3 py-2 font-serif text-[15px] md:text-[16px] text-secondary transition-colors duration-200 hover:bg-secondary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
     >
@@ -124,11 +59,12 @@ const MegaLink = memo(function MegaLink({ label, onNavigate }: { label: string; 
 })
 
 /**
- * Collection strip — the first row of the panel. One centred row on xl;
+ * Collection strip — the first row of the Flower panel. One centred row on xl;
  * snap-scrolls horizontally below that (tablet) with the scrollbar hidden.
  */
-const CategoryStrip = memo(function CategoryStrip({ items }: { items: StripCategory[] }) {
-  const [active, setActive] = useState(items[0]?.name ?? '')
+const CategoryStrip = memo(function CategoryStrip({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
+  // The first item ("All Flowers") stays visually highlighted as the default.
+  const active = items[0]?.name ?? ''
 
   return (
     <motion.ul
@@ -140,10 +76,10 @@ const CategoryStrip = memo(function CategoryStrip({ items }: { items: StripCateg
       {items.map((c) => {
         const isActive = active === c.name
         return (
-          <motion.li key={c.name} variants={STRIP_ITEM} className="shrink-0 snap-start">
+          <motion.li key={c.href} variants={STRIP_ITEM} className="shrink-0 snap-start">
             <Link
-              href="#"
-              onClick={() => setActive(c.name)}
+              href={c.href}
+              onClick={onNavigate}
               aria-current={isActive ? 'true' : undefined}
               className="group/cat flex w-[80px] md:w-[86px] lg:w-[96px] flex-col items-center gap-2 rounded-sm p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
             >
@@ -184,12 +120,16 @@ const CategoryStrip = memo(function CategoryStrip({ items }: { items: StripCateg
   )
 })
 
-/** Desktop mega panel: collection strip on top, then category list (left) + hero image (right). */
-const MegaPanel = memo(function MegaPanel({ data }: { data: MegaMenu }) {
-  const hasStrip = !!data.strip
+/** Desktop mega panel: (Flower) collection strip on top, then category list (left) + hero image (right). */
+const MegaPanel = memo(function MegaPanel({ cat, onNavigate }: { cat: NavCategory; onNavigate?: () => void }) {
+  const isStrip = cat.layout === 'strip'
+  const hasStrip = isStrip && cat.items.length > 0
+  // Strip menus (Flower): the strip covers individual flowers, so the list shows the
+  // four fixed collections instead of repeating flower names. Other menus list their items.
+  const listItems = isStrip ? flowerTabItems(cat.href) : cat.items
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-12 pt-5 pb-6 md:pb-8">
-      {data.strip && <CategoryStrip items={data.strip} />}
+      {hasStrip && <CategoryStrip items={cat.items} onNavigate={onNavigate} />}
       <div
         className={`grid items-center gap-6 md:gap-10 lg:gap-14 ${
           hasStrip
@@ -199,25 +139,27 @@ const MegaPanel = memo(function MegaPanel({ data }: { data: MegaMenu }) {
             : 'grid-cols-1 lg:grid-cols-2 py-2'
         }`}
       >
-        <div className={`grid gap-x-8 gap-y-0.5 ${data.links.length > 6 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
-          {data.links.map((label) => (
-            <MegaLink key={label} label={label} />
+        <div className={`grid gap-x-8 gap-y-0.5 ${listItems.length > 6 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+          {listItems.map((item) => (
+            <MegaLink key={item.href} label={item.name} href={item.href} onNavigate={onNavigate} />
           ))}
         </div>
         {/* aspect box reserves space → no CLS; lazy-loaded by default */}
-        <div
-          className={`relative mx-auto overflow-hidden rounded-lg bg-secondary/5 shadow-[0_16px_48px_rgba(97,0,11,0.12)] ${
-            data.imageAspect ?? 'aspect-[16/10]'
-          } ${data.imageWidth ?? 'w-full'}`}
-        >
-          <Image
-            src={data.image}
-            alt={data.imageAlt}
-            fill
-            sizes={hasStrip ? '260px' : '(max-width: 1024px) 100vw, 50vw'}
-            className="object-cover"
-          />
-        </div>
+        {cat.hero && (
+          <div
+            className={`relative mx-auto overflow-hidden rounded-lg bg-secondary/5 shadow-[0_16px_48px_rgba(97,0,11,0.12)] ${
+              cat.hero.aspect ?? 'aspect-[16/10]'
+            } ${cat.hero.width ?? 'w-full'}`}
+          >
+            <Image
+              src={cat.hero.image}
+              alt={cat.hero.alt}
+              fill
+              sizes={hasStrip ? '260px' : '(max-width: 1024px) 100vw, 50vw'}
+              className="object-cover"
+            />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -239,27 +181,33 @@ const SECONDARY_ROW =
 /** One EXPLORE tile (square image + overlaid label) — shared by desktop grid and mobile drawer. */
 const ExploreTile = memo(function ExploreTile({
   item, onNavigate, sizes,
-}: { item: { image: string; title: string; link: string }; onNavigate?: () => void; sizes: string }) {
+}: { item: NavItem; onNavigate?: () => void; sizes: string }) {
   return (
-    <Link href={item.link} onClick={onNavigate} className="flex flex-col items-center group overflow-hidden">
+    <Link href={item.href} onClick={onNavigate} className="flex flex-col items-center group overflow-hidden">
       <div className="w-full aspect-square overflow-hidden bg-secondary/5 relative rounded-sm">
-        <Image src={item.image} alt={item.title} fill sizes={sizes} className="object-cover group-hover:scale-105 transition-transform duration-700" />
+        {item.image ? (
+          <Image src={item.image} alt={item.name} fill sizes={sizes} className="object-cover group-hover:scale-105 transition-transform duration-700" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center bg-cream font-serif text-[40px] text-primary/20">
+            {item.name.charAt(0)}
+          </span>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
         <div className="absolute bottom-6 left-0 w-full text-center px-4">
-          <span className="font-serif text-[16px] md:text-[20px] text-white tracking-wide uppercase">{item.title}</span>
+          <span className="font-serif text-[16px] md:text-[20px] text-white tracking-wide uppercase">{item.name}</span>
         </div>
       </div>
     </Link>
   )
 })
 
-export default function Navbar() {
+export default function Navbar({ menu }: { menu: NavCategory[] }) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [activeMegaMenu, setActiveMegaMenu] = useState<MenuKey | null>(null)
+  const [activeMegaMenu, setActiveMegaMenu] = useState<CategoryType | null>(null)
   // Which category's submenu page the drawer is showing (null = root list).
-  const [mobileSubmenu, setMobileSubmenu] = useState<MenuKey | null>(null)
+  const [mobileSubmenu, setMobileSubmenu] = useState<CategoryType | null>(null)
   // Measured navbar height — the drawer starts below it so the navbar stays visible.
   const [headerH, setHeaderH] = useState(0)
   // Hover-to-open only on real pointer devices; touch/tablet uses tap-to-toggle.
@@ -345,23 +293,23 @@ export default function Navbar() {
     navItemRefs.current[idx]?.querySelector<HTMLElement>('a, button')?.focus()
   }, [])
 
-  const handleTriggerKey = useCallback((e: React.KeyboardEvent, idx: number, link: SubNavLink) => {
-    const count = subNavLinks.length
+  const handleTriggerKey = useCallback((e: React.KeyboardEvent, idx: number, cat: NavCategory) => {
+    const count = menu.length
     if (e.key === 'ArrowRight') {
       e.preventDefault()
       focusNavItem((idx + 1) % count)
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault()
       focusNavItem((idx - 1 + count) % count)
-    } else if (e.key === 'ArrowDown' && link.menu) {
+    } else if (e.key === 'ArrowDown' && cat.items.length > 0) {
       e.preventDefault()
-      setActiveMegaMenu(link.menu)
+      setActiveMegaMenu(cat.key)
       // Panel mounts this commit; focus its first row on the next tick.
       setTimeout(() => panelRef.current?.querySelector<HTMLElement>('a')?.focus(), 0)
     } else if (e.key === 'Escape') {
       setActiveMegaMenu(null)
     }
-  }, [focusNavItem])
+  }, [focusNavItem, menu.length])
 
   const handleLogout = async () => {
     try {
@@ -376,6 +324,7 @@ export default function Navbar() {
   };
 
   const closeMobileMenu = useCallback(() => setIsMobileMenuOpen(false), [])
+  const closeMegaMenu = useCallback(() => setActiveMegaMenu(null), [])
 
   const rightLinks = ['WISHLIST', 'SEARCH', user ? 'MY ACCOUNT' : 'ACCOUNT', 'CART']
 
@@ -389,12 +338,15 @@ export default function Navbar() {
     { label: 'BOUTIQUES', Icon: MapPin, href: '/boutiques' },
   ]
 
-  // Submenu rows come straight from the existing menu data — nothing hardcoded here.
-  const submenuItems: { label: string; href: string }[] = !mobileSubmenu
-    ? []
-    : mobileSubmenu === 'EXPLORE'
-      ? exploreMenuLists.map((i) => ({ label: i.title, href: i.link }))
-      : megaMenus[mobileSubmenu].links.map((l) => ({ label: l, href: '#' }))
+  // The active mega menu / mobile submenu resolve to a category from the DB-driven menu.
+  const activeCat = activeMegaMenu ? menu.find((c) => c.key === activeMegaMenu) ?? null : null
+  const submenuCat = mobileSubmenu ? menu.find((c) => c.key === mobileSubmenu) ?? null : null
+  // Mobile has no strip, so the Flower submenu shows the collections first, then the flowers.
+  const submenuItems: NavItem[] = submenuCat
+    ? submenuCat.layout === 'strip'
+      ? [...flowerTabItems(submenuCat.href), ...submenuCat.items]
+      : submenuCat.items
+    : []
 
   // While the drawer is open the navbar must be SOLID cream: it sits above the dark scrim,
   // so the usual translucent bg-cream/95 would let the scrim tint it and no longer match the
@@ -423,6 +375,7 @@ export default function Navbar() {
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-drawer"
+            suppressHydrationWarning
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -432,6 +385,7 @@ export default function Navbar() {
             className="md:hidden absolute top-4 right-4 z-10"
             onClick={() => setCartOpen(true)}
             aria-label="Open cart"
+            suppressHydrationWarning
           >
             <ShoppingBag size={20} />
           </button>
@@ -536,25 +490,26 @@ export default function Navbar() {
             aria-label="Main"
             className={`hidden md:flex flex-wrap justify-center gap-x-6 gap-y-2 lg:gap-x-12 w-full z-10 transition-opacity duration-500`}
           >
-            {subNavLinks.map((link, idx) => {
-              const isOpen = activeMegaMenu === link.menu
+            {menu.map((cat, idx) => {
+              const hasMenu = cat.items.length > 0
+              const isOpen = activeMegaMenu === cat.key
               return (
                 <div
-                  key={link.label}
+                  key={cat.key}
                   ref={(el) => { navItemRefs.current[idx] = el }}
-                  onMouseEnter={() => { if (canHover) setActiveMegaMenu(link.menu ?? null) }}
-                  onKeyDown={(e) => handleTriggerKey(e, idx, link)}
+                  onMouseEnter={() => { if (canHover) setActiveMegaMenu(hasMenu ? cat.key : null) }}
+                  onKeyDown={(e) => handleTriggerKey(e, idx, cat)}
                   className="cursor-pointer whitespace-nowrap"
                 >
-                  {link.menu ? (
+                  {hasMenu ? (
                     <NavTrigger
                       isOpen={isOpen}
-                      onClick={() => setActiveMegaMenu(isOpen ? null : link.menu!)}
+                      onClick={() => setActiveMegaMenu(isOpen ? null : cat.key)}
                     >
-                      {link.label}
+                      {cat.label}
                     </NavTrigger>
                   ) : (
-                    <NavLink href={link.href ?? '#'}>{link.label}</NavLink>
+                    <NavLink href={cat.href}>{cat.label}</NavLink>
                   )}
                 </div>
               )
@@ -564,28 +519,28 @@ export default function Navbar() {
 
         {/* Mega Menu — single panel stays mounted while switching between items (no flicker) */}
         <AnimatePresence>
-          {activeMegaMenu && (
+          {activeCat && (
             <motion.div
               ref={panelRef}
               id={MEGA_PANEL_ID}
               role="region"
-              aria-label={`${activeMegaMenu} menu`}
+              aria-label={`${activeCat.label} menu`}
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={MEGA_TRANSITION}
               className="absolute top-full left-0 w-full bg-cream/95 backdrop-blur-md border-t border-secondary/20 shadow-lg text-secondary will-change-[opacity,transform]"
             >
-              {activeMegaMenu === 'EXPLORE' ? (
+              {activeCat.layout === 'tiles' ? (
                 <div className="max-w-[1440px] mx-auto px-4 md:px-12 py-8 md:py-10">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 w-full max-w-[1080px] mx-auto">
-                    {exploreMenuLists.map((item) => (
-                      <ExploreTile key={item.title} item={item} sizes="(max-width: 640px) 100vw, 33vw" />
+                    {activeCat.items.map((item) => (
+                      <ExploreTile key={item.href} item={item} onNavigate={closeMegaMenu} sizes="(max-width: 640px) 100vw, 33vw" />
                     ))}
                   </div>
                 </div>
               ) : (
-                <MegaPanel data={megaMenus[activeMegaMenu]} />
+                <MegaPanel cat={activeCat} onNavigate={closeMegaMenu} />
               )}
             </motion.div>
           )}
@@ -627,7 +582,7 @@ export default function Navbar() {
               {/* Root list ⇄ submenu page */}
               <div className="relative flex-1 overflow-hidden">
                 <AnimatePresence initial={false}>
-                  {mobileSubmenu ? (
+                  {submenuCat ? (
                     <motion.div
                       key="submenu"
                       initial={{ x: '100%' }}
@@ -644,15 +599,15 @@ export default function Navbar() {
                         >
                           <ArrowLeft size={18} strokeWidth={1.5} aria-hidden="true" />
                           <span className="font-serif text-[18px] min-[390px]:text-[20px] font-light uppercase tracking-[0.18em]">
-                            {mobileSubmenu}
+                            {submenuCat.label}
                           </span>
                         </button>
                         <ul className="flex flex-col gap-1">
-                          {submenuItems.map(({ label, href }) => (
-                            <li key={label}>
-                              <Link href={href} onClick={closeMobileMenu} className={`${PRIMARY_ROW} min-h-[52px]`}>
+                          {submenuItems.map((item) => (
+                            <li key={item.href}>
+                              <Link href={item.href} onClick={closeMobileMenu} className={`${PRIMARY_ROW} min-h-[52px]`}>
                                 <span className="font-serif text-[16px] min-[390px]:text-[17px] font-light uppercase leading-[1.2] tracking-[0.14em] text-primary">
-                                  {label}
+                                  {item.name}
                                 </span>
                                 <ChevronRight
                                   size={16}
@@ -676,24 +631,24 @@ export default function Navbar() {
                       className={SCROLL_PANEL}
                     >
                       <div className="px-7 pt-8 pb-14">
-                        {/* Primary categories — driven by the existing subNavLinks */}
+                        {/* Primary categories — driven by the DB-backed menu */}
                         <nav aria-label="Categories">
                           <ul className="flex flex-col gap-2">
-                            {subNavLinks.map((link) => (
-                              <li key={link.label}>
-                                {link.menu ? (
+                            {menu.map((cat) => (
+                              <li key={cat.key}>
+                                {cat.items.length > 0 ? (
                                   <button
                                     type="button"
-                                    onClick={() => setMobileSubmenu(link.menu!)}
+                                    onClick={() => setMobileSubmenu(cat.key)}
                                     aria-haspopup="true"
                                     className={PRIMARY_ROW}
                                   >
-                                    <span className={PRIMARY_LABEL}>{link.label}</span>
+                                    <span className={PRIMARY_LABEL}>{cat.label}</span>
                                     <ChevronRight size={19} strokeWidth={1.5} aria-hidden="true" className={PRIMARY_CHEVRON} />
                                   </button>
                                 ) : (
-                                  <Link href={link.href ?? '#'} onClick={closeMobileMenu} className={PRIMARY_ROW}>
-                                    <span className={PRIMARY_LABEL}>{link.label}</span>
+                                  <Link href={cat.href} onClick={closeMobileMenu} className={PRIMARY_ROW}>
+                                    <span className={PRIMARY_LABEL}>{cat.label}</span>
                                     <ChevronRight size={19} strokeWidth={1.5} aria-hidden="true" className={PRIMARY_CHEVRON} />
                                   </Link>
                                 )}
@@ -782,6 +737,8 @@ function NavTrigger({ children, isOpen, onClick }: { children: React.ReactNode; 
       aria-haspopup="true"
       aria-expanded={isOpen}
       aria-controls={MEGA_PANEL_ID}
+      // Some browser extensions inject `fdprocessedid` onto buttons before hydration; ignore that diff.
+      suppressHydrationWarning
       className="relative group font-sans text-[11px] uppercase tracking-[0.2em] pointer-events-none md:pointer-events-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-sm"
     >
       {children}

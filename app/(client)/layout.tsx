@@ -10,6 +10,7 @@ import SearchDrawer from "../../components/SearchDrawer";
 import ToastContainer from "../../components/ToastContainer";
 import Navbar from "../sections/Navbar";
 import Footer from "../sections/Footer";
+import { getNavMenu } from "../../lib/subcategories";
 import dynamic from "next/dynamic";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
@@ -31,7 +32,11 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Lebami | Preserved Eternity® Roses",
+  // Child pages set a bare title (e.g. a product name); the template appends the brand.
+  title: {
+    default: "Lebami | Preserved Eternity® Roses",
+    template: "%s | Lebami",
+  },
   description: "Experience the original Eternity® Roses, handcrafted luxury arrangements of real roses that last a year.",
   applicationName: SITE_NAME,
   alternates: { canonical: "/" },
@@ -53,11 +58,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const navMenu = await getNavMenu();
   return (
     <html lang="en" className={`${cormorant.variable} ${montserrat.variable} h-full antialiased`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans antialiased selection:bg-primary/20 selection:text-primary overflow-x-hidden" suppressHydrationWarning>
@@ -85,7 +91,7 @@ export default function RootLayout({
           ]}
         />
         <AppContextProvider>
-          <Navbar />
+          <Navbar menu={navMenu} />
           <main className="flex-grow">
             {children}
           </main>

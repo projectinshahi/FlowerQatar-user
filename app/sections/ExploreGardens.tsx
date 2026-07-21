@@ -10,7 +10,7 @@ interface CategoryItem {
   image: string;
   hoverColor: string; // ready-to-use rgba() overlay from the admin's chosen color
   textColor: string; // contrasting label color
-  slug: string;
+  href: string; // SEO route to the flower subcategory
 }
 
 const container: Variants = {
@@ -53,7 +53,7 @@ export default function ExploreGardens({ items }: { items?: CategoryItem[] }) {
         >
           {categories.map((category) => (
             <motion.div key={category.id} variants={item}>
-              <Link href={`/shop?collection=${category.slug}`} className="block relative aspect-[4/5] overflow-hidden group cursor-pointer">
+              <Link href={category.href} className="block relative aspect-[4/5] overflow-hidden group cursor-pointer">
                 <Image
                   src={category.image}
                   alt={category.name}

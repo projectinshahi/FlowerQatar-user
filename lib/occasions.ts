@@ -51,7 +51,7 @@ export const getActiveOccasions = cache(async (): Promise<HomeOccasion[]> => {
           // Filter at the DB level — drafts/archived never reach the storefront.
           where: { product: { status: 'PUBLISHED' } },
           orderBy: { createdAt: 'asc' },
-          include: { product: { include: { category: true } } },
+          include: { product: { include: { subcategory: true } } },
         },
       },
     });
@@ -121,7 +121,7 @@ export const getOccasionBySlug = cache(async (slug: string): Promise<HomeOccasio
         products: {
           where: { product: { status: 'PUBLISHED' } },
           orderBy: { createdAt: 'asc' },
-          include: { product: { include: { category: true } } },
+          include: { product: { include: { subcategory: true } } },
         },
       },
     });

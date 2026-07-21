@@ -266,8 +266,8 @@ export async function createPromotion(data: PromotionFormValues) {
 export async function updatePromotion(id: string, data: PromotionFormValues) {
   return withAdmin(async () => {
     const parsed = promotionSchema.parse(data);
-    const { id: _omit, banner, ...rest } = parsed;
-    const promo = await prisma.promotion.update({ where: { id }, data: { ...rest, banner: banner || null } });
+    // Title-only editing: never overwrite an existing promotion's schedule/discount/targeting.
+    const promo = await prisma.promotion.update({ where: { id }, data: { title: parsed.title } });
     revalidatePath("/admin/marketing/promotions");
     revalidatePath(`/admin/marketing/promotions/${id}`);
     return serialize(promo);

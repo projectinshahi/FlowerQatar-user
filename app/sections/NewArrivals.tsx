@@ -91,6 +91,8 @@ function NewArrivalCard({ product }: { product: Product }) {
                 aria-label={`Show ${c.name}`}
                 aria-pressed={i === active}
                 title={c.name}
+                // Browser extensions inject `fdprocessedid` onto buttons pre-hydration; ignore that diff.
+                suppressHydrationWarning
               />
             ))}
           </div>

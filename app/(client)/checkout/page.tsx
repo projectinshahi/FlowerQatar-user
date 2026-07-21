@@ -201,11 +201,11 @@ export default function CheckoutPage() {
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="co-email" aria-label="Email address" autoComplete="email" inputMode="email" aria-invalid={!!errors.email || undefined} aria-describedby={errors.email ? "co-email-err" : undefined} onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
                     placeholder="e.g. customer@luxury.com"
                   />
-                  {errors.email && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.email}</p>}
+                  {errors.email && <p id="co-email-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.email}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -217,10 +217,10 @@ export default function CheckoutPage() {
                       type="text"
                       required
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      id="co-firstName" aria-label="First name" autoComplete="given-name" aria-invalid={!!errors.firstName || undefined} aria-describedby={errors.firstName ? "co-firstName-err" : undefined} onChange={(e) => setFirstName(e.target.value)}
                       className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
                     />
-                    {errors.firstName && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.firstName}</p>}
+                    {errors.firstName && <p id="co-firstName-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.firstName}</p>}
                   </div>
                   <div>
                     <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
@@ -230,10 +230,10 @@ export default function CheckoutPage() {
                       type="text"
                       required
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      id="co-lastName" aria-label="Last name" autoComplete="family-name" aria-invalid={!!errors.lastName || undefined} aria-describedby={errors.lastName ? "co-lastName-err" : undefined} onChange={(e) => setLastName(e.target.value)}
                       className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
                     />
-                    {errors.lastName && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.lastName}</p>}
+                    {errors.lastName && <p id="co-lastName-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.lastName}</p>}
                   </div>
                 </div>
 
@@ -245,11 +245,11 @@ export default function CheckoutPage() {
                     type="text"
                     required
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    id="co-address" aria-label="Street address" autoComplete="address-line1" aria-invalid={!!errors.address || undefined} aria-describedby={errors.address ? "co-address-err" : undefined} onChange={(e) => setAddress(e.target.value)}
                     className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
                     placeholder="Suite, apartment, street name"
                   />
-                  {errors.address && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.address}</p>}
+                  {errors.address && <p id="co-address-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.address}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -261,10 +261,10 @@ export default function CheckoutPage() {
                       type="text"
                       required
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      id="co-city" aria-label="City" autoComplete="address-level2" aria-invalid={!!errors.city || undefined} aria-describedby={errors.city ? "co-city-err" : undefined} onChange={(e) => setCity(e.target.value)}
                       className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
                     />
-                    {errors.city && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.city}</p>}
+                    {errors.city && <p id="co-city-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.city}</p>}
                   </div>
                   <div>
                     <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
@@ -274,11 +274,11 @@ export default function CheckoutPage() {
                       type="text"
                       required
                       value={zip}
-                      onChange={(e) => setZip(e.target.value)}
+                      id="co-zip" aria-label="Zip code" autoComplete="postal-code" aria-invalid={!!errors.zip || undefined} aria-describedby={errors.zip ? "co-zip-err" : undefined} onChange={(e) => setZip(e.target.value)}
                       className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
                       placeholder="e.g. 10012"
                     />
-                    {errors.zip && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.zip}</p>}
+                    {errors.zip && <p id="co-zip-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.zip}</p>}
                   </div>
                 </div>
 
@@ -290,11 +290,11 @@ export default function CheckoutPage() {
                     type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    id="co-phone" aria-label="Phone number" autoComplete="tel" inputMode="tel" aria-invalid={!!errors.phone || undefined} aria-describedby={errors.phone ? "co-phone-err" : undefined} onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
                     placeholder="e.g. 212-555-0199"
                   />
-                  {errors.phone && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
+                  {errors.phone && <p id="co-phone-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
                 </div>
               </div>
 

@@ -140,7 +140,7 @@ export default function ProductTable({ products, pagination }: { products: any[]
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{product.category?.name || "—"}</td>
+                  <td className="px-4 py-3 text-gray-600">{product.subcategory?.name || "—"}</td>
                   <td className="px-4 py-3">
                     {minPrice == null ? (
                       <span className="text-gray-400">—</span>

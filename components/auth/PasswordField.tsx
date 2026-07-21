@@ -14,6 +14,7 @@ export default function PasswordField({
   autoComplete = 'off',
   placeholder,
   id,
+  'aria-describedby': ariaDescribedBy,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -21,6 +22,7 @@ export default function PasswordField({
   autoComplete?: string;
   placeholder?: string;
   id?: string;
+  'aria-describedby'?: string;
 }) {
   const [show, setShow] = useState(false);
   return (
@@ -33,6 +35,7 @@ export default function PasswordField({
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         placeholder={placeholder}
+        aria-describedby={ariaDescribedBy}
         className="w-full border-0 border-b border-black text-sm py-2 pr-9 px-0 focus:ring-0 focus:border-black outline-none bg-transparent transition-colors"
       />
       <button

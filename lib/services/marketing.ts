@@ -60,9 +60,10 @@ export async function buildCartContext(items: CartItemDTO[]): Promise<CartContex
   const productIds = [...new Set(items.map((i) => i.productId))];
   const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
-    select: { id: true, categoryId: true },
+    select: { id: true, subcategoryId: true },
   });
-  const categoryOf = new Map(products.map((p) => [p.id, p.categoryId]));
+  // "category" targeting is now backed by subcategories (the arrays hold subcategory ids).
+  const categoryOf = new Map(products.map((p) => [p.id, p.subcategoryId]));
 
   const enriched = items.map((i) => ({
     ...i,

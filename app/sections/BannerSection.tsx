@@ -1,3 +1,5 @@
+import PromotionBar from "../../components/PromotionBar"
+
 interface BannerItem {
   id: string
   title: string | null
@@ -6,11 +8,11 @@ interface BannerItem {
   videoUrl: string
 }
 
-export default function BannerSection({ banners }: { banners: BannerItem[] }) {
+export default function BannerSection({ banners, promotions = [] }: { banners: BannerItem[]; promotions?: string[] }) {
   if (!banners?.length) return null
 
   return (
-    
+
     <>
       {banners.map((banner) => (
         <section
@@ -61,6 +63,9 @@ export default function BannerSection({ banners }: { banners: BannerItem[] }) {
               </div>
             </div>
           )}
+
+          {/* Active promotions ticker, pinned to the bottom edge of the banner */}
+          <PromotionBar items={promotions} />
         </section>
       ))}
     </>

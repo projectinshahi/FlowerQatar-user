@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getTargetOptions } from "@/lib/marketing-options";
 import PromotionForm from "@/components/admin/marketing/PromotionForm";
 
 export const metadata = { title: "New Promotion | Marketing" };
 
-export default async function NewPromotionPage() {
-  const { productOptions, categoryOptions } = await getTargetOptions();
-
+export default function NewPromotionPage() {
   return (
     <div className="space-y-6 max-w-[1000px] mx-auto">
       <div className="flex items-center gap-3">
@@ -17,7 +14,7 @@ export default async function NewPromotionPage() {
           <p className="text-gray-500 text-sm">Create a promotional campaign.</p>
         </div>
       </div>
-      <PromotionForm productOptions={productOptions} categoryOptions={categoryOptions} />
+      <PromotionForm />
     </div>
   );
 }
