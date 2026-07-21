@@ -84,7 +84,7 @@ export default function WelcomePopup() {
   const close = useCallback(() => setOpen(false), []);
 
   const explore = useCallback(() => {
-    router.push('/products');
+    router.push('/shop');
     close();
   }, [router, close]);
 
