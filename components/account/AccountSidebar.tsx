@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { User, MapPin, Repeat, LogOut } from "lucide-react";
+import { User, MapPin, Repeat, Package, LogOut } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 
 const links = [
   { href: "/account/profile", label: "My Profile", icon: User },
+  { href: "/account/orders", label: "My Orders", icon: Package },
   { href: "/account/addresses", label: "Saved Addresses", icon: MapPin },
   { href: "/account/subscriptions", label: "Subscriptions", icon: Repeat },
 ];

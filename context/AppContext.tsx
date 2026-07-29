@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Product } from '../types';
 import { ROSE_COLORS, BOX_COLORS } from '../data/products';
+import { track } from '../lib/analytics';
 
 export interface CartItem {
   id: string; // cart line id (uuid) once persisted, or a temporary id while optimistic
@@ -175,6 +176,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     addToast(`Added "${item.product.name}" to your cart.`, 'success');
+    track('add_to_cart', { currency: 'QAR', items: [{ item_name: item.product.name, quantity: item.quantity }] });
     // Optimistic update
     setCart((prev) => {
       const key = dedupKey(item);

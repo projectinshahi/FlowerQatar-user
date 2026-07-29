@@ -12,6 +12,8 @@ import Navbar from "../sections/Navbar";
 import Footer from "../sections/Footer";
 import { getNavMenu } from "../../lib/subcategories";
 import dynamic from "next/dynamic";
+import { Suspense } from "react";
+import Analytics from "../../components/analytics/Analytics";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
 const WelcomePopup = dynamic(() => import("../../components/WelcomePopup"));
@@ -67,6 +69,9 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${cormorant.variable} ${montserrat.variable} h-full antialiased`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans antialiased selection:bg-primary/20 selection:text-primary overflow-x-hidden" suppressHydrationWarning>
+        <Suspense fallback={null}>
+          <Analytics />
+        </Suspense>
         <JsonLd
           data={[
             {

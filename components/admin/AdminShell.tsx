@@ -32,8 +32,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         { name: 'Category System', href: '/admin/category-system', icon: FolderTree },
         { name: 'All Products', href: '/admin/products', icon: Package },
         // { name: 'Product Reviews', href: '/admin/reviews', icon: Package },
-           { name: 'Orders', href: '/admin/orders', icon: ShoppingCart }, 
+           { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
         { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
       ],
     },
     {

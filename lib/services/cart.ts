@@ -230,6 +230,17 @@ export async function resolveActiveUserId(): Promise<string> {
   return user.id;
 }
 
+/** Non-throwing variant: the current user's id, or null for guests. */
+export async function getActiveUserId(): Promise<string | null> {
+  const user = await getCurrentUser();
+  return user?.id ?? null;
+}
+
+/** A well-formed empty cart — returned for guests so reads never 401. */
+export function emptyCart(): CartPayload {
+  return { items: [], summary: computeSummary([]) };
+}
+
 /* ───────────────────── Operations ───────────────────── */
 
 const dedupKey = (i: { productId: string | null; variantId: string | null; colorId: string | null; selection: CartSelection | null }) =>

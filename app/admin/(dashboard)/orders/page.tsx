@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Package, Search, Edit2, Loader2, Check, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Package, Search, Edit2, Loader2, Check, X, ChevronDown, ChevronRight, Sparkles, CreditCard } from 'lucide-react';
+
+const money = (v: any) => `QAR ${Number(v || 0).toFixed(2)}`;
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -9,6 +11,7 @@ export default function AdminOrders() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ status: '', trackingNumber: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -106,17 +109,39 @@ export default function AdminOrders() {
                   </td>
                 </tr>
               ) : (
-                orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                orders.map((order) => {
+                  const si = order.shippingInfo || {};
+                  const open = expandedId === order.id;
+                  return (
+                  <React.Fragment key={order.id}>
+                  <tr className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {order.id.slice(0, 8).toUpperCase()}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setExpandedId(open ? null : order.id)}
+                          className="p-1 text-gray-400 hover:text-primary rounded"
+                          title={open ? 'Hide details' : 'Show details'}
+                        >
+                          {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </button>
+                        {order.id.slice(0, 8).toUpperCase()}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {order.user?.firstName} {order.user?.lastName}<br/>
                       <span className="text-xs text-gray-400">{order.user?.email}</span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
-                      QAR {Number(order.totalAmount).toFixed(2)}
+                      {money(order.totalAmount)}
+                      <div className="mt-1">
+                        {order.paymentMethod === 'POINTS' ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700"><Sparkles size={10} /> Paid with points</span>
+                        ) : order.paymentMethod === 'MIXED' ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"><Sparkles size={10} /> Card + points</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600"><CreditCard size={10} /> Card</span>
+                        )}
+                      </div>
                     </td>
                     
                     {/* Status Column */}
@@ -198,7 +223,69 @@ export default function AdminOrders() {
                       )}
                     </td>
                   </tr>
-                ))
+                  {open && (
+                    <tr className="bg-gray-50/40">
+                      <td colSpan={6} className="px-6 py-5">
+                        <div className="grid gap-6 lg:grid-cols-3">
+                          {/* Items */}
+                          <div className="lg:col-span-2">
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                              Items ({order.items?.length || 0})
+                            </h4>
+                            <div className="space-y-1.5">
+                              {(order.items || []).length === 0 ? (
+                                <p className="text-sm italic text-gray-400">No line items recorded.</p>
+                              ) : (
+                                (order.items || []).map((it: any) => (
+                                  <div key={it.id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm">
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium text-gray-800">{it.product?.name || 'Product'}</p>
+                                      <p className="text-xs text-gray-400">
+                                        Qty {it.quantity}{it.colorName ? ` · ${it.colorName}` : ''}{it.variantSku ? ` · ${it.variantSku}` : ''}
+                                      </p>
+                                    </div>
+                                    <span className="ml-3 whitespace-nowrap font-medium text-gray-700">{money(Number(it.price) * it.quantity)}</span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                          {/* Payment breakdown */}
+                          <div>
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Payment</h4>
+                            <dl className="space-y-1.5 rounded-lg border border-gray-100 bg-white px-3 py-3 text-sm">
+                              <div className="flex justify-between"><dt className="text-gray-500">Subtotal</dt><dd className="text-gray-800">{money(order.subtotal)}</dd></div>
+                              <div className="flex justify-between"><dt className="text-gray-500">Shipping</dt><dd className="text-gray-800">{Number(order.shippingFee) === 0 ? 'Free' : money(order.shippingFee)}</dd></div>
+                              <div className="flex justify-between"><dt className="text-gray-500">Tax</dt><dd className="text-gray-800">{money(order.tax)}</dd></div>
+                              {Number(order.discount) > 0 && (
+                                <div className="flex justify-between text-green-600"><dt>Coupon</dt><dd>−{money(order.discount)}</dd></div>
+                              )}
+                              {Number(order.pointsRedeemed) > 0 && (
+                                <div className="flex justify-between text-purple-600"><dt>Points redeemed</dt><dd>{Number(order.pointsRedeemed).toLocaleString()} pts (−{money(order.pointsRedeemed)})</dd></div>
+                              )}
+                              <div className="flex justify-between border-t border-gray-100 pt-1.5 font-semibold"><dt className="text-gray-700">Paid</dt><dd className="text-gray-900">{money(order.totalAmount)}</dd></div>
+                              <div className="flex justify-between pt-0.5"><dt className="text-gray-500">Method</dt><dd className="font-medium text-gray-700">{order.paymentMethod === 'POINTS' ? 'Membership points' : order.paymentMethod === 'MIXED' ? 'Card + points' : 'Card'}</dd></div>
+                            </dl>
+                          </div>
+                        </div>
+                        {/* Delivery & contact */}
+                        <div className="mt-5">
+                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Delivery &amp; Contact</h4>
+                          <div className="rounded-lg border border-gray-100 bg-white px-3 py-3 text-sm text-gray-700">
+                            <p className="font-medium">{si.firstName || order.user?.firstName || ''} {si.lastName || order.user?.lastName || ''}</p>
+                            {(si.address || si.city || si.zip) && (
+                              <p className="text-gray-500">{[si.address, si.city, si.zip].filter(Boolean).join(', ')}</p>
+                            )}
+                            <p className="text-gray-500">{si.phone || order.user?.phone || '—'} · {si.email || order.user?.email || '—'}</p>
+                            <p className="mt-1 text-xs text-gray-400">Placed {new Date(order.createdAt).toLocaleString('en-US', { timeZone: 'UTC' })}</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -42,6 +42,8 @@ model User {
   otps                Otp[]
   subscriptions       Subscription[]
   subNotifications    SubscriptionNotification[]
+  memberships         Membership[]
+  pointsWallet        PointsWallet?
   // Shopping cart stored as a JSON array on the user (login-only cart).
   // Shape: { id, productId, variant, quantity, unitPrice, meta }[]
   cart                Json                       @default("[]")
@@ -79,8 +81,21 @@ model Order {
   id             String      @id @default(uuid()) @db.Uuid
   userId         String      @db.Uuid
   totalAmount    Decimal     @db.Decimal(10, 2)
+  // Price breakdown captured at checkout (for the admin order detail view).
+  subtotal       Decimal     @default(0) @db.Decimal(10, 2)
+  shippingFee    Decimal     @default(0) @db.Decimal(10, 2)
+  tax            Decimal     @default(0) @db.Decimal(10, 2)
+  discount       Decimal     @default(0) @db.Decimal(10, 2)
+  // How the customer paid: points redeemed + method (CARD | POINTS | MIXED).
+  pointsRedeemed Int         @default(0)
+  paymentMethod  String      @default("CARD") @db.VarChar(20)
+  // Snapshot of the delivery/contact details entered at checkout.
+  shippingInfo   Json?
   status         OrderStatus @default(PENDING)
   trackingNumber String?     @db.VarChar(100)
+  // Cancellation audit; points redeemed on the order are refunded to the wallet on cancel.
+  cancelledAt    DateTime?   @db.Timestamptz(6)
+  cancelReason   String?     @db.VarChar(255)
   createdAt      DateTime    @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime    @updatedAt @db.Timestamptz(6)
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -580,9 +595,90 @@ model SubscriptionPlan {
   validityYears  Int                       @default(0)
   validityMonths Int                       @default(0)
   validityDays   Int                       @default(0)
+  /// Admin can enable/disable a plan for purchase without deleting it.
+  isActive       Boolean                   @default(true)
   createdAt      DateTime                  @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime                  @updatedAt @db.Timestamptz(6)
   products       SubscriptionPlanProduct[]
+  memberships    Membership[]
+}
+
+/// Enums for the membership + points-wallet system (distinct from recurring delivery Subscriptions).
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum WalletTxnType {
+  SUBSCRIPTION_PURCHASED
+  POINTS_CREDITED
+  POINTS_REDEEMED
+  POINTS_EXPIRED
+  ADMIN_ADJUSTMENT
+  REFUND
+}
+
+/// A user's PURCHASED membership plan (Silver/Gold/Platinum). Separate from the recurring
+/// product-delivery `Subscription`. Points live in the user's PointsWallet, not here.
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  planId         String           @db.Uuid
+  status         MembershipStatus @default(ACTIVE)
+  startsAt       DateTime         @db.Timestamptz(6)
+  expiresAt      DateTime         @db.Timestamptz(6)
+  /// Points this purchase granted (immutable record; the spendable balance is on PointsWallet).
+  pointsCredited Int              @default(0)
+  pricePaid      Decimal          @default(0) @db.Decimal(10, 2)
+  /// Simulated-payment record (swap the gateway later without touching this shape).
+  paymentGateway String           @default("SIMULATED") @db.VarChar(30)
+  paymentMethod  String           @default("DEVELOPMENT") @db.VarChar(30)
+  paymentStatus  String           @default("SUCCESS") @db.VarChar(20)
+  paymentTxnId   String?          @db.VarChar(100)
+  /// Anti-replay: a client-supplied key makes the "simulate payment" call idempotent.
+  idempotencyKey String?          @unique @db.VarChar(100)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+/// One points wallet per user — the single source of truth for the spendable balance.
+/// `availablePoints` is the concurrency-controlled balance; the aggregates are lifetime totals.
+model PointsWallet {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @unique @db.Uuid
+  totalEarned     Int                 @default(0)
+  usedPoints      Int                 @default(0)
+  expiredPoints   Int                 @default(0)
+  availablePoints Int                 @default(0)
+  createdAt       DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @db.Timestamptz(6)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    WalletTransaction[]
+}
+
+/// Immutable ledger of every wallet movement (before/change/after + reason + reference).
+model WalletTransaction {
+  id            String        @id @default(uuid()) @db.Uuid
+  walletId      String        @db.Uuid
+  type          WalletTxnType
+  beforeBalance Int
+  change        Int
+  afterBalance  Int
+  reason        String        @db.VarChar(255)
+  /// Free-form reference to the source (membership id, order id, etc.).
+  reference     String?       @db.VarChar(100)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  wallet        PointsWallet  @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([walletId, createdAt])
 }
 
 /// Join: which existing Products a SubscriptionPlan applies to (referenced, never

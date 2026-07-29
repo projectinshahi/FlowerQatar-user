@@ -90,7 +90,7 @@ export default function Footer() {
                     <li key={linkIdx}>
                       <Link
                         href="#"
-                        className="font-sans text-xs text-secondary/70 hover:text-secondary hover:translate-x-1 md:hover:translate-x-0 transition-all duration-300 block"
+                        className="font-sans text-xs text-secondary/85 hover:text-secondary hover:translate-x-1 md:hover:translate-x-0 transition-all duration-300 block"
                       >
                         {link}
                       </Link>
@@ -103,7 +103,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-secondary/10 mt-8 md:mt-14 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 text-[9px] md:text-[10px] text-secondary/60 font-sans uppercase tracking-widest">
+        <div className="border-t border-secondary/10 mt-8 md:mt-14 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 text-[9px] md:text-[10px] text-secondary/80 font-sans uppercase tracking-widest">
           <p>© 2026 Lebami | All rights reserved</p>
           <div className="flex gap-4 md:gap-6">
             <Link href="#" className="hover:text-secondary transition-colors">Terms & Conditions - Privacy</Link>

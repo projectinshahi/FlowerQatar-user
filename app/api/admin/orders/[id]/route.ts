@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
+import { cancelOrder, OrderError } from '@/lib/services/order';
+
+// Allowed forward transitions; anything else (e.g. DELIVERED → PENDING) is rejected.
+const TRANSITIONS: Record<string, string[]> = {
+  PENDING: ['PROCESSING', 'CANCELLED'],
+  PROCESSING: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED'],
+  DELIVERED: [],
+  CANCELLED: [],
+};
 
 export async function PATCH(
   request: Request,
@@ -12,6 +22,25 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const { status, trackingNumber } = body;
+
+    const current = await prisma.order.findUnique({ where: { id }, select: { status: true } });
+    if (!current) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    if (status && status !== current.status && !TRANSITIONS[current.status]?.includes(status)) {
+      return NextResponse.json(
+        { error: `Cannot change status from ${current.status} to ${status}` },
+        { status: 400 }
+      );
+    }
+
+    // Cancelling must refund redeemed points — route through the shared service, not a raw update.
+    if (status === 'CANCELLED' && current.status !== 'CANCELLED') {
+      await cancelOrder(id, { reason: typeof body.cancelReason === 'string' ? body.cancelReason : undefined });
+      if (trackingNumber !== undefined) {
+        await prisma.order.update({ where: { id }, data: { trackingNumber } });
+      }
+      const order = await prisma.order.findUnique({ where: { id } });
+      return NextResponse.json({ message: 'Order updated successfully', order });
+    }
 
     const order = await prisma.order.update({
       where: {
@@ -25,6 +54,9 @@ export async function PATCH(
 
     return NextResponse.json({ message: 'Order updated successfully', order });
   } catch (error: any) {
+    if (error instanceof OrderError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Error updating order:', error);
     return NextResponse.json(
       { error: 'Failed to update order' },

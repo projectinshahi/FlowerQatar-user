@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronRight, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag, Eye, EyeOff } from 'lucide-react';
 import Image from '../../../components/LuxuryImage';
 import CouponBox from '../../../components/checkout/CouponBox';
+import RedeemPointsBox from '../../../components/checkout/RedeemPointsBox';
 
 interface FormErrors {
   [key: string]: string;
@@ -18,10 +19,15 @@ interface AppliedCoupon {
 }
 
 export default function CheckoutPage() {
-  const { cart, getCartTotal, clearCart, user } = useApp();
+  const { cart, getCartTotal, clearCart, user, addToast } = useApp();
   const [step, setStep] = useState(1);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  // Generated once when the order is placed, so the reference stays stable across re-renders.
+  const [orderRef, setOrderRef] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  // Membership points redeemed at checkout (1 point = 1 QAR). Committed server-side on placement.
+  const [pointsRedeemed, setPointsRedeemed] = useState(0);
 
   // Form Fields State
   const [email, setEmail] = useState('');
@@ -59,7 +65,10 @@ export default function CheckoutPage() {
   // Coupon-derived adjustments (default to no-ops when no coupon is applied).
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const effectiveShipping = appliedCoupon?.freeDelivery ? 0 : shippingFee;
+  // Order value before points; points can offset up to this amount.
   const total = Math.max(0, subtotal + effectiveShipping + tax - couponDiscount);
+  const pointsDiscount = Math.min(pointsRedeemed, total); // 1 point = 1 QAR
+  const grandTotal = Math.max(0, total - pointsDiscount);
 
   // Map cart lines to the shape the coupon APIs expect, skipping items with no product id.
   const couponItems = cart
@@ -89,7 +98,9 @@ export default function CheckoutPage() {
       }
     }
 
-    if (step === 3) {
+    // Card details are only required when there is a balance to charge. When membership
+    // points cover the whole order (grandTotal === 0), the order is paid entirely with points.
+    if (step === 3 && grandTotal > 0) {
       if (!cardName.trim()) tempErrors.cardName = 'Cardholder name is required';
       const cleanNum = cardNumber.replace(/\s+/g, '');
       if (!cleanNum.match(/^\d{16}$/)) {
@@ -118,9 +129,36 @@ export default function CheckoutPage() {
     setStep((s) => Math.max(1, s - 1));
   };
 
-  const handlePlaceOrder = () => {
-    setOrderPlaced(true);
-    clearCart();
+  const handlePlaceOrder = async () => {
+    if (placing) return;
+    setPlacing(true);
+    try {
+      // Create the real order on the server: it re-derives the totals from the authoritative
+      // cart, records the Order (+ items), atomically redeems any points, and clears the cart.
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shippingMethod,
+          couponCode: appliedCoupon?.code ?? null,
+          pointsRedeemed,
+          shippingInfo: { firstName, lastName, email, phone, address, city, zip },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        addToast(data?.error || 'Could not place your order. Please try again.', 'error');
+        setPlacing(false);
+        return;
+      }
+      setOrderRef(data.reference || data.orderId);
+      setOrderPlaced(true);
+      clearCart();
+    } catch {
+      addToast('Something went wrong placing your order. Please try again.', 'error');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (orderPlaced) {
@@ -139,7 +177,11 @@ export default function CheckoutPage() {
           Your payment was processed successfully. A confirmation email with invoice and tracking details has been sent to <span className="font-medium text-primary">{email}</span>.
         </p>
         <div className="bg-cream border border-divider p-6 text-left space-y-2 text-xs text-muted rounded-none">
-          <p><span className="font-semibold text-primary">Order Reference:</span> #VF-{Math.floor(100000 + Math.random() * 900000)}</p>
+          <p><span className="font-semibold text-primary">Order Reference:</span> #{orderRef}</p>
+          <p><span className="font-semibold text-primary">Amount Paid:</span> QAR {grandTotal}</p>
+          {pointsDiscount > 0 && (
+            <p><span className="font-semibold text-primary">Points Redeemed:</span> {pointsDiscount.toLocaleString()} pts (−QAR {pointsDiscount})</p>
+          )}
           <p><span className="font-semibold text-primary">Shipping Address:</span> {address}, {city}, {zip}</p>
           <p><span className="font-semibold text-primary">Estimated Arrival:</span> {shippingMethod === 'courier' ? 'Tomorrow by 6:00 PM' : '3-5 Business Days'}</p>
         </div>
@@ -381,9 +423,17 @@ export default function CheckoutPage() {
           {step === 3 && (
             <form onSubmit={handleNext} className="space-y-6">
               <h2 className="font-serif text-2xl text-primary border-b border-divider pb-3">
-                3. Secure Credit Card Payment
+                3. {grandTotal > 0 ? 'Secure Credit Card Payment' : 'Payment'}
               </h2>
 
+              {grandTotal === 0 ? (
+                <div className="flex items-center gap-3 rounded-none border border-green-200 bg-green-50 px-4 py-4 text-xs text-green-700">
+                  <ShieldCheck size={18} className="flex-shrink-0" />
+                  <span>
+                    This order is <span className="font-semibold">fully paid with {pointsDiscount.toLocaleString()} membership points</span> — no card required.
+                  </span>
+                </div>
+              ) : (
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
@@ -461,6 +511,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               <div className="pt-6 border-t border-divider flex justify-between">
                 <button
@@ -501,12 +552,18 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <h4 className="font-semibold text-primary uppercase tracking-wider mb-1">Payment Method</h4>
-                  <p>Visa Credit ending in *{cardNumber.replace(/\s+/g, '').slice(-4)}</p>
+                  {grandTotal === 0 ? (
+                    <p>Membership Points ({pointsDiscount.toLocaleString()} pts)</p>
+                  ) : (
+                    <p>Visa Credit ending in *{cardNumber.replace(/\s+/g, '').slice(-4)}</p>
+                  )}
                 </div>
               </div>
 
               <p className="text-[11px] text-muted italic">
-                By clicking "Place Order", you authorize charging ${total} to your credit card. All arrangements are final sale due to customized preserved biological makeup.
+                By clicking "Place Order", {grandTotal > 0
+                  ? `you authorize charging $${grandTotal} to your credit card.`
+                  : `this order will be paid in full with ${pointsDiscount.toLocaleString()} membership points.`} All arrangements are final sale due to customized preserved biological makeup.
               </p>
 
               <div className="pt-6 border-t border-divider flex justify-between">
@@ -518,9 +575,10 @@ export default function CheckoutPage() {
                 </button>
                 <button
                   onClick={handlePlaceOrder}
-                  className="px-10 py-3.5 bg-primary hover:bg-secondary text-white uppercase text-xs tracking-[0.2em] font-semibold transition-colors duration-500 rounded-none shadow-md"
+                  disabled={placing}
+                  className="px-10 py-3.5 bg-primary hover:bg-secondary text-white uppercase text-xs tracking-[0.2em] font-semibold transition-colors duration-500 rounded-none shadow-md disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Place Order Now
+                  {placing ? 'Placing Order…' : 'Place Order Now'}
                 </button>
               </div>
             </div>
@@ -568,6 +626,11 @@ export default function CheckoutPage() {
               <CouponBox items={couponItems} onApplied={setAppliedCoupon} />
             </div>
 
+            {/* Membership points — always shown; members redeem, others get a subscribe prompt */}
+            <div className="border-t border-divider pt-4">
+              <RedeemPointsBox maxRedeemable={total} onChange={setPointsRedeemed} />
+            </div>
+
             {/* Price Calculations */}
             <div className="border-t border-divider pt-4 space-y-2 text-xs">
               <div className="flex justify-between text-muted">
@@ -588,9 +651,15 @@ export default function CheckoutPage() {
                 <span>Estimated Taxes</span>
                 <span>${tax}</span>
               </div>
+              {pointsDiscount > 0 && (
+                <div className="flex justify-between text-green-600 font-medium">
+                  <span>Points Redeemed</span>
+                  <span>-${pointsDiscount}</span>
+                </div>
+              )}
               <div className="border-t border-divider pt-3 flex justify-between font-bold text-sm">
                 <span className="uppercase tracking-widest text-xs">Estimated Total</span>
-                <span className="text-secondary text-lg font-bold">${total}</span>
+                <span className="text-secondary text-lg font-bold">${grandTotal}</span>
               </div>
             </div>
 

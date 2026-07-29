@@ -4,12 +4,12 @@ import type { NextConfig } from "next";
 // the live site; promote to "Content-Security-Policy" after reviewing violation reports.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://accounts.google.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://accounts.google.com https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://res.cloudinary.com https://flagcdn.com https://images.unsplash.com https://upload.wikimedia.org https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://res.cloudinary.com https://flagcdn.com https://images.unsplash.com https://upload.wikimedia.org https://*.googleusercontent.com https://www.google-analytics.com https://*.google-analytics.com",
   "media-src 'self' https://res.cloudinary.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.cloudinary.com https://flagcdn.com",
+  "connect-src 'self' https://api.cloudinary.com https://flagcdn.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com",
   "frame-src https://www.youtube.com https://accounts.google.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",

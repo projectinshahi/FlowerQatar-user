@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveActiveUserId, getCartPayload, clearCart, CartError } from "@/lib/services/cart";
+import { getActiveUserId, getCartPayload, clearCart, emptyCart, CartError } from "@/lib/services/cart";
 
 function fail(e: any, fallback: string) {
   const status = e instanceof CartError ? e.status : 500;
@@ -7,22 +7,23 @@ function fail(e: any, fallback: string) {
   return NextResponse.json({ success: false, error: e?.message || fallback }, { status });
 }
 
-// GET /api/cart — return the complete cart (with totals)
+// GET /api/cart — the complete cart (with totals). Guests get an empty cart, never a 401,
+// so the storefront can load a guest cart state without console/network errors.
 export async function GET() {
   try {
-    const cartId = await resolveActiveUserId();
-    const data = await getCartPayload(cartId);
+    const userId = await getActiveUserId();
+    const data = userId ? await getCartPayload(userId) : emptyCart();
     return NextResponse.json({ success: true, data });
   } catch (e) {
     return fail(e, "Failed to load cart");
   }
 }
 
-// DELETE /api/cart — clear the cart
+// DELETE /api/cart — clear the cart. Guests have no server cart, so this is a no-op empty cart.
 export async function DELETE() {
   try {
-    const cartId = await resolveActiveUserId();
-    const data = await clearCart(cartId);
+    const userId = await getActiveUserId();
+    const data = userId ? await clearCart(userId) : emptyCart();
     return NextResponse.json({ success: true, data });
   } catch (e) {
     return fail(e, "Failed to clear cart");

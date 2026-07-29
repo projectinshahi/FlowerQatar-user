@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Users, Search, Edit2, Loader2, Check, X, ShieldAlert, Trash2 } from 'lucide-react';
+import { Users, Search, Edit2, Loader2, Check, X, ShieldAlert, Trash2, Sparkles } from 'lucide-react';
+
+const planLabel = (p: string) => (p ? p.charAt(0) + p.slice(1).toLowerCase() : '');
+const planBadge = (p: string) =>
+  p === 'GOLD'
+    ? 'bg-amber-100 text-amber-800'
+    : p === 'PLATINUM'
+    ? 'bg-slate-200 text-slate-700'
+    : 'bg-gray-100 text-gray-600'; // SILVER / default
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<any[]>([]);
@@ -100,6 +108,7 @@ export default function AdminUsers() {
                 <th className="px-6 py-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">User</th>
                 <th className="px-6 py-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">Role</th>
                 <th className="px-6 py-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">Membership &amp; Points</th>
                 <th className="px-6 py-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">Joined</th>
                 <th className="px-6 py-4 font-semibold text-gray-500 text-xs uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -107,13 +116,13 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-16 text-center text-gray-500">
                     <Loader2 className="animate-spin h-8 w-8 mx-auto text-primary" />
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-16 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <Users size={48} className="text-gray-200 mb-4" />
                       <p>No users found in the system.</p>
@@ -179,6 +188,31 @@ export default function AdminUsers() {
                           {user.isActive ? 'Active' : 'Suspended'}
                         </span>
                       )}
+                    </td>
+
+                    {/* Membership & Points Column */}
+                    <td className="px-6 py-4">
+                      {user.membership ? (
+                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${planBadge(user.membership.plan)}`}>
+                          <Sparkles size={11} /> {planLabel(user.membership.plan)}
+                          {!user.membership.active && <span className="font-normal text-red-500">· Expired</span>}
+                        </span>
+                      ) : (
+                        <span className="text-xs italic text-gray-400">No plan</span>
+                      )}
+                      <div className="mt-1 text-xs text-gray-500">
+                        {(user.wallet?.totalEarned || user.wallet?.availablePoints || user.wallet?.usedPoints) ? (
+                          <>
+                            <span className="font-semibold text-gray-700">{(user.wallet.availablePoints || 0).toLocaleString()}</span> left
+                            <span className="text-gray-300"> · </span>
+                            {(user.wallet.usedPoints || 0).toLocaleString()} used
+                            <span className="text-gray-300"> · </span>
+                            {(user.wallet.totalEarned || 0).toLocaleString()} earned
+                          </>
+                        ) : (
+                          <span className="italic text-gray-400">No points</span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Joined Column */}

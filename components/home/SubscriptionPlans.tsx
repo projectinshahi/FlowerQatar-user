@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Clock, Package } from 'lucide-react';
 import { AnimatedSection } from '@/components/AnimatedSection';
 import type { StoreSubscriptionPlan } from '@/lib/subscription-plans';
@@ -20,7 +21,7 @@ export default function SubscriptionPlans({ plans }: { plans: StoreSubscriptionP
 
   return (
     <AnimatedSection className="py-16 md:py-24">
-      <section aria-label="Subscription plans" className="mx-auto w-full max-w-[1440px] px-6 md:px-12">
+      <section id="membership" aria-label="Subscription plans" className="mx-auto w-full max-w-[1440px] px-6 md:px-12">
         <div className="mb-12 text-center">
           <h2 className="font-serif text-[36px] font-light leading-[1.2] text-primary md:text-[48px]">
             Membership Plans
@@ -74,6 +75,16 @@ export default function SubscriptionPlans({ plans }: { plans: StoreSubscriptionP
                   </div>
                 )}
               </div>
+
+              {/* Subscribe → review + simulated payment */}
+              <Link
+                href={`/membership/checkout?plan=${plan.id}`}
+                aria-label={`Subscribe to the ${plan.name} plan`}
+                className="mt-8 inline-flex min-h-[44px] items-center justify-center rounded-sm px-6 py-3 font-sans text-[11px] font-medium uppercase tracking-[0.18em] text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{ backgroundColor: plan.accent }}
+              >
+                Subscribe
+              </Link>
             </article>
           ))}
         </div>
