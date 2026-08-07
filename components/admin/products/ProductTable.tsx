@@ -85,7 +85,7 @@ export default function ProductTable({ products, pagination }: { products: any[]
               const variants = Array.isArray(product.variants) ? product.variants : [];
               const allColors = variants.flatMap((v: any) => v?.colorVariants || []);
               const firstColor = allColors[0];
-              const galleryImages = firstColor?.galleryImages || [];
+              const galleryImages = (firstColor?.galleryImages || []).filter((img: any) => img?.type !== "video");
               const primaryImage =
                 (galleryImages.find((img: any) => img.isPrimary) || galleryImages[0])?.url ||
                 firstColor?.swatchImage ||
@@ -132,6 +132,12 @@ export default function ProductTable({ products, pagination }: { products: any[]
                         <p className="font-medium text-gray-900 line-clamp-1">{product.name}</p>
                         <p className="text-xs text-gray-500 line-clamp-1">
                           {product.sku ? <span className="font-mono">{product.sku}</span> : "No SKU"}
+                          {product.country && (
+                            <>
+                              <span className="mx-1.5 text-gray-300">·</span>
+                              <span className="text-gray-600 font-medium">{product.country}</span>
+                            </>
+                          )}
                           <span className="mx-1.5 text-gray-300">·</span>
                           {variants.length} {variants.length === 1 ? "variant" : "variants"}
                           <span className="mx-1.5 text-gray-300">·</span>

@@ -23,7 +23,7 @@ const TAB_FIELD: Record<string, keyof Product> = {
 export default async function ShopPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; collection?: string; tab?: string }>;
+  searchParams: Promise<{ category?: string; collection?: string; subcategory?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   const [dbProducts, categories] = await Promise.all([getStoreProducts(), getStoreCategories()]);
@@ -41,10 +41,11 @@ export default async function ShopPage({
 
   const categoryOptions = categories
     .filter((c) => c.productCount > 0)
-    .map((c) => ({ name: c.name, slug: c.slug }));
+    .map((c) => ({ name: c.name, key: c.key }));
 
   // Heading reflects the active filter: collection name › category label › tab label › default.
-  const collectionName = sp.collection ? categories.find((c) => c.slug === sp.collection)?.name : undefined;
+  if (sp.subcategory) products = products.filter((p) => p.collection === sp.subcategory);
+  const collectionName = sp.collection ? categories.find((c) => c.key === sp.collection)?.name : undefined;
   const tabLabel = sp.tab ? PRODUCT_TABS.find((t) => t.slug === sp.tab)?.label : undefined;
   const heroTitle =
     collectionName || (activeType ? CATEGORY_META[activeType].label : undefined) || tabLabel || 'The Collection';

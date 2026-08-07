@@ -138,6 +138,7 @@ model Product {
   sku               String?                   @unique @db.VarChar(100)
   shortDescription  String?
   description       String?
+  country           String?                   @db.VarChar(100)
   status            ProductStatus             @default(DRAFT)
   isFeatured        Boolean                   @default(false)
   isBestSeller      Boolean                   @default(false)
@@ -725,38 +726,42 @@ model WelcomePopup {
   updatedAt   DateTime @updatedAt @db.Timestamptz(6)
 }
 
-/// The six FIXED navigation categories. Never editable by the admin — they are a code
+/// The four FIXED navigation categories. Never editable by the admin — they are a code
 /// constant; only their Subcategories are managed.
 enum CategoryType {
   GIFT_COMBOS
   SHOP_BY_OCCASION
-  BIRTHDAY
   FLOWER
-  LUXURY_GIFTS
-  EXPLORE
+  BLUSHING_BLOOMS
 }
 
-/// A managed item inside one of the six fixed categories. `categoryType` is the fixed
-/// parent; the admin only adds/edits/reorders these rows. Slug is unique within a type
-/// (so /flowers/rose and /gift-combos/rose can coexist). `pinned` marks the "All X" row
-/// (first, non-deletable). `explore` (FLOWER only) drives "Explore Our Garden" on the home page.
-model Subcategory {
-  id            String       @id @default(uuid()) @db.Uuid
-  categoryType  CategoryType
-  name          String       @db.VarChar(120)
-  slug          String       @db.VarChar(255)
-  image         String?
-  imagePublicId String?      @db.VarChar(255)
-  hoverColor    String?      @db.VarChar(20)
-  explore       Boolean      @default(false)
-  pinned        Boolean      @default(false)
-  displayOrder  Int          @default(0)
-  active        Boolean      @default(true)
-  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
-  products      Product[]
+/// A parent category. Categories are intentionally small: subcategory management only
+/// needs a stable identifier, a display name, and an availability flag.
+model Category {
+  id            String        @id @default(uuid()) @db.Uuid
+  name          String        @unique @db.VarChar(100)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
+  subcategories Subcategory[]
+}
 
-  @@unique([categoryType, slug])
-  @@index([categoryType, active, displayOrder])
-  @@index([categoryType, explore])
+/// A child of one Category. Keep this model deliberately narrow so every consumer uses
+/// the same source of truth for its hover asset and status.
+model Subcategory {
+  id              String    @id @default(uuid()) @db.Uuid
+  categoryId      String    @db.Uuid
+  name            String    @db.VarChar(100)
+  hoverImage      String?
+  isExploreGarden Boolean   @default(false)
+  hoverColor      String?   @db.VarChar(50)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
+  category        Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  products        Product[]
+
+  @@unique([categoryId, name])
+  @@index([categoryId, isActive])
+  @@index([isExploreGarden, isActive])
 }

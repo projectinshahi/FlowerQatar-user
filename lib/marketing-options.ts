@@ -1,26 +1,10 @@
-import { prisma } from "@/lib/prisma";
-import { CATEGORY_META } from "@/lib/category-config";
+import { prisma } from '@/lib/prisma';
 
-/**
- * Loads product & subcategory options for the marketing targeting multi-selects.
- * "Categories" here are the new subcategories (prefixed with their fixed parent for
- * clarity); the stored applicable/excluded arrays now hold subcategory ids.
- * Server-only helper used by the admin form pages.
- */
+/** Product and active-subcategory choices used by marketing targeting forms. */
 export async function getTargetOptions() {
   const [products, subcategories] = await Promise.all([
-    prisma.product.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" }, take: 1000 }),
-    prisma.subcategory.findMany({
-      where: { active: true },
-      select: { id: true, name: true, categoryType: true },
-      orderBy: [{ categoryType: "asc" }, { pinned: "desc" }, { displayOrder: "asc" }, { name: "asc" }],
-    }),
+    prisma.product.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 1000 }),
+    prisma.subcategory.findMany({ where: { isActive: true, category: { isActive: true } }, select: { id: true, name: true, category: { select: { name: true } } }, orderBy: { name: 'asc' } }),
   ]);
-  return {
-    productOptions: products.map((p) => ({ value: p.id, label: p.name })),
-    categoryOptions: subcategories.map((c) => ({
-      value: c.id,
-      label: `${CATEGORY_META[c.categoryType].label} › ${c.name}`,
-    })),
-  };
+  return { productOptions: products.map((p) => ({ value: p.id, label: p.name })), categoryOptions: subcategories.map((s) => ({ value: s.id, label: `${s.category.name} › ${s.name}` })) };
 }

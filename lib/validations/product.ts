@@ -18,11 +18,11 @@ const requiredNumber = (label: string) =>
     z.number({ error: `${label} is required` }).min(0, `${label} must be 0 or greater`)
   );
 
-// Accepts absolute URLs (Cloudinary uploads) OR root-relative paths (local /images assets).
+// Accepts absolute URLs (Cloudinary uploads) OR root-relative paths (local /images or /videos assets).
 const imageUrl = z
   .string()
-  .min(1, "Image is required")
-  .refine((v) => /^https?:\/\//.test(v) || v.startsWith("/"), "Invalid image URL");
+  .min(1, "Media URL is required")
+  .refine((v) => /^https?:\/\//.test(v) || v.startsWith("/"), "Invalid media URL");
 
 export const galleryImageSchema = z.object({
   id: z.string().optional(),
@@ -30,6 +30,7 @@ export const galleryImageSchema = z.object({
   publicId: z.string().min(1, "Public ID is required").optional().default(""),
   isPrimary: z.boolean().default(false),
   order: z.number().default(0),
+  type: z.enum(["image", "video"]).optional().default("image"),
 });
 
 export const colorVariantSchema = z.object({
@@ -77,9 +78,10 @@ export const productSchema = z.object({
   sku: z.string().optional().nullable(),
   shortDescription: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
-  // Category system: one of the six fixed categories + a subcategory within it.
+  country: z.string().optional().nullable(),
+  // Category system: one of the four fixed categories + a subcategory within it.
   categoryType: z
-    .enum(["GIFT_COMBOS", "SHOP_BY_OCCASION", "BIRTHDAY", "FLOWER", "LUXURY_GIFTS", "EXPLORE"])
+    .enum(["GIFT_COMBOS", "SHOP_BY_OCCASION", "FLOWER", "BLUSHING_BLOOMS"])
     .optional()
     .nullable(),
   subcategoryId: z.string().optional().nullable(),

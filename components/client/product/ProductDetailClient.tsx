@@ -67,8 +67,11 @@ export default function ProductDetailClient({ product }: { product: any }) {
   const selectedColor = selectedVariant?.colorVariants?.find((c: any) => c.id === selectedColorId) || selectedVariant?.colorVariants?.[0]
 
   const allImages = selectedColor?.galleryImages?.length > 0
-    ? selectedColor.galleryImages
-    : (selectedColor?.hoverImage ? [{ url: selectedColor.hoverImage }] : [{ url: '/images/category_bouquets_1782290106325.png' }])
+    ? selectedColor.galleryImages.map((img: any) => ({
+        url: img.url,
+        type: img.type || (img.url?.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) || img.url?.includes('/video/upload/') ? 'video' : 'image'),
+      }))
+    : (selectedColor?.hoverImage ? [{ url: selectedColor.hoverImage, type: 'image' as const }] : [{ url: '/images/category_bouquets_1782290106325.png', type: 'image' as const }])
 
   const basePrice = Number(selectedColor?.salePrice || selectedColor?.price || 0)
   const pricing = usePriceCalculator(basePrice, quantity, selectedAddOns)
@@ -376,6 +379,12 @@ export default function ProductDetailClient({ product }: { product: any }) {
               {
                 id: 'details', title: 'PRODUCT DETAILS', content: (
                   <div className="space-y-4">
+                    {product.country && (
+                      <p className="leading-relaxed">
+                        <span className="font-semibold text-gray-900">Origin / Sourced From:</span>{' '}
+                        <span className="text-gray-600">{product.country}</span>
+                      </p>
+                    )}
                     {selectedVariant?.specifications?.length > 0 && (
                       <div className="space-y-1.5">
                         {selectedVariant.specifications.map((s: any) => (

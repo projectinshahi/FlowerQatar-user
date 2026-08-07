@@ -25,6 +25,7 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   // Generated once when the order is placed, so the reference stays stable across re-renders.
   const [orderRef, setOrderRef] = useState('');
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   // Membership points redeemed at checkout (1 point = 1 QAR). Committed server-side on placement.
   const [pointsRedeemed, setPointsRedeemed] = useState(0);
@@ -151,6 +152,7 @@ export default function CheckoutPage() {
         setPlacing(false);
         return;
       }
+      setCreatedOrderId(data.orderId || data.id || null);
       setOrderRef(data.reference || data.orderId);
       setOrderPlaced(true);
       clearCart();
@@ -162,6 +164,7 @@ export default function CheckoutPage() {
   };
 
   if (orderPlaced) {
+    const invoiceTargetId = createdOrderId || orderRef;
     return (
       <div className="max-w-xl mx-auto px-6 py-20 text-center font-sans text-primary space-y-6">
         <div className="flex justify-center text-secondary">
@@ -185,10 +188,19 @@ export default function CheckoutPage() {
           <p><span className="font-semibold text-primary">Shipping Address:</span> {address}, {city}, {zip}</p>
           <p><span className="font-semibold text-primary">Estimated Arrival:</span> {shippingMethod === 'courier' ? 'Tomorrow by 6:00 PM' : '3-5 Business Days'}</p>
         </div>
-        <div className="pt-4">
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+          {invoiceTargetId && (
+            <Link
+              href={`/orders/${invoiceTargetId}/invoice`}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#61000B] hover:bg-[#800010] text-white text-xs uppercase tracking-[0.2em] font-medium py-3.5 px-7 transition-colors rounded-none shadow-md"
+            >
+              <span>View Tax Invoice</span>
+              <span className="font-arabic font-normal text-[11px] ml-1">(فاتورة ضريبية)</span>
+            </Link>
+          )}
           <Link
             href="/shop"
-            className="inline-block bg-primary hover:bg-secondary text-white text-xs uppercase tracking-[0.2em] font-medium py-3.5 px-8 transition-colors duration-500 rounded-none shadow-md"
+            className="w-full sm:w-auto inline-block border border-primary text-primary hover:bg-primary hover:text-white text-xs uppercase tracking-[0.2em] font-medium py-3.5 px-7 transition-colors rounded-none"
           >
             Continue Shopping
           </Link>

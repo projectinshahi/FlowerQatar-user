@@ -8,16 +8,9 @@ import { usePathname } from 'next/navigation'
 import { useApp } from '../../context/AppContext'
 import TopAnnouncementBar from '../../components/TopAnnouncementBar'
 import type { CategoryType } from '@prisma/client'
-import { PRODUCT_TABS, type NavCategory, type NavItem } from '../../lib/category-config'
+import type { NavCategory, NavItem } from '../../lib/category-config'
 
-/** The Flower menu lists collections (Best Sellers / Trending / …) that link to the shop,
- *  filtered by that collection — the circular strip above covers browsing by flower. */
-function flowerTabItems(base: string): NavItem[] {
-  const sep = base.includes('?') ? '&' : '?'
-  return PRODUCT_TABS.map((t) => ({ name: t.label, href: `${base}${sep}tab=${t.slug}`, image: null, hoverColor: null }))
-}
-
-const leftLinks = ['CONTACT US', 'BOUTIQUES']
+const leftLinks = ['CONTACT US']
 
 /* ─────────────── Mega menu data ───────────────
  * The six categories + their subcategories now come from the database (admin-managed)
@@ -38,21 +31,51 @@ const STRIP_ITEM: Variants = {
 }
 
 /** One category row: GPU-accelerated text shift + arrow reveal on hover. */
-const MegaLink = memo(function MegaLink({ label, href, onNavigate }: { label: string; href: string; onNavigate?: () => void }) {
+const MegaLink = memo(function MegaLink({
+  label,
+  href,
+  isHovered,
+  onHover,
+  onLeave,
+  onNavigate,
+}: {
+  label: string
+  href: string
+  isHovered?: boolean
+  onHover?: () => void
+  onLeave?: () => void
+  onNavigate?: () => void
+}) {
   return (
     <Link
       href={href}
       onClick={onNavigate}
-      className="group/link flex min-h-[44px] items-center justify-between gap-3 rounded-sm px-3 py-2 font-serif text-[15px] md:text-[16px] text-secondary transition-colors duration-200 hover:bg-secondary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      onFocus={onHover}
+      onBlur={onLeave}
+      className={`group/link flex min-h-[42px] items-center justify-between gap-3 rounded-md px-3 py-2 font-serif text-[15px] md:text-[16px] transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 ${
+        isHovered
+          ? 'bg-secondary/5 text-primary'
+          : 'text-secondary hover:bg-secondary/5 hover:text-primary'
+      }`}
     >
-      <span className="transition-transform duration-200 will-change-transform group-hover/link:translate-x-1.5">
+      <span
+        className={`transition-transform duration-200 will-change-transform ${
+          isHovered ? 'translate-x-1.5 font-medium text-primary' : 'group-hover/link:translate-x-1.5'
+        }`}
+      >
         {label}
       </span>
       <ChevronRight
         size={14}
         strokeWidth={1.5}
         aria-hidden="true"
-        className="-translate-x-1 opacity-0 transition-all duration-200 group-hover/link:translate-x-0 group-hover/link:opacity-60"
+        className={`transition-all duration-200 ${
+          isHovered
+            ? 'translate-x-0 opacity-100 text-primary'
+            : '-translate-x-1 opacity-0 group-hover/link:translate-x-0 group-hover/link:opacity-60'
+        }`}
       />
     </Link>
   )
@@ -62,9 +85,21 @@ const MegaLink = memo(function MegaLink({ label, href, onNavigate }: { label: st
  * Collection strip — the first row of the Flower panel. One centred row on xl;
  * snap-scrolls horizontally below that (tablet) with the scrollbar hidden.
  */
-const CategoryStrip = memo(function CategoryStrip({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
-  // The first item ("All Flowers") stays visually highlighted as the default.
-  const active = items[0]?.name ?? ''
+const CategoryStrip = memo(function CategoryStrip({
+  items,
+  hoveredItem,
+  onHover,
+  onLeave,
+  onNavigate,
+}: {
+  items: NavItem[]
+  hoveredItem?: NavItem | null
+  onHover?: (item: NavItem) => void
+  onLeave?: () => void
+  onNavigate?: () => void
+}) {
+  // The first item stays highlighted as default only if no specific item is currently hovered.
+  const active = hoveredItem ? hoveredItem.name : (items[0]?.name ?? '')
 
   return (
     <motion.ul
@@ -80,13 +115,17 @@ const CategoryStrip = memo(function CategoryStrip({ items, onNavigate }: { items
             <Link
               href={c.href}
               onClick={onNavigate}
+              onMouseEnter={() => onHover?.(c)}
+              onMouseLeave={onLeave}
+              onFocus={() => onHover?.(c)}
+              onBlur={onLeave}
               aria-current={isActive ? 'true' : undefined}
               className="group/cat flex w-[80px] md:w-[86px] lg:w-[96px] flex-col items-center gap-2 rounded-sm p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
             >
               <span
                 className={`relative block h-[64px] w-[64px] md:h-[72px] md:w-[72px] lg:h-[84px] lg:w-[84px] overflow-hidden rounded-full border transition-all duration-300 ease-out will-change-transform group-hover/cat:scale-[1.08] group-hover/cat:border-primary group-hover/cat:shadow-[0_10px_28px_rgba(97,0,11,0.18)] ${
                   isActive
-                    ? 'border-primary shadow-[0_0_0_3px_rgba(97,0,11,0.08),0_8px_24px_rgba(97,0,11,0.16)]'
+                    ? 'border-primary shadow-[0_0_0_3px_rgba(97,0,11,0.08),0_8px_24px_rgba(97,0,11,0.16)] scale-[1.04]'
                     : 'border-primary/8 shadow-sm'
                 }`}
               >
@@ -121,43 +160,94 @@ const CategoryStrip = memo(function CategoryStrip({ items, onNavigate }: { items
 })
 
 /** Desktop mega panel: (Flower) collection strip on top, then category list (left) + hero image (right). */
+/** Desktop mega panel: (Flower) collection strip on top, or standard list (left) + dynamic hover preview image (right). */
 const MegaPanel = memo(function MegaPanel({ cat, onNavigate }: { cat: NavCategory; onNavigate?: () => void }) {
+  const [hoveredItem, setHoveredItem] = useState<NavItem | null>(null)
   const isStrip = cat.layout === 'strip'
-  const hasStrip = isStrip && cat.items.length > 0
-  // Strip menus (Flower): the strip covers individual flowers, so the list shows the
-  // four fixed collections instead of repeating flower names. Other menus list their items.
-  const listItems = isStrip ? flowerTabItems(cat.href) : cat.items
+
+  // Strip layout (Flower): only render the circular category strip, cleanly centered
+  if (isStrip && cat.items.length > 0) {
+    return (
+      <div className="max-w-[1440px] mx-auto px-4 md:px-12 py-6 md:py-8">
+        <CategoryStrip items={cat.items} onNavigate={onNavigate} />
+      </div>
+    )
+  }
+
+  // Standard category menus (Gift Combos, Shop By Occasion, Blushing Blooms):
+  const listItems = cat.items
+  const displayImage = hoveredItem?.hoverImage || hoveredItem?.image || cat.hero?.image || null
+  const displayAlt = hoveredItem?.name || cat.hero?.alt || cat.label
+  const displayTitle = hoveredItem?.name || cat.hero?.alt || cat.label
+  const isSpecificHover = Boolean(hoveredItem && (hoveredItem.hoverImage || hoveredItem.image))
+
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-12 pt-5 pb-6 md:pb-8">
-      {hasStrip && <CategoryStrip items={cat.items} onNavigate={onNavigate} />}
-      <div
-        className={`grid items-center gap-6 md:gap-10 lg:gap-14 ${
-          hasStrip
-            // Strip menus: list flexes, hero keeps its intrinsic width — side-by-side from md
-            // so tablets don't stack into a double-height panel.
-            ? 'grid-cols-1 md:grid-cols-[1fr_auto] mt-6 border-t border-primary/8 pt-6'
-            : 'grid-cols-1 lg:grid-cols-2 py-2'
-        }`}
-      >
-        <div className={`grid gap-x-8 gap-y-0.5 ${listItems.length > 6 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className="grid items-center gap-6 md:gap-10 lg:gap-14 grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] py-2">
+        <div className={`grid gap-x-8 gap-y-1 ${listItems.length > 6 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
           {listItems.map((item) => (
-            <MegaLink key={item.href} label={item.name} href={item.href} onNavigate={onNavigate} />
+            <MegaLink
+              key={item.href}
+              label={item.name}
+              href={item.href}
+              isHovered={hoveredItem?.name === item.name}
+              onHover={() => setHoveredItem(item)}
+              onLeave={() => setHoveredItem(null)}
+              onNavigate={onNavigate}
+            />
           ))}
         </div>
-        {/* aspect box reserves space → no CLS; lazy-loaded by default */}
-        {cat.hero && (
-          <div
-            className={`relative mx-auto overflow-hidden rounded-lg bg-secondary/5 shadow-[0_16px_48px_rgba(97,0,11,0.12)] ${
-              cat.hero.aspect ?? 'aspect-[16/10]'
-            } ${cat.hero.width ?? 'w-full'}`}
-          >
-            <Image
-              src={cat.hero.image}
-              alt={cat.hero.alt}
-              fill
-              sizes={hasStrip ? '260px' : '(max-width: 1024px) 100vw, 50vw'}
-              className="object-cover"
-            />
+        {/* Dynamic aspect box: shows the hovered subcategory's hover image with smooth animation */}
+        {(displayImage || cat.hero) && (
+          <div className="relative mx-auto w-full max-w-[480px]">
+            <div
+              className={`relative overflow-hidden rounded-2xl bg-secondary/5 shadow-[0_16px_48px_rgba(97,0,11,0.12)] border border-primary/10 ${
+                cat.hero?.aspect ?? 'aspect-[16/10]'
+              } ${cat.hero?.width ?? 'w-full'}`}
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={displayImage || 'fallback-hero'}
+                  initial={{ opacity: 0, scale: 1.03 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute inset-0"
+                >
+                  {displayImage ? (
+                    <Image
+                      src={displayImage}
+                      alt={displayAlt}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 480px"
+                      className="object-cover transition-transform duration-700 ease-out hover:scale-105"
+                      priority
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-cream font-serif text-2xl text-primary/30">
+                      {cat.label}
+                    </div>
+                  )}
+
+                  {/* Gradient vignette for luxurious contrast */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
+
+                  {/* Bottom badge displaying current hovered subcategory */}
+                  <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between pointer-events-none text-white">
+                    <div>
+                      <p className="font-serif text-lg md:text-xl font-medium tracking-wide drop-shadow-md">
+                        {displayTitle}
+                      </p>
+                      {isSpecificHover && (
+                        <p className="text-[10px] font-sans uppercase tracking-[0.2em] text-white/80 drop-shadow-sm mt-0.5">
+                          View Products →
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
         )}
       </div>
@@ -341,12 +431,8 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
   // The active mega menu / mobile submenu resolve to a category from the DB-driven menu.
   const activeCat = activeMegaMenu ? menu.find((c) => c.key === activeMegaMenu) ?? null : null
   const submenuCat = mobileSubmenu ? menu.find((c) => c.key === mobileSubmenu) ?? null : null
-  // Mobile has no strip, so the Flower submenu shows the collections first, then the flowers.
-  const submenuItems: NavItem[] = submenuCat
-    ? submenuCat.layout === 'strip'
-      ? [...flowerTabItems(submenuCat.href), ...submenuCat.items]
-      : submenuCat.items
-    : []
+  // Submenu items for mobile drawer
+  const submenuItems: NavItem[] = submenuCat ? submenuCat.items : []
 
   // While the drawer is open the navbar must be SOLID cream: it sits above the dark scrim,
   // so the usual translucent bg-cream/95 would let the scrim tint it and no longer match the
@@ -602,13 +688,28 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                             {submenuCat.label}
                           </span>
                         </button>
-                        <ul className="flex flex-col gap-1">
+                        <ul className="flex flex-col gap-2">
                           {submenuItems.map((item) => (
                             <li key={item.href}>
-                              <Link href={item.href} onClick={closeMobileMenu} className={`${PRIMARY_ROW} min-h-[52px]`}>
-                                <span className="font-serif text-[16px] min-[390px]:text-[17px] font-light uppercase leading-[1.2] tracking-[0.14em] text-primary">
-                                  {item.name}
-                                </span>
+                              <Link
+                                href={item.href}
+                                onClick={closeMobileMenu}
+                                className={`${PRIMARY_ROW} min-h-[52px] px-1`}
+                              >
+                                <div className="flex items-center gap-3.5">
+                                  {item.image ? (
+                                    <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-primary/20 bg-secondary/5 shadow-xs">
+                                      <Image src={item.image} alt={item.name} fill sizes="40px" className="object-cover" />
+                                    </span>
+                                  ) : (
+                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cream font-serif text-sm font-semibold text-primary/40 border border-primary/10">
+                                      {item.name.charAt(0)}
+                                    </span>
+                                  )}
+                                  <span className="font-serif text-[16px] min-[390px]:text-[17px] font-light uppercase leading-[1.2] tracking-[0.14em] text-primary">
+                                    {item.name}
+                                  </span>
+                                </div>
                                 <ChevronRight
                                   size={16}
                                   strokeWidth={1.5}

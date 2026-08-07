@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Edit2, Loader2, Check, X, ChevronDown, ChevronRight, Sparkles, CreditCard } from 'lucide-react';
+import Link from 'next/link';
+import { Package, Search, Edit2, Loader2, Check, X, ChevronDown, ChevronRight, Sparkles, CreditCard, FileText } from 'lucide-react';
 
 const money = (v: any) => `QAR ${Number(v || 0).toFixed(2)}`;
 
@@ -65,6 +66,23 @@ export default function AdminOrders() {
     }
   };
 
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredOrders = orders.filter((order) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    const orderId = (order.id || '').toLowerCase();
+    const customerName = `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.toLowerCase();
+    const email = (order.user?.email || '').toLowerCase();
+    const tracking = (order.trackingNumber || '').toLowerCase();
+    return (
+      orderId.includes(term) ||
+      customerName.includes(term) ||
+      email.includes(term) ||
+      tracking.includes(term)
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -73,8 +91,11 @@ export default function AdminOrders() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
             type="text" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search orders..." 
-            className="pl-10 pr-4 py-2 border rounded-lg focus:ring-primary focus:border-primary"
+            suppressHydrationWarning
+            className="pl-10 pr-4 py-2 border rounded-lg focus:ring-primary focus:border-primary text-sm"
           />
         </div>
       </div>
@@ -99,17 +120,17 @@ export default function AdminOrders() {
                     <Loader2 className="animate-spin h-8 w-8 mx-auto text-primary" />
                   </td>
                 </tr>
-              ) : orders.length === 0 ? (
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <Package size={48} className="text-gray-300 mb-4" />
-                      <p>No orders have been placed yet.</p>
+                      <p>{searchTerm ? 'No orders matching your search.' : 'No orders have been placed yet.'}</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                orders.map((order) => {
+                filteredOrders.map((order) => {
                   const si = order.shippingInfo || {};
                   const open = expandedId === order.id;
                   return (
@@ -213,13 +234,24 @@ export default function AdminOrders() {
                           </button>
                         </div>
                       ) : (
-                        <button 
-                          onClick={() => handleEditClick(order)}
-                          className="p-1.5 text-gray-400 hover:text-primary transition-colors inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          <Edit2 size={16} />
-                          Update
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/admin/orders/${order.id}/invoice`}
+                            target="_blank"
+                            className="p-1.5 text-gray-600 hover:text-[#61000B] bg-gray-50 hover:bg-[#61000B]/10 rounded border border-gray-200 transition-colors inline-flex items-center gap-1 text-xs font-semibold"
+                            title="View / Print Tax Invoice"
+                          >
+                            <FileText size={14} />
+                            Invoice
+                          </Link>
+                          <button 
+                            onClick={() => handleEditClick(order)}
+                            className="p-1.5 text-gray-400 hover:text-primary transition-colors inline-flex items-center gap-1 text-xs font-medium"
+                          >
+                            <Edit2 size={14} />
+                            Update
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -268,16 +300,26 @@ export default function AdminOrders() {
                             </dl>
                           </div>
                         </div>
-                        {/* Delivery & contact */}
-                        <div className="mt-5">
-                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Delivery &amp; Contact</h4>
-                          <div className="rounded-lg border border-gray-100 bg-white px-3 py-3 text-sm text-gray-700">
+                        {/* Delivery & contact + Invoice Quick Button */}
+                        <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="rounded-lg border border-gray-100 bg-white px-3 py-3 text-sm text-gray-700 flex-1">
+                            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Delivery &amp; Contact</h4>
                             <p className="font-medium">{si.firstName || order.user?.firstName || ''} {si.lastName || order.user?.lastName || ''}</p>
                             {(si.address || si.city || si.zip) && (
                               <p className="text-gray-500">{[si.address, si.city, si.zip].filter(Boolean).join(', ')}</p>
                             )}
                             <p className="text-gray-500">{si.phone || order.user?.phone || '—'} · {si.email || order.user?.email || '—'}</p>
                             <p className="mt-1 text-xs text-gray-400">Placed {new Date(order.createdAt).toLocaleString('en-US', { timeZone: 'UTC' })}</p>
+                          </div>
+                          <div className="flex sm:flex-col gap-2 shrink-0">
+                            <Link
+                              href={`/admin/orders/${order.id}/invoice`}
+                              target="_blank"
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#61000B] hover:bg-[#800010] text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs"
+                            >
+                              <FileText size={15} />
+                              Tax Invoice (فاتورة)
+                            </Link>
                           </div>
                         </div>
                       </td>

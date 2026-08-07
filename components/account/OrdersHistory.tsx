@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, AlertCircle, ChevronDown } from "lucide-react";
+import { Package, AlertCircle, ChevronDown, FileText } from "lucide-react";
 
 type OrderItem = {
   id: string;
@@ -232,8 +232,18 @@ export default function OrdersHistory() {
                       )}
                     </div>
 
-                    {cancellable(o.status) && (
-                      <div className="pt-1">
+                    {/* Actions: Invoice + Cancel */}
+                    <div className="pt-2 border-t border-[#EEE] flex flex-wrap items-center justify-between gap-3">
+                      <Link
+                        href={`/orders/${o.id}/invoice`}
+                        target="_blank"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#61000B] hover:bg-[#800010] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shadow-2xs"
+                      >
+                        <FileText size={14} />
+                        <span>Tax Invoice (فاتورة)</span>
+                      </Link>
+
+                      {cancellable(o.status) && (
                         <button
                           onClick={() => cancel(o.id, o.pointsRedeemed)}
                           disabled={cancellingId === o.id}
@@ -241,8 +251,8 @@ export default function OrdersHistory() {
                         >
                           {cancellingId === o.id ? "Cancelling…" : "Cancel Order"}
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

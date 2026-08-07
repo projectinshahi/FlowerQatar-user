@@ -1,426 +1,426 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { Reorder, useDragControls } from 'framer-motion';
+import { Loader2, Pencil, Plus, Search, Trash2, ImageOff, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Plus, Search, Loader2, GripVertical, Pencil, Trash2, Pin, Sparkles, ImageOff,
-} from 'lucide-react';
-import type { CategoryType } from '@prisma/client';
 import SubcategoryFormModal from './SubcategoryFormModal';
+import { fixedCategoryLabel } from '@/lib/category-config';
 
 export interface Subcat {
   id: string;
-  categoryType: CategoryType;
+  categoryId: string;
   name: string;
-  slug: string;
-  image: string | null;
-  imagePublicId: string | null;
+  hoverImage: string | null;
+  isExploreGarden: boolean;
   hoverColor: string | null;
-  explore: boolean;
-  pinned: boolean;
-  displayOrder: number;
-  active: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  category: { id: string; name: string };
   _count?: { products: number };
 }
 
-type Features = { image: boolean; hoverColor: boolean; explore: boolean };
+type Category = { id: string; name: string };
+type SortBy = 'name' | 'createdAt' | 'updatedAt';
 
-export default function SubcategoryManager({
-  categoryType,
-  features,
-}: {
-  categoryType: CategoryType;
-  features: Features;
-}) {
-  const [pinned, setPinned] = useState<Subcat | null>(null);
-  const [items, setItems] = useState<Subcat[]>([]); // non-pinned, ordered
+const date = (value: string) =>
+  new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
+
+export default function SubcategoryManager({ fixedCategoryName }: { fixedCategoryName?: string }) {
+  const [items, setItems] = useState<Subcat[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [showForm, setShowForm] = useState(false);
+  const [categoryId, setCategoryId] = useState('');
+  const [status, setStatus] = useState('all');
+  const [sortBy, setSortBy] = useState<SortBy>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Subcat | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Subcat | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const savedOrderRef = useRef<string>('');
 
-  const load = useCallback(
-    async (q: string) => {
-      try {
-        const res = await fetch(
-          `/api/admin/subcategories?categoryType=${categoryType}&search=${encodeURIComponent(q)}`
-        );
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const all: Subcat[] = data.subcategories;
-        setPinned(all.find((s) => s.pinned) ?? null);
-        const rest = all.filter((s) => !s.pinned);
-        setItems(rest);
-        savedOrderRef.current = rest.map((s) => s.id).join(',');
-      } catch {
-        toast.error('Failed to load subcategories');
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      let activeCategoryId = categoryId;
+
+      // If we are in a fixed category view and categoryId is not yet resolved, fetch categories first
+      let currentCategories = categories;
+      if (fixedCategoryName && (!activeCategoryId || currentCategories.length === 0)) {
+        const parentsRes = await fetch('/api/admin/categories');
+        if (parentsRes.ok) {
+          const parentData = await parentsRes.json();
+          currentCategories = parentData.categories || [];
+          setCategories(currentCategories);
+          const found = currentCategories.find((c) => c.name === fixedCategoryName);
+          if (found) {
+            activeCategoryId = found.id;
+            setCategoryId(found.id);
+          }
+        }
       }
-    },
-    [categoryType]
-  );
+
+      const p = new URLSearchParams({
+        search,
+        categoryId: activeCategoryId,
+        status,
+        sortBy,
+        sortOrder,
+        limit: '100',
+      });
+
+      const [list, parents] = await Promise.all([
+        fetch(`/api/admin/subcategories?${p}`),
+        currentCategories.length > 0 ? Promise.resolve(null) : fetch('/api/admin/categories'),
+      ]);
+
+      if (!list.ok) throw new Error();
+      const listData = await list.json();
+      setItems(listData.subcategories || []);
+
+      if (parents && parents.ok) {
+        const parentData = await parents.json();
+        setCategories(parentData.categories || []);
+      }
+    } catch {
+      toast.error('Failed to load subcategories');
+    } finally {
+      setLoading(false);
+    }
+  }, [search, categoryId, status, sortBy, sortOrder, fixedCategoryName, categories]);
 
   useEffect(() => {
-    const t = setTimeout(() => load(search), 300);
-    return () => clearTimeout(t);
-  }, [search, load]);
+    const timer = window.setTimeout(load, 300);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
-  const refetch = () => load(search);
+  useEffect(() => {
+    if (!fixedCategoryName || categories.length === 0) return;
+    const match = categories.find((c) => c.name === fixedCategoryName);
+    if (match && categoryId !== match.id) {
+      setCategoryId(match.id);
+    }
+  }, [categories, fixedCategoryName, categoryId]);
 
-  // Persist a drag reorder (only the non-pinned rows, only when the order changed).
-  const persistOrder = async () => {
-    const order = items.map((s) => s.id);
-    if (order.join(',') === savedOrderRef.current) return;
-    savedOrderRef.current = order.join(',');
-    try {
-      const res = await fetch('/api/admin/subcategories/reorder', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: order }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success('Order saved');
-    } catch {
-      toast.error('Failed to save order');
-      refetch();
+  const toggleSort = (field: SortBy) => {
+    if (sortBy === field) {
+      setSortOrder((v) => (v === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
     }
   };
 
-  const patch = async (item: Subcat, body: Partial<Pick<Subcat, 'active' | 'explore'>>) => {
-    const apply = (v: Subcat) => ({ ...v, ...body });
-    // Optimistic
-    if (item.pinned) setPinned((p) => (p ? apply(p) : p));
-    else setItems((list) => list.map((s) => (s.id === item.id ? apply(s) : s)));
-    try {
-      const res = await fetch(`/api/admin/subcategories/${item.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      toast.error('Update failed');
-      refetch();
-    }
-  };
-
-  const confirmDelete = async () => {
+  const deleteSubcategory = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/subcategories/${deleteTarget.id}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to delete');
+      const r = await fetch(`/api/admin/subcategories/${deleteTarget.id}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
       toast.success('Subcategory deleted');
-      setItems((list) => list.filter((s) => s.id !== deleteTarget.id));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to delete');
+      setDeleteTarget(null);
+      load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Delete failed');
     } finally {
       setDeleting(false);
-      setDeleteTarget(null);
     }
   };
 
-  const openAdd = () => {
-    setEditing(null);
-    setShowForm(true);
-  };
-  const openEdit = (s: Subcat) => {
-    setEditing(s);
-    setShowForm(true);
-  };
-
-  const canDrag = search.trim() === '';
-  const total = (pinned ? 1 : 0) + items.length;
+  const sortLabel = useMemo(
+    () => (field: SortBy) =>
+      `${field === 'name' ? 'Name' : field === 'createdAt' ? 'Created' : 'Updated'}${
+        sortBy === field ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''
+      }`,
+    [sortBy, sortOrder]
+  );
 
   return (
     <div className="space-y-5">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search subcategories..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#A83A22] focus:border-transparent outline-none transition"
-          />
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              suppressHydrationWarning
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={
+                fixedCategoryName
+                  ? `Search ${fixedCategoryLabel(fixedCategoryName)} subcategories...`
+                  : 'Search subcategories...'
+              }
+              className="w-full rounded-xl border border-gray-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#A83A22]"
+            />
+          </div>
+          <button
+            suppressHydrationWarning
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#A83A22] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#8e311d] shadow-sm"
+          >
+            <Plus className="h-4 w-4" /> Add Subcategory
+          </button>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 bg-[#A83A22] text-white px-5 py-2.5 rounded-xl hover:bg-[#8e311d] transition whitespace-nowrap font-medium"
-        >
-          <Plus className="w-5 h-5" /> Add Subcategory
-        </button>
+
+        <div className={`grid grid-cols-1 gap-2 ${fixedCategoryName ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+          {!fixedCategoryName && (
+            <select
+              suppressHydrationWarning
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-[#A83A22]"
+            >
+              <option value="">All parent categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {fixedCategoryLabel(c.name)}
+                </option>
+              ))}
+            </select>
+          )}
+          <select
+            suppressHydrationWarning
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-[#A83A22]"
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <div className="flex gap-2">
+            {(['name', 'createdAt', 'updatedAt'] as SortBy[]).map((field) => (
+              <button
+                suppressHydrationWarning
+                key={field}
+                onClick={() => toggleSort(field)}
+                className={`flex-1 rounded-xl border border-gray-200 px-2 py-2 text-xs font-medium transition-colors ${
+                  sortBy === field ? 'bg-gray-100 text-gray-900 font-semibold' : 'hover:bg-gray-50 text-gray-600'
+                }`}
+              >
+                {sortLabel(field)}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {!canDrag && (
-        <p className="text-xs text-gray-400 -mt-1 px-1">
-          Reordering is disabled while searching. Clear the search to drag rows.
-        </p>
-      )}
-
-      {/* List */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {loading ? (
-          <div className="p-12 text-center">
-            <Loader2 className="w-6 h-6 text-[#A83A22] animate-spin mx-auto" />
+          <div className="p-14 text-center">
+            <Loader2 className="mx-auto h-6 w-6 animate-spin text-[#A83A22]" />
           </div>
-        ) : total === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-4 mx-auto">
-              <Search className="w-9 h-9 text-orange-300" />
-            </div>
-            <p className="text-gray-900 font-medium text-lg">No subcategories yet</p>
-            <p className="text-gray-500 mt-1">
-              {search ? 'No matches for your search.' : 'Add the first subcategory to get started.'}
-            </p>
+        ) : items.length === 0 ? (
+          <div className="p-14 text-center text-sm text-gray-500">
+            No subcategories match your filters.
           </div>
         ) : (
-          <div role="list" className="divide-y divide-gray-100">
-            {/* Pinned "All …" row — always first, non-draggable, non-deletable */}
-            {pinned && (search.trim() === '' || pinned.name.toLowerCase().includes(search.toLowerCase())) && (
-              <RowContent
-                key={pinned.id}
-                item={pinned}
-                features={features}
-                onToggleActive={() => patch(pinned, { active: !pinned.active })}
-                onToggleExplore={() => patch(pinned, { explore: !pinned.explore })}
-                onEdit={() => openEdit(pinned)}
-                onDelete={undefined}
-              />
-            )}
-
-            {canDrag ? (
-              <Reorder.Group axis="y" values={items} onReorder={setItems} as="div">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-sm">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th className="p-4">Hover image</th>
+                  <th className="p-4">Subcategory</th>
+                  {!fixedCategoryName && <th className="p-4">Parent category</th>}
+                  <th className="p-4">Explore Garden</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Created</th>
+                  <th className="p-4">Updated</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
                 {items.map((item) => (
-                  <SortableRow
-                    key={item.id}
-                    item={item}
-                    features={features}
-                    onDragEnd={persistOrder}
-                    onToggleActive={() => patch(item, { active: !item.active })}
-                    onToggleExplore={() => patch(item, { explore: !item.explore })}
-                    onEdit={() => openEdit(item)}
-                    onDelete={() => setDeleteTarget(item)}
-                  />
+                  <tr key={item.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="p-4">
+                      <div className="relative h-11 w-11 overflow-hidden rounded-lg bg-gray-100 border border-gray-200">
+                        {item.hoverImage ? (
+                          <Image
+                            src={item.hoverImage}
+                            alt=""
+                            fill
+                            sizes="44px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <ImageOff className="m-3 h-5 w-5 text-gray-300" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 font-medium text-gray-900">
+                      {item.name}
+                      {item._count?.products ? (
+                        <span className="ml-2 text-xs font-normal text-gray-400">
+                          ({item._count.products} products)
+                        </span>
+                      ) : null}
+                    </td>
+                    {!fixedCategoryName && (
+                      <td className="p-4 text-gray-600">
+                        {fixedCategoryLabel(item.category.name)}
+                      </td>
+                    )}
+                    <td className="p-4">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const nextExplore = !item.isExploreGarden;
+                          const r = await fetch(`/api/admin/subcategories/${item.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              isExploreGarden: nextExplore,
+                              hoverColor: item.hoverColor || '#61000B',
+                            }),
+                          });
+                          if (r.ok) {
+                            setItems((rows) =>
+                              rows.map((x) =>
+                                x.id === item.id
+                                  ? { ...x, isExploreGarden: nextExplore, hoverColor: x.hoverColor || '#61000B' }
+                                  : x
+                              )
+                            );
+                            toast.success(
+                              nextExplore ? 'Featured in Home Garden' : 'Removed from Home Garden'
+                            );
+                          } else {
+                            toast.error('Failed to update garden status');
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                          item.isExploreGarden
+                            ? 'bg-orange-50 text-[#A83A22] border border-orange-200/70 hover:bg-orange-100'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                        title={
+                          item.isExploreGarden
+                            ? 'Featured in Explore Our Gardens (Click to toggle)'
+                            : 'Click to feature in Explore Our Gardens'
+                        }
+                      >
+                        {item.isExploreGarden ? (
+                          <>
+                            <span
+                              className="h-2.5 w-2.5 rounded-full border border-black/10 shadow-xs"
+                              style={{ backgroundColor: item.hoverColor || '#61000B' }}
+                            />
+                            <span>In Garden</span>
+                          </>
+                        ) : (
+                          <span>Off</span>
+                        )}
+                      </button>
+                    </td>
+                    <td className="p-4">
+                      <button
+                        onClick={async () => {
+                          const r = await fetch(`/api/admin/subcategories/${item.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ isActive: !item.isActive }),
+                          });
+                          if (r.ok) {
+                            setItems((rows) =>
+                              rows.map((x) => (x.id === item.id ? { ...x, isActive: !x.isActive } : x))
+                            );
+                            toast.success('Status updated');
+                          } else {
+                            toast.error('Status update failed');
+                          }
+                        }}
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+                          item.isActive
+                            ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {item.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                    <td className="p-4 text-gray-500">{date(item.createdAt)}</td>
+                    <td className="p-4 text-gray-500">{date(item.updatedAt)}</td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => {
+                            setEditing(item);
+                            setFormOpen(true);
+                          }}
+                          aria-label={`Edit ${item.name}`}
+                          className="rounded-lg p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(item)}
+                          aria-label={`Delete ${item.name}`}
+                          className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </Reorder.Group>
-            ) : (
-              items.map((item) => (
-                <RowContent
-                  key={item.id}
-                  item={item}
-                  features={features}
-                  onToggleActive={() => patch(item, { active: !item.active })}
-                  onToggleExplore={() => patch(item, { explore: !item.explore })}
-                  onEdit={() => openEdit(item)}
-                  onDelete={() => setDeleteTarget(item)}
-                />
-              ))
-            )}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Add/Edit modal */}
-      {showForm && (
+      {formOpen && (
         <SubcategoryFormModal
-          categoryType={categoryType}
-          features={features}
           initial={editing}
-          onClose={() => setShowForm(false)}
+          fixedCategoryName={fixedCategoryName}
+          categories={
+            fixedCategoryName
+              ? categories.filter((category) => category.name === fixedCategoryName)
+              : categories
+          }
+          onClose={() => setFormOpen(false)}
           onSaved={() => {
-            setShowForm(false);
-            refetch();
+            setFormOpen(false);
+            load();
           }}
         />
       )}
 
-      {/* Delete confirm */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 text-red-500 mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <h3 className="text-xl font-bold text-center text-gray-900 mb-2">Delete “{deleteTarget.name}”?</h3>
-            <p className="text-center text-gray-500 mb-6">
-              This permanently removes the subcategory{deleteTarget.image ? ' and its image' : ''}. This action
-              cannot be undone.
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <h2 className="text-lg font-bold text-gray-900">Delete subcategory?</h2>
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete <span className="font-semibold text-gray-900">{deleteTarget.name}</span>?
             </p>
-            <div className="flex gap-3">
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition"
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={confirmDelete}
                 disabled={deleting}
-                className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 font-medium transition flex items-center justify-center gap-2 disabled:opacity-70"
+                onClick={deleteSubcategory}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-60"
               >
-                {deleting && <Loader2 className="w-4 h-4 animate-spin" />} Delete
+                {deleting ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/** A draggable list row: Reorder.Item wrapper + a grip handle wired to drag controls. */
-function SortableRow({
-  item,
-  features,
-  onDragEnd,
-  onToggleActive,
-  onToggleExplore,
-  onEdit,
-  onDelete,
-}: {
-  item: Subcat;
-  features: Features;
-  onDragEnd: () => void;
-  onToggleActive: () => void;
-  onToggleExplore: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const controls = useDragControls();
-  return (
-    <Reorder.Item
-      value={item}
-      dragListener={false}
-      dragControls={controls}
-      onDragEnd={onDragEnd}
-      as="div"
-      className="bg-white"
-    >
-      <RowContent
-        item={item}
-        features={features}
-        dragHandle={
-          <button
-            type="button"
-            onPointerDown={(e) => controls.start(e)}
-            aria-label="Drag to reorder"
-            className="cursor-grab active:cursor-grabbing touch-none text-gray-300 hover:text-gray-500 p-1"
-          >
-            <GripVertical className="w-5 h-5" />
-          </button>
-        }
-        onToggleActive={onToggleActive}
-        onToggleExplore={onToggleExplore}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
-    </Reorder.Item>
-  );
-}
-
-/** Shared presentation for one subcategory row (used draggable, static, and pinned). */
-function RowContent({
-  item,
-  features,
-  dragHandle,
-  onToggleActive,
-  onToggleExplore,
-  onEdit,
-  onDelete,
-}: {
-  item: Subcat;
-  features: Features;
-  dragHandle?: React.ReactNode;
-  onToggleActive: () => void;
-  onToggleExplore: () => void;
-  onEdit: () => void;
-  onDelete?: () => void;
-}) {
-  return (
-    <div role="listitem" className="flex items-center gap-3 p-4 hover:bg-gray-50/60 transition group">
-      {/* Drag handle (or spacer for pinned/static) */}
-      <div className="w-7 flex justify-center">{dragHandle ?? (item.pinned ? <Pin className="w-4 h-4 text-[#A83A22]" /> : null)}</div>
-
-      {/* Thumb */}
-      {features.image && (
-        <div className="relative w-11 h-11 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0">
-          {item.image ? (
-            <Image src={item.image} alt={item.name} fill className="object-cover" />
-          ) : (
-            <ImageOff className="w-4 h-4 text-gray-300" />
-          )}
-        </div>
-      )}
-
-      {/* Name + slug */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-gray-900 truncate">{item.name}</p>
-          {item.pinned && (
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#A83A22] bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded">
-              Default
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-gray-500 truncate">
-          /{item.slug}
-          {typeof item._count?.products === 'number' && (
-            <span className="ml-2 text-gray-400">· {item._count.products} product{item._count.products === 1 ? '' : 's'}</span>
-          )}
-        </p>
-      </div>
-
-      {/* Explore toggle (Flower only) */}
-      {features.explore && (
-        <button
-          onClick={onToggleExplore}
-          title="Show in home “Explore Our Garden”"
-          className={`hidden sm:inline-flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs font-medium border transition ${
-            item.explore
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-              : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" /> {item.explore ? 'In garden' : 'Hidden'}
-        </button>
-      )}
-
-      {/* Active toggle */}
-      <button
-        onClick={onToggleActive}
-        aria-label={item.active ? 'Deactivate' : 'Activate'}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#A83A22] focus:ring-offset-2 shrink-0 ${
-          item.active ? 'bg-green-500' : 'bg-gray-200'
-        }`}
-      >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${item.active ? 'translate-x-6' : 'translate-x-1'}`} />
-      </button>
-
-      {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0">
-        <button onClick={onEdit} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" aria-label="Edit">
-          <Pencil className="w-4 h-4" />
-        </button>
-        {onDelete ? (
-          <button onClick={onDelete} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" aria-label="Delete">
-            <Trash2 className="w-4 h-4" />
-          </button>
-        ) : (
-          <span className="p-2 text-gray-200" title="The default “All” item cannot be deleted">
-            <Trash2 className="w-4 h-4" />
-          </span>
-        )}
-      </div>
     </div>
   );
 }

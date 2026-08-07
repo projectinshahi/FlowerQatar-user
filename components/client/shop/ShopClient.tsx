@@ -8,7 +8,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { Product } from '../../../types';
 import { ROSE_COLORS } from '../../../data/products';
 
-type CategoryOption = { name: string; slug: string };
+type CategoryOption = { name: string; key: string };
 
 function ShopContent({
   products,
@@ -166,9 +166,9 @@ function ShopContent({
                   </button>
                   {categories.map((c) => (
                     <button
-                      key={c.slug}
-                      onClick={() => setSelectedShape(c.slug)}
-                      className={`text-left text-[12px] py-1 capitalize transition-colors ${selectedShape === c.slug ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
+                      key={c.key}
+                      onClick={() => setSelectedShape(c.key)}
+                      className={`text-left text-[12px] py-1 capitalize transition-colors ${selectedShape === c.key ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
                     >
                       {c.name}
                     </button>
@@ -245,7 +245,7 @@ function ShopContent({
                   <div className="flex flex-wrap gap-2">
                     <button onClick={() => setSelectedShape('')} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!selectedShape ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
                     {categories.map((c) => (
-                      <button key={c.slug} onClick={() => setSelectedShape(c.slug)} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${selectedShape === c.slug ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.name}</button>
+                      <button key={c.key} onClick={() => setSelectedShape(c.key)} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${selectedShape === c.key ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.name}</button>
                     ))}
                   </div>
                 </div>

@@ -23,7 +23,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const product = result.data;
   const store = mapDbProductToStore(product);
-  const categoryLabel = product.categoryType ? CATEGORY_META[product.categoryType as CategoryType].label : null;
+  const categoryMeta = product.categoryType ? (CATEGORY_META as Record<string, { label: string } | undefined>)[product.categoryType] : undefined;
+  const categoryLabel = categoryMeta?.label ?? null;
 
   const description = productMetaDescription(product.name, product.description || product.shortDescription);
   const keywords = buildKeywords({
@@ -72,7 +73,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = JSON.parse(JSON.stringify(data));
 
   const type = data.categoryType as CategoryType | null;
-  const categoryLabel = type ? CATEGORY_META[type].label : null;
+  const typeMeta = type ? (CATEGORY_META as Record<string, { label: string } | undefined>)[type] : undefined;
+  const categoryLabel = typeMeta?.label ?? null;
   const productUrl = absoluteUrl(`/product/${data.slug}`);
   const inStock = data.status === "PUBLISHED";
 
@@ -108,7 +110,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Breadcrumb trail: Home › [Category] › Product.
   const crumbs = [
     { name: "Home", item: SITE_URL },
-    ...(type && categoryLabel ? [{ name: categoryLabel, item: absoluteUrl(shopCategoryHref(type)) }] : []),
+    ...(type && typeMeta && categoryLabel ? [{ name: categoryLabel, item: absoluteUrl(shopCategoryHref(type as any)) }] : []),
     { name: data.name, item: productUrl },
   ];
   const breadcrumbLd = {

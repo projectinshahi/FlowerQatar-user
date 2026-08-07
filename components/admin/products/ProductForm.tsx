@@ -33,6 +33,7 @@ export default function ProductForm({ subcategories, initialData }: { subcategor
       sku: "",
       shortDescription: "",
       description: "",
+      country: "",
       categoryType: "",
       subcategoryId: "",
       status: "DRAFT",

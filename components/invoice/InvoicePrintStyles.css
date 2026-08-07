@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Typography & Fonts */
+.font-invoice {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.font-arabic {
+  font-family: 'Cairo', 'Amiri', 'Traditional Arabic', sans-serif;
+}
+
+/* Subtle & Premium Neutral Utilities */
+.invoice-bg-card {
+  background-color: #FAFAFA;
+}
+
+.invoice-border {
+  border-color: #EAEAEA;
+}
+
+.invoice-text-primary {
+  color: #2E2E2E;
+}
+
+.invoice-text-secondary {
+  color: #6B7280;
+}
+
+.invoice-accent {
+  color: #61000B;
+}
+
+.invoice-accent-bg {
+  background-color: #61000B;
+}
+
+/* Document Container */
+.invoice-page-container {
+  width: 100%;
+  max-width: 210mm;
+  margin: 0 auto;
+  background-color: #FFFFFF;
+  color: #2E2E2E;
+  box-sizing: border-box;
+}
+
+/* Screen Mode Preview Styling */
+@media screen {
+  .invoice-screen-preview {
+    background-color: #F8F9FA;
+    padding: 2rem 1rem;
+    min-height: 100vh;
+  }
+
+  .invoice-page-card {
+    background: #FFFFFF;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    border: 1px solid #EAEAEA;
+    border-radius: 12px;
+    margin: 0 auto;
+    padding: 12mm 14mm;
+    box-sizing: border-box;
+  }
+}
+
+/* Print Mode for Flawless A4 PDF Output */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  html, body {
+    background: #FFFFFF !important;
+    color: #2E2E2E !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 9.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print,
+  .no-print * {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .invoice-screen-preview {
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  .invoice-page-card {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .invoice-page-container {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .avoid-page-break,
+  .invoice-summary-block,
+  .invoice-footer-block,
+  .invoice-customer-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

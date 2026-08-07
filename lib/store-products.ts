@@ -35,7 +35,7 @@ export function mapDbProductToStore(db: any): Product {
   for (const c of allColors) {
     if (c?.colorName && !seen.has(c.colorName)) {
       seen.add(c.colorName);
-      const cGallery: string[] = (c.galleryImages || []).map((g: { url?: string }) => g?.url).filter(Boolean);
+      const cGallery: string[] = (c.galleryImages || []).filter((g: any) => g?.type !== "video").map((g: { url?: string }) => g?.url).filter(Boolean);
       const cImage = cGallery[0] || c.swatchImage || c.hoverImage || PLACEHOLDER;
       const cHover = cGallery[1] || c.hoverImage || cImage;
       colors.push({ name: c.colorName, hex: c.colorCode || "#000000", image: cImage, hoverImage: cHover });
@@ -50,7 +50,7 @@ export function mapDbProductToStore(db: any): Product {
     }
   }
 
-  const gallery: string[] = (defColor?.galleryImages || []).map((g: any) => g?.url).filter(Boolean);
+  const gallery: string[] = (defColor?.galleryImages || []).filter((g: any) => g?.type !== "video").map((g: any) => g?.url).filter(Boolean);
   const image = gallery[0] || defColor?.swatchImage || defColor?.hoverImage || PLACEHOLDER;
   const hoverImage = gallery[1] || defColor?.hoverImage || image;
 
@@ -68,8 +68,8 @@ export function mapDbProductToStore(db: any): Product {
     name: db.name,
     price: onSale ? sale! : price,
     originalPrice: onSale ? price : undefined,
-    // Browsing key: the product's subcategory slug (falls back to a generic bucket).
-    collection: db.subcategory?.slug || "signature",
+    // Browsing key: stable subcategory id (no URL slug is stored for subcategories).
+    collection: db.subcategory?.id || "signature",
     colors,
     image,
     hoverImage,
@@ -130,7 +130,7 @@ export const getProductsByCategory = cache(
 export interface StoreCategory {
   id: string;
   name: string;
-  slug: string;
+  key: string;
   image: string;
   productCount: number;
 }
@@ -143,21 +143,20 @@ export interface StoreCategory {
 export const getStoreCategories = cache(async (): Promise<StoreCategory[]> => {
   try {
     const subs = await prisma.subcategory.findMany({
-      where: { active: true },
-      orderBy: [{ categoryType: "asc" }, { pinned: "desc" }, { displayOrder: "asc" }, { name: "asc" }],
+      where: { isActive: true, category: { isActive: true } },
+      orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
-        slug: true,
-        image: true,
+        hoverImage: true,
         _count: { select: { products: { where: { status: "PUBLISHED" } } } },
       },
     });
     return subs.map((s) => ({
       id: s.id,
       name: s.name,
-      slug: s.slug,
-      image: s.image || PLACEHOLDER,
+      key: s.id,
+      image: s.hoverImage || PLACEHOLDER,
       productCount: s._count.products,
     }));
   } catch (e) {
@@ -207,17 +206,21 @@ export interface ExploreGardenItem {
 export const getExploreGardenItems = cache(async (): Promise<ExploreGardenItem[]> => {
   try {
     const rows = await prisma.subcategory.findMany({
-      where: { categoryType: "FLOWER", active: true, explore: true, pinned: false },
-      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, slug: true, image: true, hoverColor: true },
+      where: {
+        isActive: true,
+        isExploreGarden: true,
+        category: { name: "FLOWER", isActive: true },
+      },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, hoverImage: true, hoverColor: true },
     });
     return rows.map((c) => ({
       id: c.id,
       name: c.name,
-      image: c.image || PLACEHOLDER,
+      image: c.hoverImage || PLACEHOLDER,
       hoverColor: toOverlayColor(c.hoverColor || "#61000B"),
       textColor: contrastText(c.hoverColor || "#61000B"),
-      href: `/shop?collection=${c.slug}`,
+      href: `/shop?subcategory=${c.id}`,
     }));
   } catch (e) {
     logDbError("getExploreGardenItems", e);

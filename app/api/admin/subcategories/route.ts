@@ -1,91 +1,56 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { z } from 'zod';
 import { guardAdmin } from '@/lib/admin-guard';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { createSubcategorySchema, categoryTypeSchema, slugify } from '@/lib/validations/subcategory';
+import { createSubcategorySchema, subcategoryListQuerySchema } from '@/lib/validations/subcategory';
 import { NAV_MENU_TAG } from '@/lib/subcategories';
 import { logDbError } from '@/lib/prisma-error';
+import { z } from 'zod';
 
-// Subcategory changes affect the mega-menus (in the root layout), the home page
-// "Explore Our Garden", and every category listing — bust the cached menu and the tree.
-function revalidateStorefront() {
-  revalidateTag(NAV_MENU_TAG, 'max');
-  revalidatePath('/', 'layout');
-}
-
-/** Unique slug within a category: derive from name if blank, then de-dupe with a suffix. */
-async function uniqueSlug(categoryType: z.infer<typeof categoryTypeSchema>, desired: string, excludeId?: string) {
-  const base = slugify(desired) || 'item';
-  let slug = base;
-  for (let i = 2; ; i++) {
-    const clash = await prisma.subcategory.findFirst({
-      where: { categoryType, slug, ...(excludeId ? { id: { not: excludeId } } : {}) },
-      select: { id: true },
-    });
-    if (!clash) return slug;
-    slug = `${base}-${i}`;
-  }
-}
+function revalidateStorefront() { revalidateTag(NAV_MENU_TAG, 'max'); revalidatePath('/', 'layout'); }
 
 export async function GET(request: Request) {
-  const denied = await guardAdmin();
-  if (denied) return denied;
+  const denied = await guardAdmin(); if (denied) return denied;
   try {
-    const { searchParams } = new URL(request.url);
-    const parsedType = categoryTypeSchema.safeParse(searchParams.get('categoryType'));
-    if (!parsedType.success) {
-      return NextResponse.json({ error: 'Invalid or missing categoryType' }, { status: 400 });
-    }
-    const search = searchParams.get('search')?.trim() || '';
-
-    const subcategories = await prisma.subcategory.findMany({
-      where: {
-        categoryType: parsedType.data,
-        ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
-      },
-      orderBy: [{ pinned: 'desc' }, { displayOrder: 'asc' }, { name: 'asc' }],
-      include: { _count: { select: { products: true } } },
-    });
-
-    return NextResponse.json({ subcategories });
+    const params = Object.fromEntries(new URL(request.url).searchParams);
+    const query = subcategoryListQuerySchema.parse(params);
+    const where: Prisma.SubcategoryWhereInput = {
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...(query.status === 'all' ? {} : { isActive: query.status === 'active' }),
+      ...(query.search ? { OR: [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { category: { name: { contains: query.search, mode: 'insensitive' } } },
+      ] } : {}),
+    };
+    const [subcategories, total] = await prisma.$transaction([
+      prisma.subcategory.findMany({ where, include: { category: { select: { id: true, name: true } }, _count: { select: { products: true } } }, orderBy: { [query.sortBy]: query.sortOrder }, skip: (query.page - 1) * query.limit, take: query.limit }),
+      prisma.subcategory.count({ where }),
+    ]);
+    return NextResponse.json({ subcategories, pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) } });
   } catch (error) {
-    logDbError('GET /subcategories', error);
-    return NextResponse.json({ error: 'Failed to fetch subcategories' }, { status: 500 });
+    if (error instanceof z.ZodError) return NextResponse.json({ error: error.issues[0]?.message ?? 'Invalid query' }, { status: 400 });
+    logDbError('GET /admin/subcategories', error); return NextResponse.json({ error: 'Failed to fetch subcategories' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
-  const denied = await guardAdmin();
-  if (denied) return denied;
+  const denied = await guardAdmin(); if (denied) return denied;
   try {
-    const body = await request.json();
-    const { categoryType, slug: rawSlug, ...data } = createSubcategorySchema.parse(body);
-
-    const slug = await uniqueSlug(categoryType, rawSlug || data.name);
-
-    const subcategory = await prisma.subcategory.create({
-      data: {
-        categoryType,
-        name: data.name,
-        slug,
-        image: data.image ?? null,
-        imagePublicId: data.imagePublicId ?? null,
-        hoverColor: data.hoverColor ?? null,
-        explore: data.explore,
-        displayOrder: data.displayOrder,
-        active: data.active,
-        pinned: false, // pinned "All …" rows are system-managed only
-      },
+    const data = createSubcategorySchema.parse(await request.json());
+    const subcategory = await prisma.$transaction(async (tx) => {
+      const category = await tx.category.findFirst({ where: { id: data.categoryId, isActive: true }, select: { id: true } });
+      if (!category) throw new Error('PARENT_CATEGORY_INACTIVE');
+      const duplicate = await tx.subcategory.findFirst({ where: { categoryId: data.categoryId, name: { equals: data.name, mode: 'insensitive' } }, select: { id: true } });
+      if (duplicate) throw new Error('DUPLICATE');
+      return tx.subcategory.create({ data, include: { category: { select: { id: true, name: true } } } });
     });
-
-    revalidateStorefront();
-    return NextResponse.json(subcategory, { status: 201 });
+    revalidateStorefront(); return NextResponse.json(subcategory, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
-    }
-    logDbError('POST /subcategories', error);
-    return NextResponse.json({ error: 'Failed to create subcategory' }, { status: 500 });
+    if (error instanceof z.ZodError) return NextResponse.json({ error: error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
+    if (error instanceof Error && error.message === 'DUPLICATE') return NextResponse.json({ error: 'A subcategory with this name already exists in the selected category' }, { status: 409 });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return NextResponse.json({ error: 'A subcategory with this name already exists in the selected category' }, { status: 409 });
+    if (error instanceof Error && error.message === 'PARENT_CATEGORY_INACTIVE') return NextResponse.json({ error: 'Select an active parent category' }, { status: 400 });
+    logDbError('POST /admin/subcategories', error); return NextResponse.json({ error: 'Failed to create subcategory' }, { status: 500 });
   }
 }

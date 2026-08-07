@@ -35,8 +35,8 @@ export default async function CollectionsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {list.map((cat) => (
           <Link
-            key={cat.slug}
-            href={`/shop?collection=${cat.slug}`}
+            key={cat.key}
+            href={`/shop?subcategory=${cat.key}`}
             className="group relative block bg-cream overflow-hidden border border-divider/40 aspect-[4/3]"
           >
             {cat.image ? (

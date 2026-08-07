@@ -36,6 +36,7 @@ export default async function AdminProductsPage(props: {
         sku: product.sku || "",
         shortDescription: product.shortDescription || "",
         description: product.description || "",
+        country: product.country || "",
         categoryType: product.categoryType || "",
         subcategoryId: product.subcategoryId || "",
         status: product.status,
@@ -74,7 +75,8 @@ export default async function AdminProductsPage(props: {
               url: img.url,
               publicId: img.publicId,
               isPrimary: img.isPrimary,
-              order: img.order
+              order: img.order,
+              type: img.type || (img.url?.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) ? "video" : "image"),
             }))
           }))
         }))

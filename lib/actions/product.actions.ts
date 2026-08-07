@@ -47,6 +47,7 @@ function buildVariantsJson(variants: ProductFormValues["variants"]) {
         publicId: img.publicId,
         isPrimary: img.isPrimary ?? false,
         order: img.order ?? 0,
+        type: img.type || (img.url.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) ? "video" : "image"),
       })),
     })),
   }));
@@ -74,6 +75,18 @@ export async function createProduct(data: ProductFormValues) {
       finalSlug = `${finalSlug}-${Date.now()}`;
     }
 
+    // If subcategoryId is provided, ensure categoryType matches its parent category
+    let resolvedCategoryType = parsed.categoryType || null;
+    if (parsed.subcategoryId && !resolvedCategoryType) {
+      const subcat = await prisma.subcategory.findUnique({
+        where: { id: parsed.subcategoryId },
+        include: { category: true },
+      });
+      if (subcat?.category?.name) {
+        resolvedCategoryType = subcat.category.name as any;
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         name: productName,
@@ -81,7 +94,8 @@ export async function createProduct(data: ProductFormValues) {
         sku: parsed.sku || null,
         shortDescription: parsed.shortDescription || null,
         description: parsed.description || null,
-        categoryType: parsed.categoryType || null,
+        country: parsed.country || null,
+        categoryType: resolvedCategoryType,
         subcategoryId: parsed.subcategoryId || null,
         status: parsed.status as ProductStatus,
         isFeatured: parsed.isFeatured,
@@ -130,6 +144,18 @@ export async function updateProduct(id: string, data: ProductFormValues) {
       }
     }
 
+    // If subcategoryId is provided, ensure categoryType matches its parent category
+    let resolvedCategoryType = parsed.categoryType || null;
+    if (parsed.subcategoryId && !resolvedCategoryType) {
+      const subcat = await prisma.subcategory.findUnique({
+        where: { id: parsed.subcategoryId },
+        include: { category: true },
+      });
+      if (subcat?.category?.name) {
+        resolvedCategoryType = subcat.category.name as any;
+      }
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -138,7 +164,8 @@ export async function updateProduct(id: string, data: ProductFormValues) {
         sku: parsed.sku || null,
         shortDescription: parsed.shortDescription || null,
         description: parsed.description || null,
-        categoryType: parsed.categoryType || null,
+        country: parsed.country || null,
+        categoryType: resolvedCategoryType,
         subcategoryId: parsed.subcategoryId || null,
         status: parsed.status as ProductStatus,
         isFeatured: parsed.isFeatured,
@@ -260,8 +287,9 @@ export async function deleteProduct(id: string) {
       for (const cv of variant?.colorVariants || []) {
         for (const img of cv?.galleryImages || []) {
           if (img?.publicId) {
-            await deleteCloudinaryImage(img.publicId).catch((err) =>
-              console.error("Failed to delete Cloudinary image:", err)
+            const resourceType = img.type === "video" ? "video" : "image";
+            await deleteCloudinaryImage(img.publicId, resourceType).catch((err) =>
+              console.error("Failed to delete Cloudinary media:", err)
             );
           }
         }

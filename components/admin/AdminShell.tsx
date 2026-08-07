@@ -128,6 +128,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </nav>
         <div className="p-4 border-t border-gray-50">
           <button
+            suppressHydrationWarning
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3.5 text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-colors w-full font-medium text-sm"
           >

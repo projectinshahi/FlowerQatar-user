@@ -1,12 +1,37 @@
 "use client";
 
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Globe } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Country } from "country-state-city";
 import ProductCareInput from "./ProductCareInput";
 import ColorVariantsFieldArray from "./ColorVariantsFieldArray";
 import VariantSpecifications from "./VariantSpecifications";
-import { CATEGORY_ORDER, CATEGORY_META } from "@/lib/category-config";
+import { FIXED_CATEGORY_TYPES, fixedCategoryLabel } from "@/lib/category-config";
+
+const ALL_COUNTRIES = Country.getAllCountries();
+
+const POPULAR_COUNTRY_NAMES = [
+  "Qatar",
+  "Netherlands",
+  "Ecuador",
+  "Kenya",
+  "Colombia",
+  "United Arab Emirates",
+  "Saudi Arabia",
+  "France",
+  "Italy",
+  "United Kingdom",
+  "United States",
+  "Turkey",
+  "India",
+  "Thailand",
+  "Japan",
+];
+
+const POPULAR_COUNTRIES = POPULAR_COUNTRY_NAMES.map((name) =>
+  ALL_COUNTRIES.find((c) => c.name.toLowerCase() === name.toLowerCase())
+).filter(Boolean) as (typeof ALL_COUNTRIES)[number][];
 
 type SubOption = { id: string; categoryType: string; name: string };
 
@@ -14,7 +39,21 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
   const { register, control, watch, setValue, getValues, formState: { errors } } = useFormContext();
   // Subcategory options depend on the chosen category; changing the category clears the subcategory.
   const selectedType = watch("categoryType");
-  const subOptions = subcategories.filter((s) => s.categoryType === selectedType);
+  const selectedSubId = watch("subcategoryId");
+
+  // If subcategoryId is present but categoryType is not set, sync it automatically
+  useEffect(() => {
+    if (selectedSubId && !selectedType) {
+      const match = subcategories.find((s) => s.id === selectedSubId);
+      if (match?.categoryType) {
+        setValue("categoryType", match.categoryType, { shouldDirty: true });
+      }
+    }
+  }, [selectedSubId, selectedType, subcategories, setValue]);
+
+  const subOptions = selectedType
+    ? subcategories.filter((s) => s.categoryType === selectedType)
+    : subcategories;
   const { fields, append, remove } = useFieldArray({
     control,
     name: "variants",
@@ -113,8 +152,8 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white"
             >
               <option value="">Select Category</option>
-              {CATEGORY_ORDER.map((key) => (
-                <option key={key} value={key}>{CATEGORY_META[key].label}</option>
+              {FIXED_CATEGORY_TYPES.map((key) => (
+                <option key={key} value={key}>{fixedCategoryLabel(key)}</option>
               ))}
             </select>
           </div>
@@ -122,11 +161,45 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
             <label className="block text-sm font-medium text-gray-700 mb-2">Subcategory</label>
             <select
               {...register("subcategoryId")}
-              disabled={!selectedType}
+              onChange={(e) => {
+                const subId = e.target.value;
+                setValue("subcategoryId", subId, { shouldDirty: true });
+                const matched = subcategories.find((s) => s.id === subId);
+                if (matched?.categoryType) {
+                  setValue("categoryType", matched.categoryType, { shouldDirty: true });
+                }
+              }}
+              disabled={!selectedType && subOptions.length === 0}
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white disabled:bg-gray-50 disabled:text-gray-400"
             >
               <option value="">{selectedType ? "Select Subcategory" : "Select a category first"}</option>
               {subOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
+              <Globe className="h-4 w-4 text-gray-400" />
+              <span>Country of Origin / Sourcing</span>
+            </label>
+            <select
+              {...register("country")}
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white"
+            >
+              <option value="">Select Country</option>
+              <optgroup label="Popular Flower Origins & Sourcing">
+                {POPULAR_COUNTRIES.map((c) => (
+                  <option key={`pop-${c.isoCode}`} value={c.name}>
+                    {c.flag} {c.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="All Countries">
+                {ALL_COUNTRIES.map((c) => (
+                  <option key={c.isoCode} value={c.name}>
+                    {c.flag} {c.name} ({c.isoCode})
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
         </div>

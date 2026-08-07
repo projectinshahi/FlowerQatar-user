@@ -34,6 +34,7 @@ const nextConfig: NextConfig = {
   // Trim the client bundle so pages hydrate/interact more smoothly.
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
+    cpus: 1,
   },
 
   compress: true,

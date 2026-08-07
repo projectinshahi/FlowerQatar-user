@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, X, Maximize2, ImageOff, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Maximize2, ImageOff, ArrowUp, ArrowDown, Film, Play } from "lucide-react";
 
 export interface GalleryImage {
   url: string;
+  type?: "image" | "video";
 }
 
 const SWIPE_THRESHOLD = 40;
@@ -20,6 +21,16 @@ const LENS_W = PANEL_W / ZOOM;
 const LENS_H = PANEL_H / ZOOM;
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
+/** Detect video items by explicit type OR by URL extension / Cloudinary video path */
+function isVideoItem(item: GalleryImage): boolean {
+  if (item.type === "video") return true;
+  if (typeof item.url === "string") {
+    if (/\.(mp4|webm|mov|ogg)(\?.*)?$/i.test(item.url)) return true;
+    if (item.url.includes("/video/upload/")) return true;
+  }
+  return false;
+}
+
 export default function ProductGallery({ images, productName }: { images: GalleryImage[]; productName: string }) {
   const pics = (images || []).filter((i) => i?.url);
   const [active, setActive] = useState(0);
@@ -28,6 +39,7 @@ export default function ProductGallery({ images, productName }: { images: Galler
   const [zoom, setZoom] = useState<{ x: number; y: number; rw: number; rh: number } | null>(null);
   const touchX = useRef<number | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const count = pics.length;
   const go = useCallback((dir: number) => setActive((a) => (a + dir + count) % count), [count]);
@@ -36,6 +48,10 @@ export default function ProductGallery({ images, productName }: { images: Galler
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (active >= count && count > 0) setActive(0);
   }, [count, active]);
+
+  const currentItem = pics[active];
+  const currentIsVideo = currentItem ? isVideoItem(currentItem) : false;
+  const current = currentItem?.url;
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); go(1); }
@@ -75,9 +91,8 @@ export default function ProductGallery({ images, productName }: { images: Galler
     );
   }
 
-  const current = pics[active]?.url;
-
   const onMove = (e: React.MouseEvent) => {
+    if (currentIsVideo) return; // No zoom lens on videos
     const el = frameRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -91,45 +106,86 @@ export default function ProductGallery({ images, productName }: { images: Galler
   return (
     <div onKeyDown={onKeyDown} tabIndex={0} aria-roledescription="carousel" aria-label={`${productName} images`} className="relative outline-none">
       <div className="w-full flex items-center gap-4 lg:gap-6">
-        {/* Main image */}
+        {/* Main image / video */}
         <div
           ref={frameRef}
-          className="relative flex-grow w-full aspect-[4/5] bg-[#FAFAFA] overflow-hidden group rounded-sm cursor-crosshair"
+          className={`relative flex-grow w-full aspect-[4/5] bg-[#FAFAFA] overflow-hidden group rounded-sm ${currentIsVideo ? "cursor-pointer" : "cursor-crosshair"}`}
           onMouseMove={onMove}
           onMouseLeave={() => setZoom(null)}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
-          onClick={() => setLightbox(true)}
+          onClick={() => {
+            if (currentIsVideo) {
+              // Toggle play/pause on click for the inline video
+              if (videoRef.current) {
+                if (videoRef.current.paused) videoRef.current.play();
+                else videoRef.current.pause();
+              }
+            } else {
+              setLightbox(true);
+            }
+          }}
           role="button"
-          aria-label="Open full-screen preview"
+          aria-label={currentIsVideo ? "Play/pause video" : "Open full-screen preview"}
         >
-          <Image
-            key={current}
-            src={current}
-            alt={`${productName} — image ${active + 1} of ${count}`}
-            fill
-            sizes="(max-width: 1024px) 100vw, 55vw"
-            priority={active === 0}
-            className="object-contain lg:object-cover"
-          />
-
-          {/* Hover lens (desktop only) */}
-          {zoom && (
-            <div
-              className="hidden lg:block absolute border border-primary/40 bg-primary/10 pointer-events-none"
-              style={{ width: LENS_W, height: LENS_H, left: lensLeft, top: lensTop }}
+          {currentIsVideo ? (
+            /* Video player */
+            <video
+              ref={videoRef}
+              key={current}
+              src={current}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-contain"
+              style={{ background: "#000" }}
+              onClick={(e) => e.stopPropagation()}
             />
-          )}
+          ) : (
+            /* Image */
+            <>
+              <Image
+                key={current}
+                src={current}
+                alt={`${productName} — image ${active + 1} of ${count}`}
+                fill
+                sizes="(max-width: 1024px) 100vw, 55vw"
+                priority={active === 0}
+                className="object-contain lg:object-cover"
+              />
 
-          <span className="absolute top-3 right-3 bg-white/85 text-primary rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity lg:hidden">
-            <Maximize2 size={15} />
-          </span>
+              {/* Hover lens (desktop only, images only) */}
+              {zoom && (
+                <div
+                  className="hidden lg:block absolute border border-primary/40 bg-primary/10 pointer-events-none"
+                  style={{ width: LENS_W, height: LENS_H, left: lensLeft, top: lensTop }}
+                />
+              )}
+
+              <span className="absolute top-3 right-3 bg-white/85 text-primary rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity lg:hidden">
+                <Maximize2 size={15} />
+              </span>
+            </>
+          )}
 
           {/* Mobile dots */}
           {count > 1 && (
             <div className="flex lg:hidden absolute bottom-5 left-0 right-0 justify-center gap-2 px-4 z-10">
-              {pics.map((_, idx) => (
-                <span key={idx} className="w-[6px] h-[6px] rounded-full transition-colors" style={{ backgroundColor: idx === active ? "#000" : "#D5D5D5" }} />
+              {pics.map((item, idx) => (
+                <span
+                  key={idx}
+                  className="flex items-center justify-center transition-colors"
+                  style={{
+                    width: isVideoItem(item) ? 18 : 6,
+                    height: 6,
+                    borderRadius: isVideoItem(item) ? 3 : "50%",
+                    backgroundColor: idx === active ? "#000" : "#D5D5D5",
+                  }}
+                >
+                  {isVideoItem(item) && (
+                    <Film size={4} className="text-white" style={{ display: idx === active ? "block" : "none" }} />
+                  )}
+                </span>
               ))}
             </div>
           )}
@@ -142,9 +198,30 @@ export default function ProductGallery({ images, productName }: { images: Galler
               <ArrowUp size={14} strokeWidth={1.5} />
             </button>
             <div className="flex flex-col gap-3 py-2">
-              {pics.map((_, idx) => (
-                <button key={idx} type="button" onClick={() => setActive(idx)} aria-label={`View image ${idx + 1}`} aria-current={idx === active} className="w-[7px] h-[7px] rounded-full transition-all" style={{ backgroundColor: idx === active ? ACTIVE_DOT : "#D5D5D5", transform: idx === active ? "scale(1.25)" : "scale(1)" }} />
-              ))}
+              {pics.map((item, idx) => {
+                const itemIsVideo = isVideoItem(item);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActive(idx)}
+                    aria-label={itemIsVideo ? `View video ${idx + 1}` : `View image ${idx + 1}`}
+                    aria-current={idx === active}
+                    className="relative flex items-center justify-center transition-all"
+                    style={{
+                      width: itemIsVideo ? 18 : 7,
+                      height: itemIsVideo ? 12 : 7,
+                      borderRadius: itemIsVideo ? 3 : "50%",
+                      backgroundColor: idx === active ? ACTIVE_DOT : "#D5D5D5",
+                      transform: idx === active ? "scale(1.25)" : "scale(1)",
+                    }}
+                  >
+                    {itemIsVideo && (
+                      <Play size={6} className="fill-white text-white ml-[1px]" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <button type="button" onClick={() => go(1)} aria-label="Next image" className="w-8 h-8 rounded-full border border-[#EBEBEB] flex items-center justify-center bg-white text-black hover:bg-gray-50 transition-colors">
               <ArrowDown size={14} strokeWidth={1.5} />
@@ -153,8 +230,8 @@ export default function ProductGallery({ images, productName }: { images: Galler
         )}
       </div>
 
-      {/* Side zoom panel (desktop only) — appears to the right while hovering */}
-      {zoom && (
+      {/* Side zoom panel (desktop only, images only) — appears to the right while hovering */}
+      {zoom && !currentIsVideo && (
         <div
           className="hidden lg:block absolute top-0 left-full ml-6 z-40 rounded-sm border border-[#EBEBEB] bg-white shadow-2xl overflow-hidden pointer-events-none"
           style={{
@@ -172,7 +249,7 @@ export default function ProductGallery({ images, productName }: { images: Galler
       {/* Fullscreen lightbox (tap/pinch zoom for touch devices) */}
       <AnimatePresence>
         {lightbox && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/90 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Image preview" onClick={() => setLightbox(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/90 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Media preview" onClick={() => setLightbox(false)}>
             <button type="button" onClick={() => setLightbox(false)} aria-label="Close" className="absolute top-4 right-4 text-white/80 hover:text-white p-2 z-10"><X size={24} /></button>
             {count > 1 && (
               <>
@@ -180,9 +257,32 @@ export default function ProductGallery({ images, productName }: { images: Galler
                 <button type="button" onClick={(e) => { e.stopPropagation(); go(1); }} aria-label="Next" className="absolute right-3 md:right-6 text-white/80 hover:text-white p-2 z-10"><ChevronRight size={30} /></button>
               </>
             )}
-            <motion.div key={active} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: zoomedFull ? 1.8 : 1 }} transition={{ duration: 0.2 }} className="relative w-[92vw] h-[80vh] cursor-zoom-in" style={{ touchAction: "pinch-zoom" }} onClick={(e) => { e.stopPropagation(); setZoomedFull((z) => !z); }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-              <Image src={current} alt={`${productName} — enlarged`} fill sizes="92vw" className="object-contain" />
-            </motion.div>
+
+            {currentIsVideo ? (
+              /* Lightbox video player */
+              <motion.div
+                key={active}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
+                className="relative w-[92vw] h-[80vh] flex items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <video
+                  src={current}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-w-full max-h-full rounded-sm"
+                  style={{ background: "#000" }}
+                />
+              </motion.div>
+            ) : (
+              /* Lightbox image */
+              <motion.div key={active} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: zoomedFull ? 1.8 : 1 }} transition={{ duration: 0.2 }} className="relative w-[92vw] h-[80vh] cursor-zoom-in" style={{ touchAction: "pinch-zoom" }} onClick={(e) => { e.stopPropagation(); setZoomedFull((z) => !z); }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+                <Image src={current} alt={`${productName} — enlarged`} fill sizes="92vw" className="object-contain" />
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
