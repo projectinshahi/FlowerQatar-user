@@ -70,16 +70,25 @@ const select = {
   category: { select: { name: true } },
 } as const;
 
+/**
+ * Admin ordering for the category strip. `name` only breaks ties between rows that share a
+ * position (possible right after a subcategory is created), so the output is always stable.
+ */
+const NAV_ORDER = [{ navigationPosition: 'asc' }, { name: 'asc' }] as const;
+
+/** A subcategory is in the strip only if it is active AND flagged for navigation. */
+const NAV_VISIBLE = { isActive: true, showInNavigation: true } as const;
+
 export const getSubcategories = cache(
   async (categoryType: CategoryType): Promise<StoreSubcategory[]> => {
     try {
       return (
         await prisma.subcategory.findMany({
           where: {
-            isActive: true,
+            ...NAV_VISIBLE,
             category: { name: categoryType, isActive: true },
           },
-          orderBy: { name: 'asc' },
+          orderBy: [...NAV_ORDER],
           select,
         })
       ).map(shape);
@@ -98,8 +107,8 @@ export const getMenuData = cache(
 
     try {
       for (const row of await prisma.subcategory.findMany({
-        where: { isActive: true, category: { isActive: true } },
-        orderBy: { name: 'asc' },
+        where: { ...NAV_VISIBLE, category: { isActive: true } },
+        orderBy: [...NAV_ORDER],
         select,
       })) {
         const item = shape(row);

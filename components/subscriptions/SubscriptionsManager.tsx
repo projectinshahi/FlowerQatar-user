@@ -9,6 +9,7 @@ import SubscriptionCard from "./SubscriptionCard";
 import CreateSubscriptionModal from "./CreateSubscriptionModal";
 import DeliveryTimeline from "./DeliveryTimeline";
 import StatusBadge from "./StatusBadge";
+import { Skeleton } from '@/components/ui/Skeleton';
 
 const fmt = (d: string | null) =>
   d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
@@ -61,8 +62,8 @@ export default function SubscriptionsManager() {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-pulse">
-          {Array.from({ length: 2 }).map((_, i) => <div key={i} className="rounded-2xl border border-[#EEE] p-5 h-52 bg-[#FAFAFA]" />)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" aria-hidden="true">
+          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-2xl" />)}
         </div>
       )}
 

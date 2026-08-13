@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Package, Search, Edit2, Loader2, Check, X, ChevronDown, ChevronRight, Sparkles, CreditCard, FileText } from 'lucide-react';
+import { AdminSkeletonRows } from '@/components/skeletons/AdminSkeletons';
 
 const money = (v: any) => `QAR ${Number(v || 0).toFixed(2)}`;
 
@@ -115,11 +116,7 @@ export default function AdminOrders() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    <Loader2 className="animate-spin h-8 w-8 mx-auto text-primary" />
-                  </td>
-                </tr>
+                <AdminSkeletonRows rows={8} columns={['40%', '55%', '35%', '30%', '25%']} withActions={false} />
               ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">

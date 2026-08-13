@@ -2,17 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { Loader2, Pencil, Plus, Search, Trash2, ImageOff, Sparkles } from 'lucide-react';
+import { Reorder, useDragControls } from 'framer-motion';
+import {
+  Loader2, Pencil, Plus, Search, Trash2, ImageOff, GripVertical, ArrowUpDown, X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import SubcategoryFormModal from './SubcategoryFormModal';
-import { fixedCategoryLabel } from '@/lib/category-config';
+import { AdminTableCardSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { CATEGORY_FEATURES, fixedCategoryLabel, type CategoryType } from '@/lib/category-config';
 
 export interface Subcat {
   id: string;
   categoryId: string;
   name: string;
   hoverImage: string | null;
+  showInNavigation: boolean;
+  navigationPosition: number;
   isExploreGarden: boolean;
+  gardenPosition: number;
   hoverColor: string | null;
   isActive: boolean;
   createdAt: string;
@@ -22,10 +29,62 @@ export interface Subcat {
 }
 
 type Category = { id: string; name: string };
-type SortBy = 'name' | 'createdAt' | 'updatedAt';
+type SortBy = 'name' | 'createdAt' | 'updatedAt' | 'navigationPosition' | 'gardenPosition';
+
+/** The two independently-ordered sections and the column each one writes. */
+type OrderSection = 'navigation' | 'garden';
+const POSITION_COLUMN: Record<OrderSection, 'navigationPosition' | 'gardenPosition'> = {
+  navigation: 'navigationPosition',
+  garden: 'gardenPosition',
+};
+const SECTION_LABEL: Record<OrderSection, string> = {
+  navigation: 'Navigation order',
+  garden: 'Explore Gardens order',
+};
 
 const date = (value: string) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
+
+/**
+ * A table row that can be dragged. `Reorder` needs its own drag controls per row, which
+ * requires a component boundary — the cells themselves are passed in so the normal and
+ * draggable rows always render identical content.
+ */
+function DraggableRow({
+  item,
+  position,
+  cells,
+}: {
+  item: Subcat;
+  position: number;
+  cells: React.ReactNode;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      as="tr"
+      value={item}
+      dragListener={false}
+      dragControls={controls}
+      className="bg-white hover:bg-gray-50/70 transition-colors"
+    >
+      <td className="p-4">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onPointerDown={(e) => controls.start(e)}
+            aria-label={`Reorder ${item.name}`}
+            className="cursor-grab touch-none rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="w-5 text-xs font-semibold text-gray-400">{position}</span>
+        </div>
+      </td>
+      {cells}
+    </Reorder.Item>
+  );
+}
 
 export default function SubcategoryManager({ fixedCategoryName }: { fixedCategoryName?: string }) {
   const [items, setItems] = useState<Subcat[]>([]);
@@ -40,6 +99,13 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
   const [editing, setEditing] = useState<Subcat | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Subcat | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Reorder mode. `draft` is null until the admin actually drags something — that is what
+  // makes "Save order" appear, so an untouched list can never post a pointless write.
+  const [reordering, setReordering] = useState(false);
+  const [orderSection, setOrderSection] = useState<OrderSection>('navigation');
+  const [draft, setDraft] = useState<Subcat[] | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,6 +170,51 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
     }
   }, [categories, fixedCategoryName, categoryId]);
 
+  // Positions are per parent category, so reordering only makes sense inside one of them.
+  const canReorder = Boolean(categoryId);
+  const gardenAvailable = Boolean(
+    fixedCategoryName && CATEGORY_FEATURES[fixedCategoryName as CategoryType]?.explore
+  );
+  const rows = draft ?? items;
+
+  /** Enter reorder mode: clear filters so the list shown IS the full list being renumbered. */
+  const startReorder = (section: OrderSection) => {
+    setOrderSection(section);
+    setReordering(true);
+    setDraft(null);
+    setSearch('');
+    setStatus('all');
+    setSortBy(POSITION_COLUMN[section]);
+    setSortOrder('asc');
+  };
+
+  const exitReorder = () => {
+    setReordering(false);
+    setDraft(null);
+    setSortBy('createdAt');
+    setSortOrder('desc');
+  };
+
+  const saveOrder = async () => {
+    if (!draft) return;
+    setSavingOrder(true);
+    try {
+      const r = await fetch('/api/admin/subcategories/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section: orderSection, ids: draft.map((s) => s.id) }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error || 'Failed to update order');
+      toast.success('Order updated successfully');
+      setDraft(null);
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update order');
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
   const toggleSort = (field: SortBy) => {
     if (sortBy === field) {
       setSortOrder((v) => (v === 'asc' ? 'desc' : 'asc'));
@@ -147,6 +258,7 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
             <input
               suppressHydrationWarning
               value={search}
+              disabled={reordering}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={
                 fixedCategoryName
@@ -168,7 +280,71 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
           </button>
         </div>
 
-        <div className={`grid grid-cols-1 gap-2 ${fixedCategoryName ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+        {canReorder && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-orange-100 bg-orange-50/40 p-2.5">
+            {!reordering ? (
+              <>
+                <ArrowUpDown className="h-4 w-4 text-[#A83A22]" />
+                <span className="mr-1 text-xs font-semibold text-gray-700">Reorder:</span>
+                <button
+                  type="button"
+                  onClick={() => startReorder('navigation')}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-[#A83A22] hover:text-[#A83A22]"
+                >
+                  {SECTION_LABEL.navigation}
+                </button>
+                {gardenAvailable && (
+                  <button
+                    type="button"
+                    onClick={() => startReorder('garden')}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-[#A83A22] hover:text-[#A83A22]"
+                  >
+                    {SECTION_LABEL.garden}
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <GripVertical className="h-4 w-4 text-[#A83A22]" />
+                <span className="text-xs font-semibold text-gray-800">
+                  {SECTION_LABEL[orderSection]}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {draft ? 'Unsaved changes' : 'Drag rows to reorder'}
+                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  {/* Only a real drag creates `draft`, so Save appears exactly when there is
+                      something to save — nothing is written until it is clicked. */}
+                  {draft && (
+                    <button
+                      type="button"
+                      disabled={savingOrder}
+                      onClick={saveOrder}
+                      className="rounded-lg bg-[#A83A22] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#8e311d] disabled:opacity-60"
+                    >
+                      {savingOrder ? 'Saving…' : 'Save order'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={savingOrder}
+                    onClick={exitReorder}
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    {draft ? 'Discard' : 'Done'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        <div
+          className={`grid grid-cols-1 gap-2 ${fixedCategoryName ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} ${
+            reordering ? 'pointer-events-none opacity-40' : ''
+          }`}
+        >
           {!fixedCategoryName && (
             <select
               suppressHydrationWarning
@@ -213,9 +389,12 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {loading ? (
-          <div className="p-14 text-center">
-            <Loader2 className="mx-auto h-6 w-6 animate-spin text-[#A83A22]" />
-          </div>
+          // Same table shape as the loaded state, so the card keeps its height on swap.
+          <AdminTableCardSkeleton
+            rows={6}
+            withImage
+            columns={fixedCategoryName ? ['45%', '30%', '25%', '35%', '35%'] : ['45%', '35%', '30%', '25%', '35%', '35%']}
+          />
         ) : items.length === 0 ? (
           <div className="p-14 text-center text-sm text-gray-500">
             No subcategories match your filters.
@@ -225,6 +404,7 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
             <table className="w-full min-w-[700px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
                 <tr>
+                  {reordering && <th className="p-4">Order</th>}
                   <th className="p-4">Hover image</th>
                   <th className="p-4">Subcategory</th>
                   {!fixedCategoryName && <th className="p-4">Parent category</th>}
@@ -235,9 +415,9 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/70 transition-colors">
+              {(() => {
+                const cells = (item: Subcat) => (
+                  <>
                     <td className="p-4">
                       <div className="relative h-11 w-11 overflow-hidden rounded-lg bg-gray-100 border border-gray-200">
                         {item.hoverImage ? (
@@ -367,9 +547,36 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
                         </button>
                       </div>
                     </td>
-                  </tr>
-                ))}
-              </tbody>
+                  </>
+                );
+
+                return reordering ? (
+                  <Reorder.Group
+                    as="tbody"
+                    axis="y"
+                    values={rows}
+                    onReorder={setDraft}
+                    className="divide-y divide-gray-100"
+                  >
+                    {rows.map((item, index) => (
+                      <DraggableRow
+                        key={item.id}
+                        item={item}
+                        position={index + 1}
+                        cells={cells(item)}
+                      />
+                    ))}
+                  </Reorder.Group>
+                ) : (
+                  <tbody className="divide-y divide-gray-100">
+                    {rows.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50/70 transition-colors">
+                        {cells(item)}
+                      </tr>
+                    ))}
+                  </tbody>
+                );
+              })()}
             </table>
           </div>
         )}

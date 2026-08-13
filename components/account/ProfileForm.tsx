@@ -128,16 +128,16 @@ export default function ProfileForm() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-[#EEE] bg-white p-6 sm:p-8 shadow-sm animate-pulse">
+      <div className="rounded-2xl border border-[#EEE] bg-white p-6 sm:p-8 shadow-sm">
         <div className="flex items-center gap-5 mb-8">
-          <div className="w-24 h-24 rounded-full bg-[#EEE]" />
-          <div className="h-9 w-28 bg-[#F0F0F0] rounded-lg" />
+          <div className="w-24 h-24 rounded-full skeleton" />
+          <div className="h-9 w-28 skeleton rounded-lg" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i}>
-              <div className="h-3 w-24 bg-[#EEE] mb-2" />
-              <div className="h-10 bg-[#F0F0F0] rounded-lg" />
+              <div className="h-3 w-24 skeleton mb-2" />
+              <div className="h-10 skeleton rounded-lg" />
             </div>
           ))}
         </div>

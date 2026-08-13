@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Edit2, Trash2, Plus, Search, Loader2, ImageOff, ArrowUpDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from 'sonner';
 
 interface Occasion {
@@ -167,17 +168,17 @@ export default function OccasionList() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                // Skeleton
+                // Same row shape as before, now on the shared shimmer instead of animate-pulse.
                 Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="p-4"><div className="h-12 w-16 rounded-lg bg-gray-100" /></td>
-                    <td className="p-4"><div className="h-3 w-28 rounded bg-gray-100" /></td>
-                    <td className="p-4"><div className="h-3 w-40 rounded bg-gray-100" /></td>
-                    <td className="p-4"><div className="h-5 w-16 rounded-md bg-gray-100" /></td>
-                    <td className="p-4"><div className="h-3 w-10 rounded bg-gray-100" /></td>
-                    <td className="p-4"><div className="h-8 w-8 rounded-full bg-gray-100" /></td>
-                    <td className="p-4"><div className="h-6 w-11 rounded-full bg-gray-100" /></td>
-                    <td className="p-4"><div className="h-3 w-20 rounded bg-gray-100" /></td>
+                  <tr key={i} aria-hidden="true">
+                    <td className="p-4"><Skeleton className="h-12 w-16 rounded-lg" /></td>
+                    <td className="p-4"><Skeleton className="h-3 w-28 rounded" /></td>
+                    <td className="p-4"><Skeleton className="h-3 w-40 rounded" /></td>
+                    <td className="p-4"><Skeleton className="h-5 w-16 rounded-md" /></td>
+                    <td className="p-4"><Skeleton className="h-3 w-10 rounded" /></td>
+                    <td className="p-4"><Skeleton className="h-8 w-8 rounded-full" /></td>
+                    <td className="p-4"><Skeleton className="h-6 w-11 rounded-full" /></td>
+                    <td className="p-4"><Skeleton className="h-3 w-20 rounded" /></td>
                     <td className="p-4" />
                   </tr>
                 ))

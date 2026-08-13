@@ -25,24 +25,24 @@ export default function CartPage() {
       </h1>
 
       {cartLoading && cart.length === 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-pulse">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-8 space-y-6">
             <div className="border border-divider/60 divide-y divide-divider">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="p-6 flex gap-6 bg-white">
-                  <div className="w-24 h-28 bg-cream flex-shrink-0 border border-divider/40" />
+                  <div className="w-24 h-28 skeleton flex-shrink-0 border border-divider/40" />
                   <div className="flex-grow space-y-3">
-                    <div className="h-3 w-1/2 bg-cream" />
-                    <div className="h-2 w-1/3 bg-cream" />
-                    <div className="h-2 w-2/3 bg-cream" />
-                    <div className="h-8 w-32 bg-cream mt-6" />
+                    <div className="h-3 w-1/2 skeleton" />
+                    <div className="h-2 w-1/3 skeleton" />
+                    <div className="h-2 w-2/3 skeleton" />
+                    <div className="h-8 w-32 skeleton mt-6" />
                   </div>
                 </div>
               ))}
             </div>
           </div>
           <div className="lg:col-span-4">
-            <div className="border border-divider/60 p-6 bg-cream/40 h-64" />
+            <div className="border border-divider/60 p-6 skeleton h-64" />
           </div>
         </div>
       ) : cart.length === 0 ? (

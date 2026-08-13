@@ -749,19 +749,29 @@ model Category {
 /// A child of one Category. Keep this model deliberately narrow so every consumer uses
 /// the same source of truth for its hover asset and status.
 model Subcategory {
-  id              String    @id @default(uuid()) @db.Uuid
-  categoryId      String    @db.Uuid
-  name            String    @db.VarChar(100)
-  hoverImage      String?
-  isExploreGarden Boolean   @default(false)
-  hoverColor      String?   @db.VarChar(50)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
-  category        Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  products        Product[]
+  id         String  @id @default(uuid()) @db.Uuid
+  categoryId String  @db.Uuid
+  name       String  @db.VarChar(100)
+  hoverImage String?
+  hoverColor String? @db.VarChar(50)
+  isActive   Boolean @default(true)
+
+  /// Visibility + order are per-section and deliberately independent:
+  /// the category strip (nav) and the home "Explore Our Gardens" grid each have their own
+  /// flag and their own position, so the same subcategory can be 5th in one and 1st in the other.
+  /// `isExploreGarden` is the garden flag (kept under its original name).
+  showInNavigation   Boolean @default(true)
+  navigationPosition Int     @default(0)
+  isExploreGarden    Boolean @default(false)
+  gardenPosition     Int     @default(0)
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(6)
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  products  Product[]
 
   @@unique([categoryId, name])
   @@index([categoryId, isActive])
   @@index([isExploreGarden, isActive])
+  @@index([categoryId, showInNavigation, navigationPosition])
 }

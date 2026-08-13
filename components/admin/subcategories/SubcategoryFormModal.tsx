@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import imageCompression from 'browser-image-compression';
+import { uploadToCloudinary } from '@/lib/cloudinary-upload';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, UploadCloud, X, FolderTree, Sparkles, Palette, Check } from 'lucide-react';
+import { Loader2, UploadCloud, X, FolderTree, Sparkles, Palette, Check, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import { subcategorySchema, type SubcategoryFormData } from '@/lib/validations/subcategory';
 import { fixedCategoryLabel } from '@/lib/category-config';
@@ -65,6 +65,7 @@ export default function SubcategoryFormModal({
       categoryId: defaultCategoryId,
       name: initial?.name ?? '',
       hoverImage: initial?.hoverImage ?? null,
+      showInNavigation: initial?.showInNavigation ?? true,
       isExploreGarden: initial?.isExploreGarden ?? false,
       hoverColor: initial?.hoverColor ?? '#61000B',
       isActive: initial?.isActive ?? true,
@@ -95,52 +96,11 @@ export default function SubcategoryFormModal({
   };
 
   const upload = async (source: File) => {
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(source.type)) {
-      return toast.error('Use a JPG, JPEG, PNG, or WEBP image');
-    }
-    if (source.size > 5 * 1024 * 1024) {
-      return toast.error('Image must be 5 MB or smaller');
-    }
-
     setUploading(true);
     setProgress(0);
-
     try {
-      const file = await imageCompression(source, {
-        maxSizeMB: 4.5,
-        maxWidthOrHeight: 2400,
-        useWebWorker: true,
-        fileType: source.type,
-      });
-
-      const signature = await fetch('/api/admin/cloudinary/signature');
-      if (!signature.ok) throw new Error('Unable to prepare upload');
-      const { apiKey, cloudName, timestamp, signature: sig } = await signature.json();
-
-      const data = new FormData();
-      data.append('file', file);
-      data.append('api_key', apiKey);
-      data.append('timestamp', String(timestamp));
-      data.append('signature', sig);
-      data.append('folder', 'flower_products');
-
-      const response = await new Promise<{ secure_url: string }>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            setProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        };
-        xhr.onload = () =>
-          xhr.status >= 200 && xhr.status < 300
-            ? resolve(JSON.parse(xhr.responseText))
-            : reject(new Error('Upload failed'));
-        xhr.onerror = () => reject(new Error('Upload failed'));
-        xhr.send(data);
-      });
-
-      setValue('hoverImage', response.secure_url, { shouldDirty: true, shouldValidate: true });
+      const url = await uploadToCloudinary(source, setProgress);
+      setValue('hoverImage', url, { shouldDirty: true, shouldValidate: true });
       toast.success('Hover image uploaded');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Upload failed');
@@ -329,6 +289,25 @@ export default function SubcategoryFormModal({
             {errors.hoverImage && (
               <p className="mt-1 text-sm text-red-600">{errors.hoverImage.message}</p>
             )}
+          </div>
+
+          {/* Show in the storefront category strip — independent of Explore for Garden below. */}
+          <div className="rounded-2xl border border-gray-200/80 bg-stone-50/50 p-4 transition-all">
+            <label className="flex items-start justify-between gap-4 cursor-pointer select-none">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Compass className="h-4 w-4 text-[#A83A22]" />
+                  <span className="text-sm font-semibold text-gray-900">Show in Flower Navigation</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Show in the storefront category strip. Works independently of Active status.
+                </p>
+              </div>
+              <div className="relative inline-flex items-center">
+                <input type="checkbox" {...register('showInNavigation')} className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#A83A22]"></div>
+              </div>
+            </label>
           </div>
 
           {/* Explore for Garden section */}

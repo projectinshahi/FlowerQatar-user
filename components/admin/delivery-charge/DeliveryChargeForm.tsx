@@ -78,12 +78,12 @@ export default function DeliveryChargeForm() {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse rounded-2xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
-        <div className="mb-6 h-5 w-40 rounded bg-gray-100" />
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
+        <div className="mb-6 h-5 w-40 rounded skeleton" />
         <div className="space-y-6">
-          <div className="h-10 w-full rounded-lg bg-gray-100" />
-          <div className="h-10 w-full rounded-lg bg-gray-100" />
-          <div className="h-10 w-44 rounded-lg bg-gray-100" />
+          <div className="h-10 w-full rounded-lg skeleton" />
+          <div className="h-10 w-full rounded-lg skeleton" />
+          <div className="h-10 w-44 rounded-lg skeleton" />
         </div>
       </div>
     );

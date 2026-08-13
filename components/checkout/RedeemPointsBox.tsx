@@ -93,7 +93,7 @@ export default function RedeemPointsBox({ maxRedeemable, onChange }: Props) {
       </div>
 
       {available === null ? (
-        <div className="h-10 animate-pulse rounded-lg bg-cream/50" />
+        <div className="h-10 rounded-lg skeleton" />
       ) : !canRedeem ? (
         /* No active membership / no points → invite to subscribe */
         <Link

@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Product } from '../types';
+import { SearchResultSkeleton } from '@/components/skeletons/ProductSkeletons';
 
 const TOP_SEARCHES = [
   'Hydrangeas',
@@ -162,9 +163,9 @@ export default function SearchDrawer() {
                       </h3>
                       
                       {loading ? (
-                        <div className="py-10 text-center">
-                          <p className="font-serif text-base text-[#888] animate-pulse">Searching…</p>
-                        </div>
+                        // Result-shaped placeholders instead of a "Searching…" line, so the
+                        // drawer keeps its height and the real rows drop straight in.
+                        <SearchResultSkeleton count={4} />
                       ) : results.length > 0 ? (
                         <div className="flex flex-col space-y-5 md:space-y-6">
                           {results.map((product) => (

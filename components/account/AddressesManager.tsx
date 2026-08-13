@@ -9,6 +9,7 @@ import AddressList from "./address/AddressList";
 import AddressModal from "./address/AddressModal";
 import AddressForm from "./address/AddressForm";
 import DeleteConfirmationDialog from "./address/DeleteConfirmationDialog";
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function AddressesManager() {
   const { addToast } = useApp();
@@ -86,9 +87,9 @@ export default function AddressesManager() {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-pulse">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" aria-hidden="true">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-[#EEE] p-5 h-44 bg-[#FAFAFA]" />
+            <Skeleton key={i} className="h-44 rounded-2xl" />
           ))}
         </div>
       )}

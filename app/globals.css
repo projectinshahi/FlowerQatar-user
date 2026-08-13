@@ -25,6 +25,48 @@
 :root {
   --background: #FFF6F0;
   --foreground: #4B4B4B;
+
+  /* Skeleton shimmer. Warm greys rather than neutral ones so placeholders sit inside the
+     cream/maroon palette instead of looking bolted on. */
+  --skeleton-base: #ECE4E0;
+  --skeleton-sheen: #F8F3F0;
+}
+
+/*
+ * One shimmer for the whole app. Animating `transform` on a pseudo-element keeps this on the
+ * compositor (no repaint per frame), so a page full of placeholders stays cheap.
+ */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--skeleton-base);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--skeleton-sheen) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* Reduced motion: keep the placeholder shape, drop the travelling sheen. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    transform: none;
+    background-image: none;
+  }
 }
 
 body {
@@ -198,4 +240,86 @@ input[type="checkbox"], input[type="radio"] {
 }
 .account-country .stdropdown-tools svg {
   color: #9a9a9a;
+}
+
+/*
+ * Google Translate.
+ *
+ * The widget must stay in the DOM (the API mounts into it and creates the <select> that
+ * LanguageToggle drives), but none of Google's own UI is shown — the site uses its own
+ * EN/AR switch in the navbar instead.
+ *
+ * `clip` rather than `display:none`: a display-none container makes Google skip
+ * initialisation entirely, which would leave the toggle with nothing to drive.
+ */
+#google_translate_element {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Injected banner iframe + hover tooltip/balloon — all suppressed. */
+.skiptranslate iframe,
+.goog-te-banner-frame,
+.goog-te-balloon-frame,
+#goog-gt-tt {
+  display: none !important;
+}
+
+/* Google pushes <body> down by the banner height; pin it back so nothing shifts. */
+body {
+  top: 0 !important;
+  position: static !important;
+}
+
+/*
+ * Language-switch transition.
+ *
+ * Without this the switch reads as a hard reload: white flash, then a beat of English text
+ * that snaps to Arabic once Google's pass lands. `[data-translating]` is set on <html> by a
+ * blocking inline script before first paint, so the untranslated frame is never shown; it is
+ * cleared once Google stamps `translated-*` on <html>, and the content fades in.
+ *
+ * 'boot' masks fully (a fresh document). 'nav' only dims, because a client-side navigation
+ * re-translates in place and hiding the whole page for that would be heavier than the problem.
+ */
+body {
+  opacity: 1;
+  transition: opacity 260ms ease;
+}
+
+html[data-translating='boot'] body {
+  opacity: 0;
+}
+
+html[data-translating='nav'] body {
+  opacity: 0.55;
+}
+
+/* The switch itself must never fade out from under the pointer. */
+html[data-translating] [data-translate-toggle] {
+  opacity: 1 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
+  /* No fade to hide behind, so never blank the page — accept the text swap instead. */
+  html[data-translating] body {
+    opacity: 1;
+  }
+}
+
+/* Google marks translated text with a highlight/underline — strip it so the type stays clean. */
+font[style*="vertical-align"] {
+  vertical-align: inherit !important;
+}
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
 }

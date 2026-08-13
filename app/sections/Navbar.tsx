@@ -9,6 +9,7 @@ import { useApp } from '../../context/AppContext'
 import TopAnnouncementBar from '../../components/TopAnnouncementBar'
 import type { CategoryType } from '@prisma/client'
 import type { NavCategory, NavItem } from '../../lib/category-config'
+import LanguageToggle from '../../components/LanguageToggle'
 
 const leftLinks = ['CONTACT US']
 
@@ -566,6 +567,10 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                 )}
               </div>
             ))}
+            {/* Language switch sits at the end of the right-hand cluster. `hidden md:inline-flex`
+                keeps it off mobile, where the drawer carries it instead — adding it to the
+                mobile header would collide with the absolutely-positioned cart button. */}
+            <LanguageToggle className="hidden md:inline-flex" />
             </div>
           </div>
 
@@ -780,6 +785,15 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                             ))}
                           </ul>
                         </nav>
+
+                        {/* Language switch — inside the drawer on mobile, where the header
+                            has no room left beside the menu and cart buttons. */}
+                        <div className="mt-8 flex items-center justify-between border-t border-divider pt-6">
+                          <span className="font-sans text-[11px] uppercase tracking-[0.14em] text-primary/70">
+                            Language
+                          </span>
+                          <LanguageToggle />
+                        </div>
 
                         {/* Signed-in account block (unchanged destinations) */}
                         {user && (

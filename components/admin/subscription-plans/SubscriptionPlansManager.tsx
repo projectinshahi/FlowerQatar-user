@@ -39,10 +39,10 @@ export default function SubscriptionPlansManager() {
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="animate-pulse rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <div className="mb-4 h-6 w-24 rounded bg-gray-100" />
-            <div className="mb-4 h-10 w-20 rounded bg-gray-100" />
-            <div className="mt-6 h-9 w-full rounded-lg bg-gray-100" />
+          <div key={i} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="mb-4 h-6 w-24 rounded skeleton" />
+            <div className="mb-4 h-10 w-20 rounded skeleton" />
+            <div className="mt-6 h-9 w-full rounded-lg skeleton" />
           </div>
         ))}
       </div>

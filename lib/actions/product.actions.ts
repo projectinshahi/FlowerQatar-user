@@ -191,19 +191,25 @@ export async function getProducts(params: {
   search?: string;
   status?: ProductStatus;
   subcategoryId?: string;
+  /** Fixed category name (e.g. "FLOWER") — matches every product in any of its subcategories. */
+  categoryName?: string;
   sortBy?: "newest" | "oldest" | "price_asc" | "price_desc" | "name_asc" | "stock_asc";
   page?: number;
   limit?: number;
 }) {
   try {
-    const { search, status, subcategoryId, sortBy = "newest", page = 1, limit = 10 } = params;
+    const { search, status, subcategoryId, categoryName, sortBy = "newest", page = 1, limit = 10 } = params;
 
     const where: any = {};
     if (search) {
-      where.name = { contains: search, mode: "insensitive" };
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+      ];
     }
     if (status) where.status = status;
     if (subcategoryId) where.subcategoryId = subcategoryId;
+    else if (categoryName) where.subcategory = { category: { name: categoryName } };
 
     const orderBy: any = {};
     switch (sortBy) {
@@ -219,7 +225,7 @@ export async function getProducts(params: {
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-        include: { subcategory: true },
+        include: { subcategory: { include: { category: { select: { id: true, name: true } } } } },
       }),
       prisma.product.count({ where }),
     ]);

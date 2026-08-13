@@ -14,6 +14,8 @@ import { getNavMenu } from "../../lib/subcategories";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import Analytics from "../../components/analytics/Analytics";
+import GoogleTranslate from "../../components/GoogleTranslate";
+import TranslateSync from "../../components/TranslateSync";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
 const WelcomePopup = dynamic(() => import("../../components/WelcomePopup"));
@@ -68,7 +70,32 @@ export default async function RootLayout({
   const navMenu = await getNavMenu();
   return (
     <html lang="en" className={`${cormorant.variable} ${montserrat.variable} h-full antialiased`} data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        {/* Google's translator is a third-party origin; warming the connection cuts a chunk
+            off how long the page sits masked waiting for the first pass. */}
+        <link rel="preconnect" href="https://translate.googleapis.com" crossOrigin="" />
+        <link rel="preconnect" href="https://translate.google.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://translate.googleapis.com" />
+      </head>
       <body className="min-h-full flex flex-col font-sans antialiased selection:bg-primary/20 selection:text-primary overflow-x-hidden" suppressHydrationWarning>
+        {/*
+          Runs before anything paints. When the visitor is in Arabic it masks the body so the
+          untranslated English frame is never visible, and arms its own timeout so a blocked
+          or failed translate script can never leave the page hidden — that safety net is
+          independent of React deliberately, because React may never mount.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{
+              var m=document.cookie.match(/(?:^|;\\s*)googtrans=([^;]+)/);
+              if(!decodeURIComponent(m&&m[1]||'').endsWith('/ar'))return;
+              var h=document.documentElement;
+              h.setAttribute('data-translating','boot');
+              h.lang='ar';
+              setTimeout(function(){h.removeAttribute('data-translating')},2500);
+            }catch(e){}})();`,
+          }}
+        />
         <Suspense fallback={null}>
           <Analytics />
         </Suspense>
@@ -106,6 +133,12 @@ export default async function RootLayout({
           <SearchDrawer />
           <ToastContainer />
           <WelcomePopup />
+          <GoogleTranslate />
+          {/* Re-applies the translation after client-side navigation. Needs Suspense because
+              it reads searchParams, which opts its subtree into dynamic rendering. */}
+          <Suspense fallback={null}>
+            <TranslateSync />
+          </Suspense>
         </AppContextProvider>
       </body>
     </html>

@@ -211,7 +211,8 @@ export const getExploreGardenItems = cache(async (): Promise<ExploreGardenItem[]
         isExploreGarden: true,
         category: { name: "FLOWER", isActive: true },
       },
-      orderBy: { name: "asc" },
+      // Garden order is admin-owned and independent of the navigation strip's order.
+      orderBy: [{ gardenPosition: "asc" }, { name: "asc" }],
       select: { id: true, name: true, hoverImage: true, hoverColor: true },
     });
     return rows.map((c) => ({

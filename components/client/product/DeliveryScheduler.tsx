@@ -28,7 +28,7 @@ export default function DeliveryScheduler({
           <Calendar size={13} /> Delivery Date
         </span>
         {dLoading ? (
-          <div className="flex gap-2 animate-pulse">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 w-16 rounded-lg bg-[#F1F1F1]" />)}</div>
+          <div className="flex gap-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 w-16 rounded-lg skeleton" />)}</div>
         ) : dError ? (
           <div className="flex items-center gap-2 text-[12px] text-red-500"><AlertCircle size={14} /> {dError} <button type="button" onClick={dReload} className="underline">Retry</button></div>
         ) : !dates?.length ? (

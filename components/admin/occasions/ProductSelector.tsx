@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Search, X, PackageSearch } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 /**
  * Shape returned by /api/admin/occasions/selectable-products. The server does the
@@ -201,12 +202,12 @@ export default function ProductSelector({ value, onChange, error }: ProductSelec
         {isLoading ? (
           <div className="divide-y divide-gray-100">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex animate-pulse items-center gap-4 p-3">
-                <div className="h-4 w-4 rounded bg-gray-100" />
-                <div className="h-12 w-12 rounded-lg bg-gray-100" />
+              <div key={i} className="flex items-center gap-4 p-3" aria-hidden="true">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-12 w-12 rounded-lg" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-3 w-1/3 rounded bg-gray-100" />
-                  <div className="h-3 w-1/5 rounded bg-gray-100" />
+                  <Skeleton className="h-3 w-1/3 rounded" />
+                  <Skeleton className="h-3 w-1/5 rounded" />
                 </div>
               </div>
             ))}

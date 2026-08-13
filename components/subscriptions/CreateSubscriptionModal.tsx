@@ -147,8 +147,8 @@ export default function CreateSubscriptionModal({
               {error && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-500 text-xs">{error}</div>}
 
               {loadingData ? (
-                <div className="animate-pulse space-y-3">
-                  {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 bg-[#F0F0F0] rounded-lg" />)}
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 skeleton rounded-lg" />)}
                 </div>
               ) : catalog.length === 0 ? (
                 <p className="text-sm text-[#888] py-6 text-center">No subscribable products are available right now.</p>

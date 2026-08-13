@@ -43,7 +43,19 @@ export async function POST(request: Request) {
       if (!category) throw new Error('PARENT_CATEGORY_INACTIVE');
       const duplicate = await tx.subcategory.findFirst({ where: { categoryId: data.categoryId, name: { equals: data.name, mode: 'insensitive' } }, select: { id: true } });
       if (duplicate) throw new Error('DUPLICATE');
-      return tx.subcategory.create({ data, include: { category: { select: { id: true, name: true } } } });
+      // Append to the end of both orderings so a new row never collides with an existing position.
+      const last = await tx.subcategory.aggregate({
+        where: { categoryId: data.categoryId },
+        _max: { navigationPosition: true, gardenPosition: true },
+      });
+      return tx.subcategory.create({
+        data: {
+          ...data,
+          navigationPosition: (last._max.navigationPosition ?? 0) + 1,
+          gardenPosition: (last._max.gardenPosition ?? 0) + 1,
+        },
+        include: { category: { select: { id: true, name: true } } },
+      });
     });
     revalidateStorefront(); return NextResponse.json(subcategory, { status: 201 });
   } catch (error) {

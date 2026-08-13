@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Users, Search, Edit2, Loader2, Check, X, ShieldAlert, Trash2, Sparkles } from 'lucide-react';
+import { AdminSkeletonRows } from '@/components/skeletons/AdminSkeletons';
 
 const planLabel = (p: string) => (p ? p.charAt(0) + p.slice(1).toLowerCase() : '');
 const planBadge = (p: string) =>
@@ -115,11 +116,7 @@ export default function AdminUsers() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-gray-500">
-                    <Loader2 className="animate-spin h-8 w-8 mx-auto text-primary" />
-                  </td>
-                </tr>
+                <AdminSkeletonRows rows={8} withImage columns={['50%', '60%', '30%', '25%']} />
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center text-gray-500">

@@ -159,8 +159,8 @@ export default function PrivacySecurity({ hasPassword }: { hasPassword: boolean 
       <div className="rounded-2xl border border-[#ECECEC] p-5 mb-4">
         <p className="text-[14px] text-primary font-medium mb-3">Manage consent</p>
         {loading ? (
-          <div className="animate-pulse space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 bg-[#F2F2F2] rounded" />)}
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 skeleton rounded" />)}
           </div>
         ) : error ? (
           <div className="text-center py-4">

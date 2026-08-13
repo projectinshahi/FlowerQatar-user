@@ -2,6 +2,7 @@
 
 import { AlertCircle, PenLine, Check, Type } from "lucide-react";
 import { useGreetingCards } from "@/hooks/useProductOptions";
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export const GREETING_MAX = 250;
 
@@ -89,8 +90,8 @@ export default function GreetingCardSelector({
       </span>
 
       {loading ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 animate-pulse">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="aspect-[4/3] rounded-lg bg-[#F1F1F1]" />)}
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] rounded-lg" />)}
         </div>
       ) : error ? (
         <div className="flex items-center gap-2 text-[12px] text-red-500"><AlertCircle size={14} /> {error} <button type="button" onClick={reload} className="underline">Retry</button></div>

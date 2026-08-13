@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Package, AlertCircle, ChevronDown, FileText } from "lucide-react";
+import { Skeleton } from '@/components/ui/Skeleton';
 
 type OrderItem = {
   id: string;
@@ -100,9 +101,9 @@ export default function OrdersHistory() {
       </div>
 
       {loading && (
-        <div className="space-y-4 animate-pulse">
+        <div className="space-y-4" aria-hidden="true">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-[#EEE] h-24 bg-[#FAFAFA]" />
+            <Skeleton key={i} className="h-24 rounded-2xl" />
           ))}
         </div>
       )}

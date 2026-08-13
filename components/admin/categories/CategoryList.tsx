@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Edit2, Trash2, Plus, Search, MoreVertical, Check, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AdminSkeletonRows } from '@/components/skeletons/AdminSkeletons';
 
 interface Category {
   id: string;
@@ -126,11 +127,7 @@ export default function CategoryList() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center">
-                    <Loader2 className="w-6 h-6 text-[#A83A22] animate-spin mx-auto" />
-                  </td>
-                </tr>
+                <AdminSkeletonRows rows={6} withImage columns={['55%', '35%', '30%', '40%', '25%']} />
               ) : categories.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-12 text-center">

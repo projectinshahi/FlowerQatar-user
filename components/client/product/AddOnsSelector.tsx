@@ -10,8 +10,8 @@ export default function AddOnsSelector({ selected, onChange }: { selected: AddOn
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 animate-pulse">
-        {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-16 rounded-lg bg-[#F1F1F1]" />)}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-16 rounded-lg skeleton" />)}
       </div>
     );
   }
