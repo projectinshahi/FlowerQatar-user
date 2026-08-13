@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, Maximize2, ImageOff, ArrowUp, ArrowDown, Film, Play } from "lucide-react";
+import { isVideoMedia } from "@/lib/media";
 
 export interface GalleryImage {
   url: string;
@@ -21,15 +22,8 @@ const LENS_W = PANEL_W / ZOOM;
 const LENS_H = PANEL_H / ZOOM;
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-/** Detect video items by explicit type OR by URL extension / Cloudinary video path */
-function isVideoItem(item: GalleryImage): boolean {
-  if (item.type === "video") return true;
-  if (typeof item.url === "string") {
-    if (/\.(mp4|webm|mov|ogg)(\?.*)?$/i.test(item.url)) return true;
-    if (item.url.includes("/video/upload/")) return true;
-  }
-  return false;
-}
+/** Shared with the admin uploader and the store mapper so the rules can't drift apart. */
+const isVideoItem = isVideoMedia;
 
 export default function ProductGallery({ images, productName }: { images: GalleryImage[]; productName: string }) {
   const pics = (images || []).filter((i) => i?.url);

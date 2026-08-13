@@ -148,7 +148,9 @@ model Product {
   // Shape: Variant[] where each Variant = { id, variantName, sku, description, pros[], cons[],
   //   specifications: { title, value }[], colorVariants: ColorVariant[] }
   // ColorVariant = { id, colorName, colorCode, price, salePrice, swatchImage, hoverImage,
-  //   galleryImages: { url, publicId, isPrimary, order }[] }
+  //   galleryImages: { url, publicId, type?: 'image'|'video', isPrimary, order }[] }
+  // `type` distinguishes gallery videos (Blushing Blooms) from stills. Rows created before it
+  // existed omit it entirely — read gallery media through lib/media.ts, never `type` directly.
   variants          Json                      @default("[]")
   createdAt         DateTime                  @default(now()) @db.Timestamptz(6)
   updatedAt         DateTime                  @updatedAt @db.Timestamptz(6)

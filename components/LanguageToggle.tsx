@@ -1,8 +1,17 @@
 'use client';
 
 import { useCallback, useSyncExternalStore } from 'react';
-import { beginTransition, endTransition, readLang, writeLang, type Lang } from '@/lib/translate';
-import { runPass } from './TranslateSync';
+import {
+  applyLanguage,
+  beginTransition,
+  endTransition,
+  isTranslated,
+  notifyLang,
+  readLang,
+  subscribeLang,
+  writeLang,
+  type Lang,
+} from '@/lib/translate';
 
 const LANGS: { code: Lang; label: string; full: string }[] = [
   { code: 'en', label: 'EN', full: 'English' },
@@ -12,40 +21,41 @@ const LANGS: { code: Lang; label: string; full: string }[] = [
 /**
  * The cookie is an external store: it changes outside React and emits no event.
  * `useSyncExternalStore` renders the server snapshot ('en') during hydration and swaps to the
- * real value after — no mismatch, and no setState-in-an-effect. Nothing needs to subscribe,
- * because switching navigates away.
+ * real value after — no mismatch, and no setState-in-an-effect.
  */
-const subscribe = () => () => {};
 const serverLang = (): Lang => 'en';
 
 /**
  * English / Arabic switch for the navbar.
  *
- * English → Arabic translates in place: dim, run a pass over the live DOM, fade back. No
- * reload, so scroll position, open drawers and cart state all survive.
- *
- * Arabic → English still reloads. Google has no reliable "undo" — its pass rewrites text nodes
- * into <font> wrappers and re-running it with an English target leaves stale Arabic behind.
- * Serving a fresh document is the only way to get every word back, and the fade masks it.
+ * Switches in the live document — no reload — by driving the <select> Google injects, which
+ * is the same path its own dropdown uses. Scroll position, open drawers and cart state all
+ * survive. A reload is only used as a fallback, when the widget script hasn't produced that
+ * select yet (cold load, slow network, blocked by an extension).
  */
 export default function LanguageToggle({ className = '' }: { className?: string }) {
-  const lang = useSyncExternalStore(subscribe, readLang, serverLang);
+  const lang = useSyncExternalStore(subscribeLang, readLang, serverLang);
 
   const select = useCallback((next: Lang) => {
-    if (next === readLang()) return;
-    writeLang(next);
+    // Deliberately NOT `if (next === readLang()) return`. The cookie can say Arabic while the
+    // page is still English — any failed pass leaves exactly that state — and skipping on the
+    // cookie alone then makes the Arabic button permanently dead. Re-applying is cheap, so
+    // only skip when the cookie AND the rendered page already agree.
+    if (next === readLang() && (next === 'en' ? !isTranslated() : isTranslated())) return;
 
-    if (next === 'en') {
-      beginTransition('boot');
-      // Let the fade-out paint before the document is torn down, so the switch reads as a
-      // cross-fade instead of a white flash. Matches the 260ms transition in globals.css.
-      window.setTimeout(() => window.location.reload(), 200);
+    writeLang(next);
+    notifyLang();
+
+    // Dim rather than blank: the document survives, so there is no white frame to hide.
+    beginTransition('nav');
+    if (applyLanguage(next)) {
+      window.setTimeout(endTransition, 600);
       return;
     }
 
-    beginTransition('nav');
-    // Falls back to a reload if the widget script hasn't loaded (slow network, blocked).
-    if (!runPass(endTransition)) window.location.reload();
+    // No widget yet — fall back to a masked reload, which the cookie alone is enough to drive.
+    beginTransition('boot');
+    window.setTimeout(() => window.location.reload(), 200);
   }, []);
 
   return (

@@ -12,6 +12,7 @@ import DeliveryScheduler from './DeliveryScheduler'
 import GreetingCardSelector, { DEFAULT_GREETING_STYLE, type GreetingStyle } from './GreetingCardSelector'
 import PriceSummary from './PriceSummary'
 import { usePriceCalculator, type AddOn } from '@/hooks/useProductOptions'
+import { isVideoMedia } from '@/lib/media'
 
 // Define the colors from the user prompt
 const PALETTE = {
@@ -66,12 +67,25 @@ export default function ProductDetailClient({ product }: { product: any }) {
   const selectedVariant = product.variants?.find((v: any) => v.id === selectedVariantId) || defaultVariant
   const selectedColor = selectedVariant?.colorVariants?.find((c: any) => c.id === selectedColorId) || selectedVariant?.colorVariants?.[0]
 
+  // Videos are kept here (unlike the card mapper) — the gallery plays them inline. Older rows
+  // predate the `type` field, so isVideoMedia sniffs the URL as a fallback.
   const allImages = selectedColor?.galleryImages?.length > 0
     ? selectedColor.galleryImages.map((img: any) => ({
         url: img.url,
-        type: img.type || (img.url?.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) || img.url?.includes('/video/upload/') ? 'video' : 'image'),
+        type: isVideoMedia(img) ? ('video' as const) : ('image' as const),
       }))
     : (selectedColor?.hoverImage ? [{ url: selectedColor.hoverImage, type: 'image' as const }] : [{ url: '/images/category_bouquets_1782290106325.png', type: 'image' as const }])
+
+  /**
+   * Thumbnail for the cart/order line. Must skip video: a Blushing Blooms variant can have a
+   * clip first in the gallery, and the cart renders this URL in an <img>, which would show a
+   * broken thumbnail. Falls back to the swatch/hover art when a colour is video-only.
+   */
+  const thumbnail =
+    allImages.find((m: { type: string }) => m.type !== 'video')?.url ||
+    selectedColor?.swatchImage ||
+    selectedColor?.hoverImage ||
+    '/images/category_bouquets_1782290106325.png'
 
   const basePrice = Number(selectedColor?.salePrice || selectedColor?.price || 0)
   const pricing = usePriceCalculator(basePrice, quantity, selectedAddOns)
@@ -79,7 +93,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
   const handleAddToCart = () => {
     if (!selectedVariant || !selectedColor) return
     addToCart({
-      product: { id: product.id, slug: product.slug, name: product.name, price: pricing.unitPrice, image: allImages?.[0]?.url },
+      product: { id: product.id, slug: product.slug, name: product.name, price: pricing.unitPrice, image: thumbnail },
       quantity,
       roseColor: selectedColor.colorName || 'Default',
       boxColor: 'Standard',

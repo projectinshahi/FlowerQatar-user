@@ -23,6 +23,19 @@ export function readLang(): Lang {
   return decodeURIComponent(match?.[1] ?? '').endsWith('/ar') ? 'ar' : 'en';
 }
 
+/*
+ * The cookie is an external store with no change event. Switching no longer reloads, so the
+ * toggle needs an explicit subscription to re-render its active pill.
+ */
+const listeners = new Set<() => void>();
+
+export const subscribeLang = (cb: () => void) => {
+  listeners.add(cb);
+  return () => void listeners.delete(cb);
+};
+
+export const notifyLang = () => listeners.forEach((cb) => cb());
+
 export function writeLang(lang: Lang) {
   const value = lang === 'en' ? '/en/en' : `/en/${lang}`;
   const { hostname } = window.location;
@@ -189,6 +202,49 @@ export function applyAttrs() {
       if (value && value !== el.getAttribute(attr)) el.setAttribute(attr, value);
     }
   });
+}
+
+/** Puts the original English back into every attribute we overwrote. */
+export function restoreAttrs() {
+  document.querySelectorAll<HTMLElement>('[data-gt-attrs]').forEach((el) => {
+    for (const entry of (el.dataset.gtAttrs ?? '').split('|').filter(Boolean)) {
+      const [attr, key] = entry.split(':');
+      const original = el.dataset[`gtOrig${key}`];
+      if (original) el.setAttribute(attr, original);
+    }
+  });
+}
+
+/**
+ * Switch language in the live document — no reload.
+ *
+ * Google's widget injects a <select.goog-te-combo>; setting its value and firing `change` is
+ * the same code path the visitor's own click on Google's dropdown takes, which is why it is
+ * the one in-place mechanism that reliably translates. (Re-constructing TranslateElement does
+ * NOT re-apply the cookie, which is why the earlier attempt appeared to do nothing.)
+ *
+ * Returns false when the widget script hasn't produced the select yet, so the caller can fall
+ * back to a reload.
+ */
+export function applyLanguage(next: Lang): boolean {
+  const combo = document.querySelector<HTMLSelectElement>('select.goog-te-combo');
+  if (!combo) return false;
+
+  // Register attribute text before the pass so the hidden pool is translated with everything
+  // else; on the way back to English the pool is irrelevant and originals are restored.
+  if (next === 'ar') collectAttrs();
+
+  combo.value = next;
+  combo.dispatchEvent(new Event('change'));
+  document.documentElement.lang = next;
+
+  if (next === 'ar') {
+    whenTranslated(2000).then(applyAttrs);
+  } else {
+    // Google restores its own text nodes; the attributes are ours to put back.
+    window.setTimeout(restoreAttrs, 400);
+  }
+  return true;
 }
 
 /** 'boot' fully masks the page (first paint); 'nav' only dims it (route change). */

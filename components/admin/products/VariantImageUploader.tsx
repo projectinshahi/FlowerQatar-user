@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, X, Star, GripHorizontal, Film, Play, Loader2 } from "lucide-react";
 import { useFormContext } from "react-hook-form";
+import { isVideoMedia, shouldBePrimary } from "@/lib/media";
 
 export default function VariantImageUploader({
   variantIndex,
@@ -96,7 +97,9 @@ export default function VariantImageUploader({
         url: uploadData.secure_url,
         publicId: uploadData.public_id,
         type: mediaType,
-        isPrimary: images.length === 0 && mediaType === "image",
+        // Primary must be a still image. The old check ("gallery is empty") meant uploading a
+        // video first left the gallery with no primary at all, even after images were added.
+        isPrimary: shouldBePrimary(images, mediaType === "video"),
         order: images.length,
       };
 
@@ -119,9 +122,7 @@ export default function VariantImageUploader({
     const removed = newImages.splice(index, 1)[0];
     // Ensure one primary image remains if the removed item was primary
     if (removed?.isPrimary && newImages.length > 0) {
-      const firstImgIndex = newImages.findIndex(
-        (img: any) => img.type !== "video" && !img.url?.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i)
-      );
+      const firstImgIndex = newImages.findIndex((img: any) => !isVideoMedia(img));
       if (firstImgIndex !== -1) {
         newImages[firstImgIndex].isPrimary = true;
       } else {
@@ -146,11 +147,6 @@ export default function VariantImageUploader({
       { shouldDirty: true, shouldValidate: true }
     );
   };
-
-  const isVideoItem = (img: any) =>
-    img.type === "video" ||
-    (typeof img.url === "string" &&
-      (img.url.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) || img.url.includes("/video/upload/")));
 
   return (
     <div className="space-y-4">
@@ -257,7 +253,7 @@ export default function VariantImageUploader({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {images.map((img: any, idx: number) => {
-            const isVideo = isVideoItem(img);
+            const isVideo = isVideoMedia(img);
             return (
               <div
                 key={idx}

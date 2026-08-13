@@ -4,9 +4,11 @@ import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   applyAttrs,
+  applyLanguage,
   beginTransition,
   collectAttrs,
   endTransition,
+  isTranslated,
   isTranslatorNoise,
   readLang,
   whenTranslated,
@@ -38,14 +40,20 @@ function widgetReady(): boolean {
 }
 
 /**
- * One full pass: mirror attribute text into the hidden pool, re-mount the widget so it
- * re-reads the cookie and re-scans the current DOM, then copy the translated attribute text
- * back. Collecting must happen BEFORE the pass or the pool has nothing translated in it.
+ * One re-translation pass over whatever is currently in the DOM.
+ *
+ * Prefers driving the widget's own <select>, which is the only mechanism that actually
+ * re-applies the language. Re-constructing TranslateElement does NOT re-read the cookie, so it
+ * is used purely as a bootstrap for the case where the select does not exist yet.
  */
 export function runPass(onSettled?: () => void): boolean {
+  if (applyLanguage(readLang())) {
+    whenTranslated(1500).then(() => onSettled?.());
+    return true;
+  }
+
   if (!widgetReady()) return false;
   const container = document.getElementById('google_translate_element')!;
-
   collectAttrs();
   // Clearing first prevents stacking a new widget instance on every pass.
   container.innerHTML = '';
@@ -82,25 +90,20 @@ export default function TranslateSync() {
     }
 
     let cancelled = false;
-    // afterInteractive means the script may not exist yet on a cold load; poll briefly.
-    const start = Date.now();
-    const wait = () => {
+
+    // Register attribute text NOW, before element.js gets to run. Google applies the cookie
+    // itself during startup, and that native path is the dependable one — we just want the
+    // hidden pool to already be in the DOM when it happens.
+    collectAttrs();
+
+    whenTranslated().then(() => {
       if (cancelled) return;
-      if (widgetReady()) {
-        // Drive the first pass explicitly rather than letting the widget auto-apply the
-        // cookie — that is the only way the attribute pool is included in it.
-        runPass(() => !cancelled && endTransition());
-        return;
-      }
-      if (Date.now() - start > 4000) {
-        whenTranslated().then(() => {
-          if (!cancelled) endTransition();
-        });
-        return;
-      }
-      window.setTimeout(wait, 120);
-    };
-    wait();
+      applyAttrs();
+      endTransition();
+      // Native pass never landed (script blocked, or it raced us). Try once more explicitly;
+      // if that also fails the page simply stays English, which is the safe outcome.
+      if (!isTranslated()) runPass(() => !cancelled && applyAttrs());
+    });
 
     return () => {
       cancelled = true;

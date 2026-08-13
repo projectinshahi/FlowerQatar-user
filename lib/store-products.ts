@@ -4,6 +4,7 @@ import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
 import type { CategoryType } from "@prisma/client";
 import type { ProductFlag } from "@/lib/category-config";
+import { imagesOnly } from "@/lib/media";
 
 /**
  * Maps a DB product (single-table with nested `variants` JSON) into the storefront
@@ -35,7 +36,8 @@ export function mapDbProductToStore(db: any): Product {
   for (const c of allColors) {
     if (c?.colorName && !seen.has(c.colorName)) {
       seen.add(c.colorName);
-      const cGallery: string[] = (c.galleryImages || []).filter((g: any) => g?.type !== "video").map((g: { url?: string }) => g?.url).filter(Boolean);
+      // Cards render in <img>, so stills only — a clip would show as a broken thumbnail.
+      const cGallery: string[] = imagesOnly(c.galleryImages).map((g) => g.url!);
       const cImage = cGallery[0] || c.swatchImage || c.hoverImage || PLACEHOLDER;
       const cHover = cGallery[1] || c.hoverImage || cImage;
       colors.push({ name: c.colorName, hex: c.colorCode || "#000000", image: cImage, hoverImage: cHover });
@@ -50,7 +52,7 @@ export function mapDbProductToStore(db: any): Product {
     }
   }
 
-  const gallery: string[] = (defColor?.galleryImages || []).filter((g: any) => g?.type !== "video").map((g: any) => g?.url).filter(Boolean);
+  const gallery: string[] = imagesOnly(defColor?.galleryImages).map((g) => g.url!);
   const image = gallery[0] || defColor?.swatchImage || defColor?.hoverImage || PLACEHOLDER;
   const hoverImage = gallery[1] || defColor?.hoverImage || image;
 

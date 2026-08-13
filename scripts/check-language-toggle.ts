@@ -139,4 +139,42 @@ assert.ok(
   'readiness probe must dereference the same path the init callback uses'
 );
 
-console.log('cookie parsing + boot guard + loop guard + attribute filter + widget guard OK');
+/*
+ * The toggle must never skip purely on the cookie. A failed pass leaves googtrans=/en/ar on a
+ * page that is still English; a cookie-only guard then makes the Arabic button permanently
+ * dead, with no way for the user to recover short of clearing cookies.
+ */
+const toggle = readFileSync(new URL('../components/LanguageToggle.tsx', import.meta.url), 'utf8');
+// Comments are stripped first: the file documents the bad pattern in prose to explain why it
+// is avoided, and matching that text would fail the check on correct code.
+const toggleCode = toggle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+assert.ok(
+  !/if\s*\(\s*next === readLang\(\)\s*\)\s*return/.test(toggleCode),
+  'toggle must not early-return on the cookie alone — that dead-locks the Arabic button'
+);
+assert.ok(
+  toggle.includes('isTranslated()'),
+  'toggle must corroborate the cookie against the rendered page before skipping'
+);
+
+/*
+ * In-place switching. Setting `select.goog-te-combo` and firing `change` is the only mechanism
+ * that actually re-applies the language — re-constructing TranslateElement does NOT re-read
+ * the cookie, which is why an earlier version appeared to do nothing until a manual refresh.
+ * If this ever regresses to init-only, the toggle silently stops working in the live document.
+ */
+const translateLib = readFileSync(new URL('../lib/translate.ts', import.meta.url), 'utf8');
+assert.ok(
+  translateLib.includes('select.goog-te-combo'),
+  'applyLanguage must drive the widget select — init alone does not re-apply the language'
+);
+assert.ok(
+  translateLib.includes("dispatchEvent(new Event('change'))"),
+  'the select needs a change event; assigning .value alone does nothing'
+);
+assert.ok(
+  translateLib.includes('export function restoreAttrs'),
+  'switching back to English must restore the original attribute text'
+);
+
+console.log('cookie + boot guard + loop guard + attribute filter + widget guard + in-place OK');
