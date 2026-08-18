@@ -1,31 +1,72 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 import ProductCard from '../../../components/ProductCard';
 import QuickViewModal from '../../../components/QuickViewModal';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import { Product } from '../../../types';
-import { ROSE_COLORS } from '../../../data/products';
 
-type CategoryOption = { name: string; key: string };
+/** Marketing shot used whenever the listing is not narrowed to one subcategory. */
+const DEFAULT_HERO_IMAGE = '/images/hero_background_1782286769476.png';
 
 function ShopContent({
   products,
-  categories,
   heroTitle,
+  heroImage,
 }: {
   products: Product[];
-  categories: CategoryOption[];
   heroTitle: string;
+  /** Active subcategory's banner art; undefined falls back to the marketing shot. */
+  heroImage?: string;
 }) {
+  /*
+   * Every filter option is derived from the products actually on this page.
+   *
+   * Previously the subcategory list came from ALL subcategories in the database and the
+   * colour swatches came from ROSE_COLORS — a static mock list. Both offered options that
+   * matched nothing here, so choosing one emptied the grid and the filters looked broken.
+   * Deriving them means an option can never produce zero results.
+   */
+  const subcategoryOptions = useMemo(() => {
+    const counts = new Map<string, { key: string; name: string; count: number }>();
+    for (const p of products) {
+      if (!p.collectionName || !p.collection) continue;
+      const entry = counts.get(p.collection);
+      if (entry) entry.count += 1;
+      else counts.set(p.collection, { key: p.collection, name: p.collectionName, count: 1 });
+    }
+    return [...counts.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
+
+  const colorOptions = useMemo(() => {
+    const seen = new Map<string, { name: string; hex: string }>();
+    for (const p of products) {
+      for (const c of p.colors ?? []) {
+        if (c?.name && !seen.has(c.name)) seen.set(c.name, { name: c.name, hex: c.hex });
+      }
+    }
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
+
+  // Real price bounds. The range was hardcoded 39–600, so anything dearer than QAR 600 was
+  // permanently filtered out and the slider's ceiling was meaningless on a small catalogue.
+  const { minPrice, maxPrice } = useMemo(() => {
+    const prices = products.map((p) => p.price).filter((n) => Number.isFinite(n));
+    if (prices.length === 0) return { minPrice: 0, maxPrice: 0 };
+    return { minPrice: Math.floor(Math.min(...prices)), maxPrice: Math.ceil(Math.max(...prices)) };
+  }, [products]);
+
   // Navbar-driven filters (category/collection/tab) are already applied on the server;
-  // the sidebar below refines the result (collection, colour, price, sort).
+  // the sidebar below refines the result (subcategory, colour, price, sort).
   const [selectedShape, setSelectedShape] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
-  const [selectedPriceRange, setSelectedPriceRange] = useState<number>(600);
-  const [selectedOccasion, setSelectedOccasion] = useState<string>('');
+  const [selectedPriceRange, setSelectedPriceRange] = useState<number | null>(null);
   const [sortOption, setSortOption] = useState<string>('best-selling');
+
+  // `null` means "no price filter". Resolved to the real ceiling for display and filtering,
+  // so the slider starts at the top of the actual catalogue rather than an invented 600.
+  const priceCeiling = selectedPriceRange ?? maxPrice;
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -45,17 +86,8 @@ function ShopContent({
     if (selectedColor) {
       result = result.filter((p) => p.colors.some((c) => c.name === selectedColor));
     }
-    if (selectedPriceRange) {
+    if (selectedPriceRange !== null) {
       result = result.filter((p) => p.price <= selectedPriceRange);
-    }
-    if (selectedOccasion) {
-      if (selectedOccasion === 'Romantic') {
-        result = result.filter((p) => p.slug.includes('heart') || p.colors.some((c) => c.name.includes('Red')));
-      } else if (selectedOccasion === 'Anniversary') {
-        result = result.filter((p) => p.price >= 200);
-      } else if (selectedOccasion === 'Mini Gift') {
-        result = result.filter((p) => p.price < 100);
-      }
     }
 
     if (sortOption === 'price-low-high') {
@@ -71,13 +103,12 @@ function ShopContent({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilteredProducts(result);
     setVisibleCount(6);
-  }, [products, selectedShape, selectedColor, selectedPriceRange, selectedOccasion, sortOption]);
+  }, [products, selectedShape, selectedColor, selectedPriceRange, sortOption]);
 
   const handleResetFilters = () => {
     setSelectedShape('');
     setSelectedColor('');
-    setSelectedPriceRange(600);
-    setSelectedOccasion('');
+    setSelectedPriceRange(null);
     setSortOption('best-selling');
   };
 
@@ -96,17 +127,28 @@ function ShopContent({
         <Breadcrumbs items={[{ label: 'Shop', href: '/shop' }]} />
       </div>
 
+      {/*
+        Banner. `heroImage` is the active subcategory's admin-managed art; without one this
+        falls back to the marketing shot, so the layout is identical either way.
+
+        The scrim is heavier over a real photo: subcategory images are arbitrary uploads and
+        the maroon heading can otherwise land on a light area and become unreadable.
+      */}
       <div className="relative w-full overflow-hidden border-y border-divider/60 py-20 md:py-32 px-8 text-center mb-12">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/images/hero_background_1782286769476.png')" }}
+          style={{ backgroundImage: `url('${heroImage || DEFAULT_HERO_IMAGE}')` }}
         />
-        <div className="absolute inset-0 bg-black/20" />
+        <div className={`absolute inset-0 ${heroImage ? 'bg-black/45' : 'bg-black/20'}`} />
         <div className="relative z-10">
           <span className="text-[10px] uppercase tracking-[0.25em] text-[#C1A87D] font-semibold block mb-3">
             Lebami Collection
           </span>
-          <h1 className="font-serif text-4xl md:text-5xl font-medium tracking-wide text-[#800000] mb-4 capitalize">
+          <h1
+            className={`font-serif text-4xl md:text-5xl font-medium tracking-wide mb-4 capitalize ${
+              heroImage ? 'text-white drop-shadow-md' : 'text-[#800000]'
+            }`}
+          >
             {heroTitle}
           </h1>
           <p className="text-xs md:text-sm text-white/95 max-w-md mx-auto leading-relaxed">
@@ -154,46 +196,50 @@ function ShopContent({
           }`}
         >
           <div className="flex flex-col border-t border-divider/40 px-6 w-[280px]">
-            {categories.length > 0 && (
+            {subcategoryOptions.length > 0 && (
               <div className="border-b border-divider/40 py-5">
-                <h4 className="text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">Category</h4>
+                <h4 className="text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">Subcategory</h4>
                 <div className="flex flex-col gap-1.5">
                   <button
                     onClick={() => setSelectedShape('')}
-                    className={`text-left text-[12px] py-1 transition-colors ${!selectedShape ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
+                    className={`flex justify-between text-left text-[12px] py-1 transition-colors ${!selectedShape ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
                   >
-                    All Collections
+                    <span>All Subcategories</span>
+                    <span className="tabular-nums">{products.length}</span>
                   </button>
-                  {categories.map((c) => (
+                  {subcategoryOptions.map((c) => (
                     <button
                       key={c.key}
                       onClick={() => setSelectedShape(c.key)}
-                      className={`text-left text-[12px] py-1 capitalize transition-colors ${selectedShape === c.key ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
+                      className={`flex justify-between gap-2 text-left text-[12px] py-1 capitalize transition-colors ${selectedShape === c.key ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
                     >
-                      {c.name}
+                      <span className="truncate">{c.name}</span>
+                      <span className="tabular-nums">{c.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {colorOptions.length > 0 && (
+              <div className="border-b border-divider/40 py-5">
+                <h4 className="text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">Colour</h4>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setSelectedColor('')} className={`px-2.5 py-1 text-[10px] border ${!selectedColor ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>ALL</button>
+                  {colorOptions.map((c) => (
+                    <button key={c.name} onClick={() => setSelectedColor(c.name)} className={`px-2.5 py-1 text-[10px] border flex items-center gap-1.5 ${selectedColor === c.name ? 'bg-secondary text-white border-secondary' : 'border-divider text-muted'}`}>
+                      <span className="w-2 h-2 rounded-full border border-black/10" style={{ backgroundColor: c.hex }} />
+                      <span>{c.name}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
             <div className="border-b border-divider/40 py-5">
-              <h4 className="text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">Rose Color</h4>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => setSelectedColor('')} className={`px-2.5 py-1 text-[10px] border ${!selectedColor ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>ALL</button>
-                {ROSE_COLORS.map((c) => (
-                  <button key={c.name} onClick={() => setSelectedColor(c.name)} className={`px-2.5 py-1 text-[10px] border flex items-center gap-1.5 ${selectedColor === c.name ? 'bg-secondary text-white border-secondary' : 'border-divider text-muted'}`}>
-                    <span className="w-2 h-2 rounded-full border border-black/10" style={{ backgroundColor: c.hex }} />
-                    <span>{c.name.split(' ')[1] || c.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="border-b border-divider/40 py-5">
               <div className="flex justify-between text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">
                 <span>Price</span>
-                <span className="text-secondary font-bold">QAR {selectedPriceRange}</span>
+                <span className="text-secondary font-bold">QAR {priceCeiling}</span>
               </div>
-              <input type="range" min="39" max="600" step="10" value={selectedPriceRange} onChange={(e) => setSelectedPriceRange(Number(e.target.value))} className="w-full accent-gold h-1 bg-divider" />
+              <input type="range" min={minPrice} max={maxPrice} step="1" value={priceCeiling} onChange={(e) => setSelectedPriceRange(Number(e.target.value))} className="w-full accent-gold h-1 bg-divider" aria-label="Maximum price" />
             </div>
           </div>
         </aside>
@@ -239,35 +285,37 @@ function ShopContent({
                 <h3 className="text-sm uppercase tracking-[0.2em] font-medium text-primary">Filter Arrangements</h3>
                 <button onClick={() => setIsFilterDrawerOpen(false)} className="text-muted hover:text-primary"><X size={20} /></button>
               </div>
-              {categories.length > 0 && (
+              {subcategoryOptions.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Category</h4>
+                  <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Subcategory</h4>
                   <div className="flex flex-wrap gap-2">
                     <button onClick={() => setSelectedShape('')} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!selectedShape ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
-                    {categories.map((c) => (
-                      <button key={c.key} onClick={() => setSelectedShape(c.key)} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${selectedShape === c.key ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.name}</button>
+                    {subcategoryOptions.map((c) => (
+                      <button key={c.key} onClick={() => setSelectedShape(c.key)} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${selectedShape === c.key ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.name} ({c.count})</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {colorOptions.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Colour</h4>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setSelectedColor('')} className={`px-2.5 py-1 text-[10px] border ${!selectedColor ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>ALL</button>
+                    {colorOptions.map((c) => (
+                      <button key={c.name} onClick={() => setSelectedColor(c.name)} className={`px-2.5 py-1 text-[10px] border flex items-center space-x-1.5 ${selectedColor === c.name ? 'bg-secondary text-white border-secondary' : 'border-divider text-muted'}`}>
+                        <span className="w-2 h-2 rounded-full border border-black/10" style={{ backgroundColor: c.hex }} />
+                        <span>{c.name}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
               <div className="mb-6">
-                <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Rose Color</h4>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setSelectedColor('')} className={`px-2.5 py-1 text-[10px] border ${!selectedColor ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>ALL</button>
-                  {ROSE_COLORS.map((c) => (
-                    <button key={c.name} onClick={() => setSelectedColor(c.name)} className={`px-2.5 py-1 text-[10px] border flex items-center space-x-1.5 ${selectedColor === c.name ? 'bg-secondary text-white border-secondary' : 'border-divider text-muted'}`}>
-                      <span className="w-2 h-2 rounded-full border border-black/10" style={{ backgroundColor: c.hex }} />
-                      <span>{c.name.split(' ')[1] || c.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="mb-6">
                 <div className="flex justify-between text-[10px] uppercase tracking-widest font-semibold mb-3">
                   <span>Price Cap</span>
-                  <span className="text-secondary font-bold">QAR {selectedPriceRange}</span>
+                  <span className="text-secondary font-bold">QAR {priceCeiling}</span>
                 </div>
-                <input type="range" min="39" max="600" step="10" value={selectedPriceRange} onChange={(e) => setSelectedPriceRange(Number(e.target.value))} className="w-full accent-gold h-1 bg-divider" />
+                <input type="range" min={minPrice} max={maxPrice} step="1" value={priceCeiling} onChange={(e) => setSelectedPriceRange(Number(e.target.value))} className="w-full accent-gold h-1 bg-divider" aria-label="Maximum price" />
               </div>
             </div>
             <div className="pt-6 border-t border-divider flex gap-3">
@@ -285,12 +333,12 @@ function ShopContent({
 
 export default function ShopClient({
   products,
-  categories,
   heroTitle = 'The Collection',
+  heroImage,
 }: {
   products: Product[];
-  categories: CategoryOption[];
   heroTitle?: string;
+  heroImage?: string;
 }) {
   return (
     <Suspense fallback={
@@ -298,7 +346,7 @@ export default function ShopClient({
         Loading Atelier Collection...
       </div>
     }>
-      <ShopContent products={products} categories={categories} heroTitle={heroTitle} />
+      <ShopContent products={products} heroTitle={heroTitle} heroImage={heroImage} />
     </Suspense>
   );
 }

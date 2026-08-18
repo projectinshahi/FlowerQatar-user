@@ -2,12 +2,59 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Edit, Trash, Copy, MoreVertical, Eye } from "lucide-react";
 import { bulkDeleteProducts, bulkUpdateProductStatus, deleteProduct } from "@/lib/actions/product.actions";
+
+/**
+ * Prev/Next control. Module scope, not defined inside the table, so React keeps the same
+ * component identity across renders instead of remounting it on every keystroke.
+ */
+function PageLink({ href, disabled, label }: { href: string; disabled: boolean; label: string }) {
+  if (disabled) {
+    return (
+      <span
+        aria-disabled="true"
+        className="px-3 py-1 border border-gray-200 rounded-md opacity-50 select-none"
+      >
+        {label}
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+    >
+      {label}
+    </Link>
+  );
+}
 
 export default function ProductTable({ products, pagination }: { products: any[], pagination: any }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
+
+  /**
+   * Builds the href for a page, keeping every other filter that is already in the URL
+   * (search, status, sortBy). Rebuilding from scratch would silently drop the admin's
+   * filters the moment they paged past the first screen.
+   */
+  const hrefForPage = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (page <= 1) params.delete("page");
+    else params.set("page", String(page));
+    const query = params.toString();
+    return query ? `/admin/products?${query}` : "/admin/products";
+  };
+
+  // Human-readable range for the current page, e.g. "11–17 of 17". Page size comes from the
+  // server's own pagination payload so the two can't drift apart.
+  const perPage = pagination.limit || products.length || 10;
+  const rangeStart = pagination.total === 0 ? 0 : (pagination.page - 1) * perPage + 1;
+  const rangeEnd = Math.min(pagination.page * perPage, pagination.total);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === products.length) {
@@ -204,13 +251,31 @@ export default function ProductTable({ products, pagination }: { products: any[]
         </table>
       </div>
       
-      {/* Pagination (Simplified) */}
+      {/*
+        Pagination. These were plain <button>s with no handler and no href — correctly
+        disabled, but clicking them did nothing, so only page 1 was ever reachable.
+        The page lives in the URL (`?page=`), which the server component already reads, so
+        links are the right control: shareable, back-button friendly, no client state.
+      */}
       <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
-        <div>Showing {products.length} of {pagination.total} products</div>
-        <div className="flex gap-1">
-          <button disabled={pagination.page <= 1} className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50">Prev</button>
-          <button disabled={pagination.page >= pagination.totalPages} className="px-3 py-1 border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50">Next</button>
+        <div>
+          Showing {rangeStart}–{rangeEnd} of {pagination.total} products
         </div>
+        <nav className="flex items-center gap-1" aria-label="Product pages">
+          <PageLink
+            href={hrefForPage(pagination.page - 1)}
+            disabled={pagination.page <= 1}
+            label="Prev"
+          />
+          <span className="px-2 tabular-nums" aria-current="page">
+            {pagination.page} / {Math.max(1, pagination.totalPages)}
+          </span>
+          <PageLink
+            href={hrefForPage(pagination.page + 1)}
+            disabled={pagination.page >= pagination.totalPages}
+            label="Next"
+          />
+        </nav>
       </div>
     </div>
   );

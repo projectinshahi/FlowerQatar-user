@@ -21,6 +21,24 @@ export function describePrismaError(error: unknown): { code?: string; message: s
 }
 
 /**
+ * True when the database could not be REACHED at all — as opposed to a query being wrong.
+ *
+ * The distinction matters for auth: a failed connection is not the same as "not signed in".
+ * Treating it as the latter logs the admin out and sends them to a login page that cannot
+ * work either, hiding the real problem behind a misleading message.
+ *
+ * P1001 can't reach server · P1002 timed out · P1017 connection closed. Initialization errors
+ * (bad URL, unreachable host at startup) count too.
+ */
+export function isDbUnreachable(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientInitializationError) return true;
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P1001', 'P1002', 'P1017'].includes(error.code);
+  }
+  return false;
+}
+
+/**
  * Production-safe DB error log that always includes the Prisma error code, so Vercel
  * function logs show the real cause (connection vs schema vs data) instead of a silent
  * generic message.

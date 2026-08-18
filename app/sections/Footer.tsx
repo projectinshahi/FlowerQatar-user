@@ -3,38 +3,50 @@ import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 
-const linkColumns = [
+/**
+ * Footer navigation.
+ *
+ * Every entry carries the route it actually goes to. Labels whose page does not exist in this
+ * app (Careers, Privacy Policy, Corporate Gifting, Terms, Accessibility Statement) are gone
+ * rather than pointing at "#", which looked like a working link and did nothing.
+ *
+ * SOCIAL is absent for the same reason: no social profile URLs are configured anywhere in the
+ * project, and inventing them would send customers to accounts that may not be the business's.
+ * Add real URLs here and the column renders itself.
+ */
+type FooterLink = { label: string; href: string; external?: boolean }
+
+const linkColumns: { title: string; links: FooterLink[] }[] = [
   {
     title: "INFORMATION",
     links: [
-      "What Are Eternity Flowers?",
-      "Blog",
-      "Press",
-      "Corporate Gifting Events",
-      "Careers"
-    ]
+      { label: "What Are Eternity Flowers?", href: "/about" },
+      { label: "Blog", href: "/journal" },
+      { label: "Press", href: "/press" },
+    ],
   },
   {
     title: "HELP",
     links: [
-      "Shipping and Returns",
-      "FAQs",
-      "Contact Us",
-      "Privacy Policy"
-    ]
+      { label: "Shipping and Returns", href: "/shipping-returns" },
+      { label: "FAQs", href: "/faq" },
+      { label: "Contact Us", href: "/contact" },
+      { label: "Flower Care", href: "/care" },
+    ],
   },
   {
-    title: "SOCIAL",
+    title: "SHOP",
     links: [
-      "Instagram",
-      "Tik Tok",
-      "Pinterest",
-      "Youtube",
-      "Facebook",
-      "Twitter"
-    ]
-  }
+      { label: "All Products", href: "/shop" },
+      { label: "Collections", href: "/collections" },
+      { label: "Boutiques", href: "/boutiques" },
+      { label: "Bespoke Orders", href: "/custom" },
+    ],
+  },
 ]
+
+/** Real social profiles only. Empty until the business supplies them. */
+const socialLinks: { label: string; href: string }[] = []
 
 export default function Footer() {
   return (
@@ -86,13 +98,13 @@ export default function Footer() {
                   {col.title}
                 </h4>
                 <ul className="flex flex-col gap-1.5 md:gap-2">
-                  {col.links.map((link, linkIdx) => (
-                    <li key={linkIdx}>
+                  {col.links.map((link) => (
+                    <li key={link.href}>
                       <Link
-                        href="#"
-                        className="font-sans text-xs text-secondary/85 hover:text-secondary hover:translate-x-1 md:hover:translate-x-0 transition-all duration-300 block"
+                        href={link.href}
+                        className="font-sans text-xs text-secondary/85 hover:text-secondary hover:translate-x-1 md:hover:translate-x-0 transition-all duration-300 block py-1"
                       >
-                        {link}
+                        {link.label}
                       </Link>
                     </li>
                   ))}
@@ -103,13 +115,31 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
+        {/* Social icons render only once real profile URLs exist — see socialLinks above. */}
+        {socialLinks.length > 0 && (
+          <div className="mt-8 flex justify-center gap-6">
+            {socialLinks.map((s) => (
+              <a
+                key={s.href}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${s.label} (opens in a new tab)`}
+                className="text-secondary/85 hover:text-secondary transition-colors"
+              >
+                {s.label}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Bottom Bar — the Terms and Accessibility links were removed: neither page exists,
+            and a legal link that goes nowhere is worse than no link at all. */}
         <div className="border-t border-secondary/10 mt-8 md:mt-14 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 text-[9px] md:text-[10px] text-secondary/80 font-sans uppercase tracking-widest">
           <p>© 2026 Lebami | All rights reserved</p>
-          <div className="flex gap-4 md:gap-6">
-            <Link href="#" className="hover:text-secondary transition-colors">Terms & Conditions - Privacy</Link>
-            <span className="hidden md:inline">|</span>
-            <Link href="#" className="hover:text-secondary transition-colors">Accessibility Statement</Link>
-          </div>
+          <Link href="/contact" className="hover:text-secondary transition-colors">
+            Contact Us
+          </Link>
         </div>
       </div>
     </footer>

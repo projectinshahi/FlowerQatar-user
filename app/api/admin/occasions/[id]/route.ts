@@ -54,6 +54,14 @@ export async function PUT(request: Request, { params }: Params) {
     // skipDuplicates leaves already-mapped products untouched (no churn, and the
     // @@unique([occasionId, productId]) index stays satisfied).
     const updated = await prisma.$transaction(async (tx) => {
+      // Featuring this one un-features the rest: the home page promotes exactly one
+      // collection, and two featured rows made that choice arbitrary.
+      if (data.isFeatured) {
+        await tx.occasion.updateMany({
+          where: { isFeatured: true, id: { not: id } },
+          data: { isFeatured: false },
+        });
+      }
       await tx.occasion.update({
         where: { id },
         data: {

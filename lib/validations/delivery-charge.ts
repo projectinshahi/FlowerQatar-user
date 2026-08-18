@@ -13,6 +13,8 @@ export const PERCENTAGE_MAX = 100;
 
 export const deliveryChargeSchema = z
   .object({
+    /** Master switch — when false nothing is charged, whatever `value` holds. */
+    isActive: z.coerce.boolean().default(true),
     chargeType: z.enum(CHARGE_TYPES, { message: 'Select a charge type' }),
     // "" / null / undefined → required error (z.coerce would turn "" into 0).
     value: z.preprocess(
@@ -21,6 +23,14 @@ export const deliveryChargeSchema = z
         .number({ message: 'Value is required' })
         .refine((n) => !Number.isNaN(n), 'Value must be a number')
         .refine((n) => n >= 0, 'Value cannot be negative')
+    ),
+    /** Subtotal at or above which shipping is free. 0 = no free-shipping threshold. */
+    freeAbove: z.preprocess(
+      (v) => (v === '' || v === null || v === undefined ? 0 : Number(v)),
+      z
+        .number({ message: 'Free-shipping threshold must be a number' })
+        .refine((n) => !Number.isNaN(n), 'Free-shipping threshold must be a number')
+        .refine((n) => n >= 0, 'Free-shipping threshold cannot be negative')
     ),
   })
   // Percentage is capped at 100; fixed has no upper limit.

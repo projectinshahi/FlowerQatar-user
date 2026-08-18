@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronRight, PackageSearch, Paperclip } from 'lucide-react';
+import { ChevronRight, PackageSearch, Loader2 } from 'lucide-react';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 
 export default function ContactPage() {
@@ -9,17 +9,41 @@ export default function ContactPage() {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /**
+   * Records the enquiry. The message goes to the admin inbox at /admin/contact-enquiries and
+   * nowhere else — no WhatsApp hand-off, so the customer stays on the site and the enquiry is
+   * saved exactly once.
+   */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && email && subject && message) {
+    if (!name || !email || !subject || !message || sending) return;
+
+    setSending(true);
+    setError(null);
+    setSubmitted(false);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, subject, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Could not send your message');
+
       setSubmitted(true);
-      setTimeout(() => setSubmitted(false), 4000);
       setName('');
       setEmail('');
       setSubject('');
       setMessage('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -40,7 +64,7 @@ export default function ContactPage() {
       </div>
 
       {/* Quick Links Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {quickLinks.map((link, idx) => (
           <button 
             key={idx} 
@@ -50,13 +74,14 @@ export default function ContactPage() {
             <ChevronRight size={18} className="text-secondary/40" />
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* Track Order Section */}
-      <div className="border border-secondary/20 p-6 md:p-8 rounded-sm flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors mb-12 bg-white/50">
+      {/* <div className="border border-secondary/20 p-6 md:p-8 rounded-sm flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors mb-12 bg-white/50">
         <PackageSearch size={32} strokeWidth={1.2} className="mb-3 text-secondary" />
         <span className="font-serif font-medium text-[15px]">Track order</span>
-      </div>
+      </div> */}
+      <br />
 
       {/* Contact Form Section */}
       <div className="border border-secondary/20 rounded-sm p-6 md:p-10 bg-white/50">
@@ -127,22 +152,35 @@ export default function ContactPage() {
             ></textarea>
           </div>
 
-          <div className="flex flex-col gap-2 mt-4">
-            <button type="button" className="flex items-center justify-center gap-2 w-full py-4 bg-[#F9F9F9] border border-secondary/10 hover:bg-[#EFEFEF] transition-colors rounded-sm text-[13px] font-serif font-medium text-secondary">
-              <Paperclip size={18} /> Attach Files
-            </button>
-            <p className="text-[11px] text-secondary/50">Attach up to 10 files. The maximum allowed size per file is 10 MB.</p>
-          </div>
+          {error && (
+            <p role="alert" className="text-[12px] text-red-600 border border-red-200 bg-red-50 rounded-sm px-3 py-2">
+              {error}
+            </p>
+          )}
 
-          <button 
+          {/* Stays until the next submit — the customer is not redirected anywhere now, so
+              this banner is the only confirmation that the message got through. */}
+          {submitted && (
+            <p
+              role="status"
+              className="text-[12px] text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-sm px-3 py-3"
+            >
+              Thank you — your message has been sent. Our team will get back to you by email
+              shortly.
+            </p>
+          )}
+
+          <button
             type="submit"
-            className="w-full bg-black text-white font-sans text-[11px] uppercase tracking-[0.2em] py-5 mt-4 hover:bg-black/80 transition-colors rounded-sm font-medium"
+            disabled={sending}
+            className="w-full bg-black text-white font-sans text-[11px] uppercase tracking-[0.2em] py-5 mt-4 hover:bg-black/80 transition-colors rounded-sm font-medium disabled:opacity-70 flex items-center justify-center gap-2"
           >
-            {submitted ? 'SENT SUCCESSFULLY' : 'SEND'}
+            {sending && <Loader2 size={14} className="animate-spin" />}
+            {sending ? 'SENDING…' : submitted ? 'MESSAGE SENT' : 'SEND MESSAGE'}
           </button>
           
           <p className="text-[11px] text-secondary/60 text-left mt-2">
-            This site is protected by reCAPTCHA. For more information, please refer to Gorgias' <a href="#" className="text-blue-500 hover:underline">Privacy Policy</a>.
+            This site is protected by reCAPTCHA. For more information, please refer to Gorgias&apos; Privacy Policy.
           </p>
         </form>
       </div>

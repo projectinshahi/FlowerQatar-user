@@ -302,7 +302,7 @@ export default function AccountDrawer() {
                             </div>
                             <button type="submit" disabled={loading} className={primaryBtn}>{loading ? 'PROCESSING...' : 'SIGN IN'}</button>
                             <div className="mt-5 text-center">
-                              <Link href="#" className="font-serif text-[14px] text-primary underline decoration-1 underline-offset-4 hover:text-secondary">Forgot Password?</Link>
+                              {/* No password-reset route exists yet — the link is hidden rather than dead. */}
                             </div>
                           </form>
                           <GoogleButton />
@@ -326,7 +326,7 @@ export default function AccountDrawer() {
                               <input id="reg-email" type="email" autoComplete="email" inputMode="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className={inputCls} />
                             </div>
                             <p className="font-serif text-[13px] text-primary mb-8 text-center leading-relaxed">
-                              By signing up, you agree to our <Link href="#" className="underline decoration-1 underline-offset-4">Terms of Use and Privacy Policy</Link>.
+                              By signing up, you agree to our Terms of Use and Privacy Policy.
                             </p>
                             <button type="submit" disabled={loading} className={primaryBtn}>{loading ? 'SENDING CODE...' : 'CREATE ACCOUNT'}</button>
                           </form>

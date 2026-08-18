@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Star, ChevronRight, Minus, Plus, ChevronDown, Check, ChevronLeft } from 'lucide-react'
+import { Star, Minus, Plus, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '@/context/AppContext'
 import ProductGallery from './ProductGallery'
@@ -13,6 +13,9 @@ import GreetingCardSelector, { DEFAULT_GREETING_STYLE, type GreetingStyle } from
 import PriceSummary from './PriceSummary'
 import { usePriceCalculator, type AddOn } from '@/hooks/useProductOptions'
 import { isVideoMedia } from '@/lib/media'
+import type { Product as StoreProduct } from '@/types'
+import type { ProductReviews } from '@/lib/services/reviews'
+import { filledStars, MAX_RATING } from '@/lib/reviews'
 
 // Define the colors from the user prompt
 const PALETTE = {
@@ -30,20 +33,29 @@ const PALETTE = {
   divider: '#EBEBEB'
 }
 
-// Mock Data for UI completeness based on screenshot
-const MOCK_REVIEWS = [
-  { id: 1, name: 'M.E.', rating: 5, date: 'Yesterday', title: 'Love it!', content: 'Absolutely gorgeous arrangement, and smells amazing even days later. Highly recommend!' },
-  { id: 2, name: 'Sarah L.', rating: 5, date: 'Tuesday', title: 'Perfect gift', content: 'Bought this for my mom and she was thrilled. The quality is unmatched and packaging is beautiful.' },
-  { id: 3, name: 'Jessica T.', rating: 5, date: '2 days ago', title: 'Stunning', content: 'These look beautiful on my entryway table.' }
-];
+/**
+ * Marquee text. The trailing spaced separator is part of the phrase so the gap between
+ * repetitions is identical everywhere, including across the loop seam. Repeated enough times
+ * that one half always overflows the widest viewport — otherwise the track is narrower than
+ * the screen and the loop shows a blank stretch.
+ */
+const MARQUEE_PHRASE = 'Year Or Longer. Flowers That Last.  —  ';
+const MARQUEE_REPEATS = 3;
 
-const MOCK_RECOMMENDATIONS = [
-  { id: '1', name: 'Le Mini Square', price: 99, image: '/images/category_bouquets_1782290106325.png', colors: ['#FFB6C1', '#FFF'] },
-  { id: '2', name: 'Classic Round', price: 299, image: '/images/category_bouquets_1782290106325.png', colors: ['#FFF', '#FF0000', '#FF69B4'] },
-  { id: '3', name: 'Grand Square', price: 399, image: '/images/category_bouquets_1782290106325.png', colors: ['#800080', '#FFF'] },
-];
+/** Cards visible per page at the widest breakpoint — decides whether arrows are needed. */
+const RELATED_PER_PAGE = 3;
 
-export default function ProductDetailClient({ product }: { product: any }) {
+export default function ProductDetailClient({
+  product,
+  related = [],
+  reviews,
+}: {
+  product: any;
+  /** Same-category products resolved on the server; empty hides the section entirely. */
+  related?: StoreProduct[];
+  /** Published reviews + summary, resolved on the server. */
+  reviews?: ProductReviews;
+}) {
   const { addToCart, setCartOpen } = useApp()
 
   const defaultVariant = product.variants?.[0]
@@ -52,6 +64,12 @@ export default function ProductDetailClient({ product }: { product: any }) {
   const [selectedColorId, setSelectedColorId] = useState<string>(defaultColor?.id || '')
   const [colorView, setColorView] = useState<'Grid' | 'List'>('Grid')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  // Review controls. These existed as buttons that did nothing; they now drive real state.
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null)
+  const [sortOrder, setSortOrder] = useState<'recent' | 'highest'>('recent')
+  const relatedTrackRef = useRef<HTMLDivElement | null>(null)
+  // Both false until measured; the row starts at the left, so only "right" becomes true.
+  const [relatedEdges, setRelatedEdges] = useState({ canScrollLeft: false, canScrollRight: false })
 
   const [quantity, setQuantity] = useState(1)
   const [openSection, setOpenSection] = useState<string | null>('description');
@@ -117,11 +135,94 @@ export default function ProductDetailClient({ product }: { product: any }) {
     setOpenSection(openSection === section ? null : section)
   }
 
+  /**
+   * Which way the related row can still move.
+   *
+   * Drives the arrows' disabled state: at the last page only the left arrow is active, at the
+   * first only the right. The 2px tolerance absorbs sub-pixel rounding — an exact comparison
+   * leaves `scrollLeft` a fraction short of the maximum, so the end is never detected and the
+   * right arrow stays enabled on a row that cannot move.
+   */
+  const measureRelated = React.useCallback((track: HTMLDivElement | null) => {
+    if (!track) return
+    const max = track.scrollWidth - track.clientWidth
+    setRelatedEdges({
+      canScrollLeft: track.scrollLeft > 2,
+      // `max <= 2` means everything already fits, so there is nothing to scroll to.
+      canScrollRight: max > 2 && track.scrollLeft < max - 2,
+    })
+  }, [])
+
+  /**
+   * Callback ref: measures as soon as the row is in the DOM. A `useEffect` would need a
+   * synchronous setState in its body, which React discourages (and the lint rule rejects).
+   */
+  const attachRelatedTrack = React.useCallback(
+    (track: HTMLDivElement | null) => {
+      relatedTrackRef.current = track
+      measureRelated(track)
+    },
+    [measureRelated]
+  )
+
+  // Card widths are percentage-based, so a resize changes where the end is.
+  React.useEffect(() => {
+    const onResize = () => measureRelated(relatedTrackRef.current)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [measureRelated])
+
+  /**
+   * Scroll by exactly one card, clamped to the ends — no wrap-around.
+   *
+   * The step is the distance between the first two cards' left edges, which already includes
+   * the flex gap and is correct at every breakpoint (the cards are percentage-based, so a
+   * hardcoded width would be wrong on two of the three layouts). Falls back to the viewport
+   * width when there is only one card and therefore no delta to measure.
+   */
+  const scrollRelated = (direction: 1 | -1) => {
+    const track = relatedTrackRef.current
+    if (!track) return
+    const [first, second] = track.children as unknown as HTMLElement[]
+    const step =
+      first && second ? second.offsetLeft - first.offsetLeft : track.clientWidth
+    const max = track.scrollWidth - track.clientWidth
+    const left = Math.min(max, Math.max(0, track.scrollLeft + direction * step))
+    track.scrollTo({ left, behavior: 'smooth' })
+  }
+
+  /* ── Reviews: filter + sort applied to the already-fetched list (no extra requests) ── */
+  // Memoised so the `?? []` fallback does not create a new array identity on every render,
+  // which would defeat the useMemo below.
+  const reviewList = React.useMemo(() => reviews?.reviews ?? [], [reviews])
+  const summary = reviews?.summary ?? {
+    average: null,
+    count: 0,
+    breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  }
+
+  const visibleReviews = React.useMemo(() => {
+    const filtered =
+      ratingFilter === null ? reviewList : reviewList.filter((r) => r.rating === ratingFilter)
+    // The server already returns newest-first, so only "highest" needs re-sorting — and it
+    // copies the array first, since sort() mutates and would reorder the source list.
+    return sortOrder === 'highest'
+      ? [...filtered].sort((a, b) => b.rating - a.rating)
+      : filtered
+  }, [reviewList, ratingFilter, sortOrder])
+
   const displayTitle = selectedVariant?.variantName || product.name
   const displaySubtitle = product.subcategory?.name || "Premium Collection"
   const price = Number(selectedColor?.price || 299)
   const salePrice = Number(selectedColor?.salePrice || 0)
   const isSale = salePrice > 0 && salePrice < price
+  /**
+   * The single price shown to the customer: the sale price when one is set and genuinely
+   * lower, otherwise the list price. Guarding on `isSale` rather than just taking salePrice
+   * means a sale price accidentally entered ABOVE the list price cannot raise what is
+   * displayed.
+   */
+  const effectivePrice = isSale ? salePrice : price
 
   return (
     <div style={{ backgroundColor: PALETTE.bgPrimary }} className="min-h-screen pb-0 font-sans">
@@ -154,15 +255,10 @@ export default function ProductDetailClient({ product }: { product: any }) {
           </h1>
 
           <div className="flex flex-wrap items-center gap-3 mb-2">
+            {/* One price only. The struck original alongside a red sale price was removed —
+                the customer sees just what they will pay. */}
             <span className="font-serif text-[18px]" style={{ color: PALETTE.textPrimary }}>
-              {isSale ? (
-                <>
-                  <span className="line-through text-gray-400 mr-2">QAR {price.toFixed(2)}</span>
-                  <span className="text-red-600">QAR {salePrice.toFixed(2)}</span>
-                </>
-              ) : (
-                <>QAR {price.toFixed(2)}</>
-              )}
+              QAR {effectivePrice.toFixed(2)}
             </span>
             <span className="font-sans text-[14px] text-gray-400 mx-1">·</span>
             <span className="font-sans text-[12px] tracking-widest uppercase" style={{ color: PALETTE.textPrimary }}>{displaySubtitle}</span>
@@ -182,7 +278,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
           <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
 
           {/* Arrangement Size Selector */}
-          <div className="mb-8">
+          {/* <div className="mb-8">
             <span className="font-sans text-[11px] font-semibold uppercase tracking-widest mb-4 block" style={{ color: PALETTE.textPrimary }}>
               <span style={{ color: PALETTE.textSecondary }}>SIZE : </span>
               {selectedVariant?.variantName}
@@ -219,12 +315,12 @@ export default function ProductDetailClient({ product }: { product: any }) {
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
 
-          <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
+          {/* <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
 
           {/* Color Selector */}
-          <div className="mb-10">
+          {/* <div className="mb-10">
             <div className="flex justify-between items-center mb-4">
               <span className="font-sans text-[11px] font-semibold uppercase tracking-widest block" style={{ color: PALETTE.textPrimary }}>
                 <span style={{ color: PALETTE.textSecondary }}>COLOR : </span>
@@ -293,7 +389,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
                 )
               })}
             </div>
-          </div>
+          </div> */} 
 
           <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
 
@@ -346,31 +442,39 @@ export default function ProductDetailClient({ product }: { product: any }) {
             >
               ADD TO CART
             </button>
+            {/* "Learn More" removed: there is no Klarna information page in this app, and a
+                link to "#" would scroll the customer to the top mid-checkout. */}
             <div className="flex items-center justify-center gap-1 font-sans text-[12px]" style={{ color: PALETTE.textSecondary }}>
               <span>or 4 interest-free payments of QAR {(price / 4).toFixed(2)} with</span>
               <span className="font-bold text-black tracking-tighter">Klarna.</span>
-              <Link href="#" className="underline ml-1 hover:text-black">Learn More</Link>
             </div>
           </div>
 
         </div>
       </div>
 
-      {/* MARQUEE BANNER */}
+      {/*
+        MARQUEE BANNER
+
+        A seamless loop needs exactly TWO identical halves: the track slides by -50%, which
+        lands the second half precisely where the first began, so the wrap is invisible. The
+        old version rendered four copies and still translated -50%, so it jumped mid-phrase
+        every cycle. Spacing lives on the phrase itself (a trailing separator) rather than on
+        padding, so the gap is identical at the seam as everywhere else.
+
+        `aria-hidden` on the duplicate stops screen readers reading the line twice; the whole
+        strip is decorative, so it is announced once.
+      */}
       <div className="w-full py-12 md:py-24 overflow-hidden relative bg-[#FDFBF9]">
-        <style>{`
-          @keyframes marquee {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-50%); }
-          }
-        `}</style>
-        <div
-          className="flex whitespace-nowrap opacity-40"
-          style={{ animation: 'marquee 40s linear infinite' }}
-        >
-          {[...Array(4)].map((_, i) => (
-            <span key={i} className="font-serif italic text-[80px] md:text-[140px] tracking-normal pr-12 leading-none" style={{ color: '#D4C8B8' }}>
-              Year Or Longer. Flowers That Last.
+        <div className="flex w-max animate-marquee whitespace-nowrap opacity-40 motion-reduce:animate-none">
+          {[0, 1].map((half) => (
+            <span
+              key={half}
+              aria-hidden={half === 1}
+              className="font-serif italic text-[80px] md:text-[140px] tracking-normal leading-none"
+              style={{ color: '#D4C8B8' }}
+            >
+              {MARQUEE_PHRASE.repeat(MARQUEE_REPEATS)}
             </span>
           ))}
         </div>
@@ -491,7 +595,7 @@ export default function ProductDetailClient({ product }: { product: any }) {
       <div className="w-full py-24 px-6" style={{ backgroundColor: PALETTE.experienceBg }}>
         <div className="max-w-[1200px] mx-auto flex flex-col items-center text-center">
           <h2 className="font-serif text-[28px] uppercase tracking-[0.2em] mb-4" style={{ color: PALETTE.textPrimary }}>
-            THE VENUS EXPERIENCE
+            THE LEBAMI EXPERIENCE
           </h2>
           <p className="font-serif text-[18px] italic mb-20 text-gray-800">
             &ldquo;Immerse in the luxury of our Eternity® flowers...&rdquo;
@@ -540,118 +644,221 @@ export default function ProductDetailClient({ product }: { product: any }) {
         </div>
       </div>
 
-      {/* YOU MAY ALSO LIKE SECTION */}
-      <div className="w-full py-20 px-6 bg-white border-b" style={{ borderColor: PALETTE.divider }}>
-        <div className="max-w-[1440px] mx-auto">
-          <div className="flex justify-between items-end mb-12">
-            <h2 className="font-serif text-[24px] uppercase tracking-widest">YOU MAY ALSO LIKE</h2>
-            <div className="hidden md:flex gap-4">
-              <button className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"><ChevronLeft size={16} /></button>
-              <button className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"><ChevronRight size={16} /></button>
-            </div>
-          </div>
+      {/*
+        YOU MAY ALSO LIKE — real products from the same subcategory (falling back to the same
+        fixed category), resolved on the server. Renders nothing when the category has no other
+        published products, rather than padding the row with unrelated items.
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide">
-            {MOCK_RECOMMENDATIONS.map((item) => (
-              <Link href="#" key={item.id} className="flex flex-col group min-w-[160px]">
-                <div className="relative aspect-[4/5] bg-[#F5F5F5] mb-4 overflow-hidden">
-                  <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-                </div>
-                <h3 className="font-serif text-[14px] mb-1">{item.name}</h3>
-                <span className="font-serif text-[14px] text-gray-600 mb-3">QAR {item.price}</span>
-                <div className="flex gap-1">
-                  {item.colors.map((c, i) => (
-                    <div key={i} className="w-3 h-3 rounded-full border border-gray-200" style={{ backgroundColor: c }} />
-                  ))}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+        Three across on desktop, two on tablet, one on mobile. A native scroll container does
+        the swiping — touch, trackpad and momentum all come free, and scroll-snap lands each
+        page cleanly. The arrows just scroll by one page and wrap around at either end, so the
+        row never dead-ends.
+      */}
+      {related.length > 0 && (
+        <div className="w-full py-20 px-6 bg-white border-b" style={{ borderColor: PALETTE.divider }}>
+          <div className="max-w-[1440px] mx-auto">
+            <div className="flex justify-between items-end mb-12">
+              <h2 className="font-serif text-[24px] uppercase tracking-widest">YOU MAY ALSO LIKE</h2>
 
-      {/* REVIEWS SECTION */}
-      <div className="w-full py-24 px-6 bg-white">
-        <div className="max-w-[1000px] mx-auto flex flex-col items-center">
-          <h2 className="font-serif text-[40px] uppercase tracking-widest mb-4 text-gray-200 font-light">REVIEWS</h2>
-          <div className="flex items-center gap-3 mb-2 font-serif text-[24px]">
-            <span className="font-serif">5.0</span>
-            <div className="flex text-[#D4A843]">
-              {[...Array(5)].map((_, i) => <Star key={i} size={18} fill="currentColor" strokeWidth={0} />)}
-            </div>
-          </div>
-          <p className="font-sans text-[10px] uppercase font-bold tracking-widest text-black mb-16">Based on 4 reviews</p>
-
-          <div className="w-full flex flex-col mb-12">
-            {/* Filter Header */}
-            <div className={`w-full flex ${filtersOpen ? 'flex-col items-start gap-8' : 'flex-row justify-between items-center'} pb-4 border-b border-gray-200`}>
-
-              <button
-                onClick={() => setFiltersOpen(!filtersOpen)}
-                className="flex items-center gap-2 font-sans text-[11px] font-bold tracking-[0.1em] uppercase text-gray-700 hover:text-black transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="18" x2="12" y2="18"></line></svg>
-                FILTERS
-              </button>
-
-              {filtersOpen && (
-                <div className="flex flex-col gap-4 w-full">
-                  <span className="font-serif text-[18px] font-bold text-black">Rating</span>
-                  <div className="flex flex-wrap gap-3">
-                    <button className="px-5 py-2 rounded-full border border-gray-200 flex items-center justify-center hover:border-black transition-colors">
-                      <Star size={12} fill="black" strokeWidth={0} />
-                    </button>
-                    <button className="px-5 py-2 rounded-full border border-gray-200 flex items-center justify-center gap-1 hover:border-black transition-colors">
-                      {[...Array(2)].map((_, i) => <Star key={i} size={12} fill="black" strokeWidth={0} />)}
-                    </button>
-                    <button className="px-5 py-2 rounded-full border border-gray-200 flex items-center justify-center gap-1 hover:border-black transition-colors">
-                      {[...Array(3)].map((_, i) => <Star key={i} size={12} fill="black" strokeWidth={0} />)}
-                    </button>
-                    <button className="px-5 py-2 rounded-full border border-gray-200 flex items-center justify-center gap-1 hover:border-black transition-colors">
-                      {[...Array(4)].map((_, i) => <Star key={i} size={12} fill="black" strokeWidth={0} />)}
-                    </button>
-                    <button className="px-5 py-2 rounded-full border border-gray-200 flex items-center justify-center gap-1 hover:border-black transition-colors">
-                      {[...Array(5)].map((_, i) => <Star key={i} size={12} fill="black" strokeWidth={0} />)}
-                    </button>
-                  </div>
+              {/* Arrows appear only when there is more than one page to move through. */}
+              {related.length > RELATED_PER_PAGE && (
+                <div className="hidden md:flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => scrollRelated(-1)}
+                    disabled={!relatedEdges.canScrollLeft}
+                    aria-label="Previous products"
+                    aria-controls="related-track"
+                    className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center transition-colors hover:bg-gray-50 hover:border-gray-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-gray-300"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollRelated(1)}
+                    disabled={!relatedEdges.canScrollRight}
+                    aria-label="Next products"
+                    aria-controls="related-track"
+                    className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center transition-colors hover:bg-gray-50 hover:border-gray-400 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-gray-300"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               )}
+            </div>
 
-              <div className={`flex items-center gap-2 font-sans text-[10px] uppercase font-bold tracking-widest cursor-pointer border-b border-black pb-1 ${filtersOpen ? 'self-end mt-4' : ''}`}>
-                MOST RECENT <ChevronDown size={14} />
-              </div>
-
+            <div
+              id="related-track"
+              ref={attachRelatedTrack}
+              onScroll={(e) => measureRelated(e.currentTarget)}
+              className="flex gap-4 md:gap-8 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {related.map((item) => (
+                <Link
+                  href={`/product/${item.slug}`}
+                  key={item.id}
+                  /* Basis math accounts for the gap so exactly 1 / 2 / 3 cards fit a page. */
+                  className="group flex shrink-0 snap-start flex-col basis-[calc(100%-1rem)] sm:basis-[calc(50%-0.5rem)] md:basis-[calc(33.333%-1.334rem)]"
+                >
+                  <div className="relative aspect-[4/5] bg-[#F5F5F5] mb-4 overflow-hidden">
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <h3 className="font-serif text-[14px] mb-1">{item.name}</h3>
+                  <span className="font-serif text-[14px] text-gray-600 mb-3">
+                    QAR {item.price}
+                  </span>
+                  {item.colors?.length > 0 && (
+                    <div className="flex gap-1">
+                      {item.colors.slice(0, 4).map((c, i) => (
+                        <span
+                          key={i}
+                          title={c.name}
+                          className="w-3 h-3 rounded-full border border-gray-200"
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              ))}
             </div>
           </div>
-
-          <div className="w-full flex flex-col">
-            {MOCK_REVIEWS.map((review) => (
-              <div key={review.id} className="w-full flex flex-col md:flex-row py-8 border-b border-gray-100">
-                {/* Left Column: Name */}
-                <div className="w-full md:w-1/4 flex-shrink-0 mb-4 md:mb-0">
-                  <h4 className="font-serif text-[15px] text-black">{review.name}</h4>
-                </div>
-
-                {/* Middle Column: Content */}
-                <div className="w-full md:w-2/4 flex flex-col">
-                  <div className="flex text-[#D4A843] mb-4">
-                    {[...Array(review.rating)].map((_, i) => <Star key={i} size={12} fill="currentColor" strokeWidth={0} />)}
-                  </div>
-
-                  <h4 className="font-serif text-[14px] text-gray-800 mb-3">{review.title}</h4>
-                  <p className="font-serif text-[14px] text-gray-800 leading-relaxed">{review.content}</p>
-                </div>
-
-                {/* Right Column: Date */}
-                <div className="w-full md:w-1/4 flex justify-start md:justify-end mt-4 md:mt-0">
-                  <span className="font-serif text-[13px] text-black">3 months ago</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
         </div>
-      </div>
+      )}
+
+      {/*
+        REVIEWS — real, admin-managed rows. Previously a hardcoded MOCK_REVIEWS array with a
+        fixed "5.0 / Based on 4 reviews" headline and a date of "3 months ago" on every entry.
+        The whole section is hidden when a product has no published reviews rather than
+        showing an empty five-star summary.
+      */}
+      {reviewList.length > 0 && (
+        <div className="w-full py-24 px-6 bg-white">
+          <div className="max-w-[1000px] mx-auto flex flex-col items-center">
+            <h2 className="font-serif text-[40px] uppercase tracking-widest mb-4 text-gray-200 font-light">REVIEWS</h2>
+            <div className="flex items-center gap-3 mb-2 font-serif text-[24px]">
+              <span className="font-serif">{summary.average?.toFixed(1)}</span>
+              <div className="flex text-[#D4A843]">
+                {Array.from({ length: MAX_RATING }).map((_, i) => (
+                  <Star
+                    key={i}
+                    size={18}
+                    fill="currentColor"
+                    strokeWidth={0}
+                    className={i < filledStars(summary.average) ? '' : 'text-gray-200'}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="font-sans text-[10px] uppercase font-bold tracking-widest text-black mb-16">
+              Based on {summary.count} review{summary.count === 1 ? '' : 's'}
+            </p>
+
+            <div className="w-full flex flex-col mb-12">
+              <div className={`w-full flex ${filtersOpen ? 'flex-col items-start gap-8' : 'flex-row justify-between items-center'} pb-4 border-b border-gray-200`}>
+                <button
+                  onClick={() => setFiltersOpen(!filtersOpen)}
+                  aria-expanded={filtersOpen}
+                  className="flex items-center gap-2 font-sans text-[11px] font-bold tracking-[0.1em] uppercase text-gray-700 hover:text-black transition-colors"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="18" x2="12" y2="18"></line></svg>
+                  FILTERS
+                  {ratingFilter !== null && <span className="ml-1 text-[#8B0000]">({ratingFilter}★)</span>}
+                </button>
+
+                {/* These buttons used to do nothing. Each now filters, shows its count, and
+                    is disabled when no review has that rating. */}
+                {filtersOpen && (
+                  <div className="flex flex-col gap-4 w-full">
+                    <span className="font-serif text-[18px] font-bold text-black">Rating</span>
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={() => setRatingFilter(null)}
+                        aria-pressed={ratingFilter === null}
+                        className={`px-5 py-2 rounded-full border transition-colors ${ratingFilter === null ? 'border-black bg-black text-white' : 'border-gray-200 hover:border-black'}`}
+                      >
+                        <span className="text-[11px] uppercase tracking-widest">All</span>
+                      </button>
+                      {[5, 4, 3, 2, 1].map((stars) => {
+                        const count = summary.breakdown[stars as 1 | 2 | 3 | 4 | 5]
+                        return (
+                          <button
+                            key={stars}
+                            onClick={() => setRatingFilter(ratingFilter === stars ? null : stars)}
+                            disabled={count === 0}
+                            aria-pressed={ratingFilter === stars}
+                            className={`px-5 py-2 rounded-full border flex items-center justify-center gap-1 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${ratingFilter === stars ? 'border-black bg-black text-white' : 'border-gray-200 hover:border-black'}`}
+                          >
+                            {Array.from({ length: stars }).map((_, i) => (
+                              <Star key={i} size={12} fill="currentColor" strokeWidth={0} />
+                            ))}
+                            <span className="ml-1 text-[11px]">({count})</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'recent' ? 'highest' : 'recent')}
+                  className={`flex items-center gap-2 font-sans text-[10px] uppercase font-bold tracking-widest cursor-pointer border-b border-black pb-1 ${filtersOpen ? 'self-end mt-4' : ''}`}
+                >
+                  {sortOrder === 'recent' ? 'MOST RECENT' : 'HIGHEST RATED'} <ChevronDown size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full flex flex-col">
+              {visibleReviews.length === 0 ? (
+                <p className="py-12 text-center font-serif text-[15px] text-gray-500">
+                  No reviews match that rating.
+                </p>
+              ) : (
+                visibleReviews.map((review) => (
+                  <div key={review.id} className="w-full flex flex-col md:flex-row py-8 border-b border-gray-100">
+                    <div className="w-full md:w-1/4 shrink-0 mb-4 md:mb-0">
+                      <h4 className="font-serif text-[15px] text-black">{review.authorName}</h4>
+                    </div>
+
+                    <div className="w-full md:w-2/4 flex flex-col">
+                      <div className="flex text-[#D4A843] mb-4">
+                        {Array.from({ length: MAX_RATING }).map((_, i) => (
+                          <Star
+                            key={i}
+                            size={12}
+                            fill="currentColor"
+                            strokeWidth={0}
+                            className={i < review.rating ? '' : 'text-gray-200'}
+                          />
+                        ))}
+                      </div>
+
+                      {review.title && (
+                        <h4 className="font-serif text-[14px] text-gray-800 mb-3">{review.title}</h4>
+                      )}
+                      <p className="font-serif text-[14px] text-gray-800 leading-relaxed whitespace-pre-line">
+                        {review.content}
+                      </p>
+                    </div>
+
+                    {/* Formatted on the server so this string is identical on both sides. */}
+                    <div className="w-full md:w-1/4 flex justify-start md:justify-end mt-4 md:mt-0">
+                      <span className="font-serif text-[13px] text-black">{review.when}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

@@ -162,6 +162,8 @@ model Product {
   occasions         OccasionProduct[]
   subscriptionPlans SubscriptionPlanProduct[]
   subcategory       Subcategory?              @relation(fields: [subcategoryId], references: [id])
+  stockLevels       StockLevel[]
+  reviews           ProductReview[]
 
   @@index([slug])
   @@index([status])
@@ -547,6 +549,10 @@ model Occasion {
   buttonLink   String?           @db.VarChar(255)
   /// The single collection promoted above New Arrivals on the home page.
   isFeatured   Boolean           @default(false)
+  /// Singleton guard: exactly one Occasion may exist. `@unique` on a column that always
+  /// defaults to true means a second INSERT violates the constraint, so the limit holds even
+  /// if two admins submit at once — the API check alone would race.
+  singleton    Boolean           @unique @default(true)
   displayOrder Int               @default(0)
   isActive     Boolean           @default(true)
   createdAt    DateTime          @default(now()) @db.Timestamptz(6)
@@ -712,6 +718,11 @@ model DeliveryCharge {
   id         String     @id @default(uuid()) @db.Uuid
   chargeType ChargeType @default(FIXED)
   value      Decimal    @db.Decimal(10, 2)
+  /// Master switch. When false no shipping is charged at all, whatever `value` says —
+  /// so the figure survives being switched back on rather than having to be retyped.
+  isActive   Boolean    @default(true)
+  /// Orders at or above this subtotal ship free. 0 disables the threshold entirely.
+  freeAbove  Decimal    @default(0) @db.Decimal(10, 2)
   singleton  Boolean    @unique @default(true)
   createdAt  DateTime   @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime   @updatedAt @db.Timestamptz(6)
@@ -726,6 +737,90 @@ model WelcomePopup {
   singleton   Boolean  @unique @default(true)
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+}
+
+/// A product review, written by the admin on a customer's behalf.
+///
+/// Deliberately not tied to a User or an Order: these are curated testimonials the shop
+/// enters from emails, cards and social posts, not self-service submissions. `authorName` is
+/// therefore free text rather than a relation.
+model ProductReview {
+  id         String  @id @default(uuid()) @db.Uuid
+  productId  String  @db.Uuid
+  authorName String  @db.VarChar(80)
+  /// Whole stars, 1–5. Enforced by a CHECK constraint as well as by validation.
+  rating     Int
+  title      String? @db.VarChar(120)
+  content    String
+  /// Hidden reviews stay in the table so they can be restored — never deleted to hide them.
+  isPublished Boolean @default(true)
+  /// When the review was written, which is not when it was typed in. Drives "3 months ago".
+  reviewedAt DateTime @default(now()) @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, isPublished, reviewedAt])
+  @@index([isPublished])
+}
+
+/// On-hand inventory for ONE sellable unit: a colour variant inside a product.
+///
+/// This is NOT a re-normalisation of variants — those stay in `Product.variants` JSON, and
+/// `variantId`/`colorId` here are the ids from that JSON. Stock lives in its own table for two
+/// reasons a JSON column cannot give: an atomic `quantity - reserved >= n` guarded UPDATE
+/// (a JSON read-modify-write races under concurrent checkouts), and per-unit indexing.
+///
+/// A sellable unit with NO row here is "not tracked" and always sells — so adding this table
+/// changes nothing until an admin sets a level.
+model StockLevel {
+  id        String @id @default(uuid()) @db.Uuid
+  productId String @db.Uuid
+  /// Product.variants[].id — a JSON id, not a foreign key.
+  variantId String @db.VarChar(100)
+  /// Product.variants[].colorVariants[].id — a JSON id, not a foreign key.
+  colorId   String @db.VarChar(100)
+
+  /// Physical units on hand.
+  quantity Int @default(0)
+  /// Units promised to pending orders. Sellable = quantity - reserved.
+  reserved Int @default(0)
+  /// At or below this (and above zero) the unit reports `low_stock`.
+  lowStockThreshold Int @default(0)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, variantId, colorId])
+  @@index([productId])
+}
+
+/// A message sent from the storefront contact form. Stored so enquiries survive the
+/// WhatsApp hand-off — the customer's browser opening WhatsApp is not a record, and anything
+/// sent while the business was offline used to be lost entirely.
+model ContactEnquiry {
+  id        String              @id @default(uuid()) @db.Uuid
+  name      String              @db.VarChar(120)
+  email     String              @db.VarChar(255)
+  /// One of the form's fixed subject keys (order_issue, product_question, returns, other).
+  subject   String              @db.VarChar(40)
+  message   String
+  status    ContactEnquiryStatus @default(NEW)
+  createdAt DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(6)
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+enum ContactEnquiryStatus {
+  NEW
+  READ
+  RESOLVED
 }
 
 /// The four FIXED navigation categories. Never editable by the admin — they are a code
@@ -754,7 +849,12 @@ model Subcategory {
   id         String  @id @default(uuid()) @db.Uuid
   categoryId String  @db.Uuid
   name       String  @db.VarChar(100)
+  /// Square-ish art for the circular nav strip and the Explore Gardens tile.
   hoverImage String?
+  /// Wide art for the shop listing banner. Separate from hoverImage because the two are
+  /// different shapes — a circular thumbnail stretched across a full-width hero looks wrong.
+  /// Falls back to hoverImage when unset, so this is optional.
+  bannerImage String?
   hoverColor String? @db.VarChar(50)
   isActive   Boolean @default(true)
 
@@ -764,6 +864,11 @@ model Subcategory {
   /// `isExploreGarden` is the garden flag (kept under its original name).
   showInNavigation   Boolean @default(true)
   navigationPosition Int     @default(0)
+
+  /// A "catch-all" entry such as "All Flowers": it holds no products of its own and instead
+  /// links to the whole parent category. Without this it behaves like an ordinary (empty)
+  /// subcategory and shows nothing when clicked.
+  isCatchAll Boolean @default(false)
   isExploreGarden    Boolean @default(false)
   gardenPosition     Int     @default(0)
 

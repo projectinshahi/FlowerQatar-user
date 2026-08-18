@@ -208,7 +208,9 @@ export default function OccasionForm({ initialData, isEdit }: OccasionFormProps)
             <SingleMediaUploader
               fieldName="bannerImage"
               label="Banner Image"
-              accept="image/jpeg,image/png,image/webp"
+              // Video allowed as well as stills — the uploader already handles both;
+              // the banner type is detected from the URL (see lib/media.ts).
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
             />
             <p className="mt-2 text-xs text-gray-500">Optional. Shown above the occasion on the home page.</p>
             {errors.bannerImage && (

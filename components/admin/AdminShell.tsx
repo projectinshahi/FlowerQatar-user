@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, Truck, BarChart3, Film, CalendarHeart, Plus, LayoutGrid, Wallet, Sparkles, FolderTree } from 'lucide-react';
+import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, Truck, BarChart3, Film, CalendarHeart, Plus, LayoutGrid, Wallet, Sparkles, FolderTree, Mail, Star } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -31,9 +31,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
          { name: 'Banners', href: '/admin/banners', icon: Film },
         { name: 'Category System', href: '/admin/category-system', icon: FolderTree },
         { name: 'All Products', href: '/admin/products', icon: Package },
-        // { name: 'Product Reviews', href: '/admin/reviews', icon: Package },
+        { name: 'Product Reviews', href: '/admin/reviews', icon: Star },
            { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
         { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'Contact Enquiries', href: '/admin/contact-enquiries', icon: Mail, exact: true },
         { name: 'Reports', href: '/admin/reports', icon: BarChart3 },
       ],
     },

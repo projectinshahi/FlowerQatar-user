@@ -21,7 +21,7 @@ function SearchContent({ products }: { products: Product[] }) {
       const q = queryParam.toLowerCase();
       const match = products.filter((p) =>
         p.name.toLowerCase().includes(q) ||
-        p.collection.toLowerCase().includes(q) ||
+        (p.collectionName ?? '').toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
         p.colors.some((c) => c.name.toLowerCase().includes(q))
       );

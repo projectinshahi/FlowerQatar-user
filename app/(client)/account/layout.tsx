@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/admin-guard";
 import AccountSidebar from "@/components/account/AccountSidebar";
+import { privatePageMetadata } from "@/lib/page-metadata";
+
+// Signed-in area — never indexable.
+export const metadata = privatePageMetadata("My Account");
 
 export const dynamic = "force-dynamic";
 

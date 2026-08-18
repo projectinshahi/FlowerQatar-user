@@ -61,6 +61,19 @@ export const CATEGORY_FEATURES: Record<
   BLUSHING_BLOOMS: { image: false, hoverColor: false, explore: false },
 };
 
+/**
+ * Which categories use a product's "Country of Origin / Sourcing".
+ *
+ * Separate from CATEGORY_FEATURES on purpose: that map describes SUBCATEGORY fields, this one
+ * describes a PRODUCT field. Sourcing origin is meaningful for fresh stems and not for gift
+ * boxes or combos, so the field is hidden elsewhere rather than left blank.
+ */
+export const CATEGORIES_WITH_COUNTRY: CategoryType[] = ['FLOWER'];
+
+export function supportsCountry(categoryType: string | null | undefined): boolean {
+  return !!categoryType && CATEGORIES_WITH_COUNTRY.includes(categoryType as CategoryType);
+}
+
 /** The URL slug for a category (shared by the storefront and admin routes). */
 export function categorySlug(categoryType: CategoryType): string {
   return CATEGORY_META[categoryType].base.replace(/^\//, '');

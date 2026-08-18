@@ -17,7 +17,6 @@ interface Product {
   slug: string;
   badge: string;
   name: string;
-  subtitle: string;
   price: number;
   rating: number;
   swatches: Swatch[];
@@ -74,11 +73,10 @@ function NewArrivalCard({ product }: { product: Product }) {
           <h3 className="font-serif text-[22px] text-primary">{product.name}</h3>
           <span className="font-sans text-[16px] text-primary font-medium">QAR {product.price}</span>
         </div>
-        <p className="font-sans text-[10px] uppercase tracking-widest text-muted mb-4">{product.subtitle}</p>
 
         <div className="mt-auto pt-4 border-t border-divider flex justify-between items-center">
           {/* Color swatches sit above the card link overlay (z-20) so they're clickable. */}
-          <div className="relative z-20 flex gap-2">
+          {/* <div className="relative z-20 flex gap-2">
             {swatches.map((c, i) => (
               <button
                 key={`${c.name}-${i}`}
@@ -95,11 +93,11 @@ function NewArrivalCard({ product }: { product: Product }) {
                 suppressHydrationWarning
               />
             ))}
-          </div>
-          <div className="flex items-center text-primary">
+          </div> */}
+          {/* <div className="flex items-center text-primary">
             <Star size={12} fill="currentColor" className="mr-1" />
             <span className="text-[11px] font-medium">{product.rating}</span>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
@@ -161,9 +159,9 @@ export default function NewArrivals({ items }: { items?: Product[] }) {
 
           {/* Top Right Navigation Controls */}
           <div className="flex items-center gap-4 mb-2 md:mb-0">
-            <Link href="/shop" className="hidden md:block font-sans text-[11px] uppercase tracking-[0.15em] text-primary hover:text-secondary transition-colors border-b border-primary pb-1 mr-4">
+            {/* <Link href="/shop" className="hidden md:block font-sans text-[11px] uppercase tracking-[0.15em] text-primary hover:text-secondary transition-colors border-b border-primary pb-1 mr-4">
               VIEW ALL
-            </Link>
+            </Link> */}
 
             {useCarousel && (
               <div className="flex gap-2">

@@ -138,16 +138,14 @@ export default function SearchDrawer() {
                       <ul className="flex flex-col space-y-4">
                         {TOP_SEARCHES.map((item, idx) => (
                           <li key={idx}>
-                            <Link 
-                              href="#" 
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setQuery(item);
-                              }}
-                              className="font-serif text-[16px] md:text-[17px] text-primary hover:text-[#C1A87D] transition-colors"
+                            {/* Fills the search box — an action, not navigation, so a button. */}
+                            <button
+                              type="button"
+                              onClick={() => setQuery(item)}
+                              className="text-left font-serif text-[16px] md:text-[17px] text-primary hover:text-[#C1A87D] transition-colors"
                             >
                               {item}
-                            </Link>
+                            </button>
                           </li>
                         ))}
                       </ul>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Upload, X } from "lucide-react";
 import { useFormContext } from "react-hook-form";
+import { isVideoMedia } from "@/lib/media";
 
 interface SingleMediaUploaderProps {
   fieldName: string;
@@ -77,7 +78,9 @@ export default function SingleMediaUploader({
       </label>
       {mediaUrl ? (
         <div className="relative w-full h-32 rounded-lg overflow-hidden border border-gray-200 group bg-gray-50 flex items-center justify-center">
-          {mediaUrl.match(/\.(mp4|webm|ogg)$/i) || mediaUrl.includes('video') ? (
+          {/* Shared rule, not a local regex: this one missed .mov, and `includes('video')`
+              would also match any path that merely contains the word. */}
+          {isVideoMedia({ url: mediaUrl }) ? (
             <video src={mediaUrl} className="max-w-full max-h-full object-contain" autoPlay muted loop />
           ) : (
             <img src={mediaUrl} alt="Preview" className="max-w-full max-h-full object-contain" />

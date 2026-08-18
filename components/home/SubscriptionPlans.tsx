@@ -65,15 +65,15 @@ export default function SubscriptionPlans({ plans }: { plans: StoreSubscriptionP
                     Valid for <span className="font-medium text-primary">{plan.validityLabel || '—'}</span>
                   </span>
                 </div>
-                {plan.productCount > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Package size={15} style={{ color: plan.accent }} aria-hidden="true" />
+                {/* {plan.productCount > 0 && (
+                  <div className="flex items-center gap-2"> */}
+                    {/* <Package size={15} style={{ color: plan.accent }} aria-hidden="true" />
                     <span className="font-sans text-[13px] text-primary/80">
                       Applies to <span className="font-medium text-primary">{plan.productCount}</span>{' '}
                       {plan.productCount === 1 ? 'product' : 'products'}
-                    </span>
-                  </div>
-                )}
+                    </span> */}
+                  {/* </div>
+                )} */}
               </div>
 
               {/* Subscribe → review + simulated payment */}

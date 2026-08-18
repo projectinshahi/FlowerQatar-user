@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getOccasionBySlug } from '@/lib/occasions';
 import { absoluteUrl, SITE_NAME } from '@/lib/site';
 import OccasionProducts from '@/components/client/occasion/OccasionProducts';
+import OccasionBanner from '@/components/OccasionBanner';
 
 export const revalidate = 60;
 
@@ -41,7 +41,7 @@ export default async function OccasionPage({ params }: Props) {
       {/* Header */}
       <section className="mx-auto w-full max-w-[1440px] px-6 md:px-12">
         <div className="text-center">
-          <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-muted">Shop by Occasion</p>
+          {/* <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-muted">Shop by Occasion</p> */}
           <h1 className="mt-4 font-serif text-[36px] font-light leading-[1.2] text-primary md:text-[48px]">
             {occasion.title}
           </h1>
@@ -54,14 +54,12 @@ export default async function OccasionPage({ params }: Props) {
         </div>
 
         {occasion.bannerImage && (
-          <div className="relative mt-10 aspect-[21/9] w-full overflow-hidden rounded-sm bg-cream/40 md:aspect-[24/7]">
-            <Image
-              src={occasion.bannerImage}
-              alt={occasion.title}
-              fill
+          <div className="relative mt-10 aspect-[16/9] w-full overflow-hidden rounded-xl bg-cream/40 sm:rounded-2xl md:aspect-[21/9] lg:aspect-[24/7] lg:rounded-3xl">
+            <OccasionBanner
+              url={occasion.bannerImage}
+              title={occasion.title}
               sizes="(max-width: 768px) 100vw, 1440px"
               priority
-              className="object-cover"
             />
           </div>
         )}

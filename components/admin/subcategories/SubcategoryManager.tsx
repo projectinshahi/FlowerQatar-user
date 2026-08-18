@@ -16,7 +16,9 @@ export interface Subcat {
   categoryId: string;
   name: string;
   hoverImage: string | null;
+  bannerImage: string | null;
   showInNavigation: boolean;
+  isCatchAll: boolean;
   navigationPosition: number;
   isExploreGarden: boolean;
   gardenPosition: number;

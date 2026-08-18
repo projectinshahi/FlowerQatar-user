@@ -7,7 +7,7 @@ import { Country } from "country-state-city";
 import ProductCareInput from "./ProductCareInput";
 import ColorVariantsFieldArray from "./ColorVariantsFieldArray";
 import VariantSpecifications from "./VariantSpecifications";
-import { FIXED_CATEGORY_TYPES, fixedCategoryLabel } from "@/lib/category-config";
+import { FIXED_CATEGORY_TYPES, fixedCategoryLabel, supportsCountry } from "@/lib/category-config";
 
 const ALL_COUNTRIES = Country.getAllCountries();
 
@@ -40,6 +40,7 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
   // Subcategory options depend on the chosen category; changing the category clears the subcategory.
   const selectedType = watch("categoryType");
   const selectedSubId = watch("subcategoryId");
+  const showCountry = supportsCountry(selectedType);
 
   // If subcategoryId is present but categoryType is not set, sync it automatically
   useEffect(() => {
@@ -176,13 +177,16 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
               {subOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <div>
+          {/* Flower only — sourcing origin means nothing for gift boxes or combos, so the
+              field is hidden rather than shown blank. See supportsCountry(). */}
+          <div className={showCountry ? "" : "hidden"}>
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-2">
               <Globe className="h-4 w-4 text-gray-400" />
               <span>Country of Origin / Sourcing</span>
             </label>
             <select
               {...register("country")}
+              disabled={!showCountry}
               className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white"
             >
               <option value="">Select Country</option>

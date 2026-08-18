@@ -2,7 +2,8 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/actions/product.actions";
-import { mapDbProductToStore } from "@/lib/store-products";
+import { getRelatedProducts, mapDbProductToStore } from "@/lib/store-products";
+import { getProductReviews } from "@/lib/services/reviews";
 import { CATEGORY_META, shopCategoryHref } from "@/lib/category-config";
 import type { CategoryType } from "@prisma/client";
 import { absoluteUrl, stripHtml, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -73,6 +74,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = JSON.parse(JSON.stringify(data));
 
   const type = data.categoryType as CategoryType | null;
+
+  // Same-category recommendations, resolved on the server so the client makes no extra call.
+  const related = await getRelatedProducts(data.id, data.subcategoryId ?? null, type, 6);
+
+  // Published reviews + their summary. Relative dates are computed HERE, on the server, and
+  // passed down as finished strings — formatting them in the client component would produce
+  // different text on each side and break hydration.
+  const reviews = await getProductReviews(data.id);
+
   const typeMeta = type ? (CATEGORY_META as Record<string, { label: string } | undefined>)[type] : undefined;
   const categoryLabel = typeMeta?.label ?? null;
   const productUrl = absoluteUrl(`/product/${data.slug}`);
@@ -99,11 +109,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     },
   };
   // Only advertise ratings when there are real reviews (Google rejects fabricated ones).
-  if (store.reviewCount > 0) {
+  // Uses the actual review rows — `store.rating` is a hardcoded 5 from the store mapper and
+  // would have published a rating for products nobody has reviewed.
+  if (reviews.summary.count > 0 && reviews.summary.average !== null) {
     productLd.aggregateRating = {
       "@type": "AggregateRating",
-      ratingValue: store.rating,
-      reviewCount: store.reviewCount,
+      ratingValue: reviews.summary.average,
+      reviewCount: reviews.summary.count,
     };
   }
 
@@ -127,7 +139,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <JsonLd data={[productLd, breadcrumbLd]} />
-      <ProductDetailClient product={product} />
+      <ProductDetailClient product={product} related={related} reviews={reviews} />
     </>
   );
 }

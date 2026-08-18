@@ -5,11 +5,21 @@ import { z } from 'zod';
 import { guardAdmin } from '@/lib/admin-guard';
 
 /** Serialize the Prisma row (Decimal → number) for the client. */
-function serialize(row: { id: string; chargeType: string; value: unknown; createdAt: Date; updatedAt: Date }) {
+function serialize(row: {
+  id: string;
+  chargeType: string;
+  value: unknown;
+  isActive: boolean;
+  freeAbove: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
   return {
     id: row.id,
     chargeType: row.chargeType,
     value: Number(row.value),
+    isActive: row.isActive,
+    freeAbove: Number(row.freeAbove),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

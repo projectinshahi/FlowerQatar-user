@@ -50,23 +50,35 @@ type Row = {
   id: string;
   name: string;
   hoverImage: string | null;
+  isCatchAll: boolean;
   category: { name: string };
 };
 
 const typeFor = (name: string) => name as CategoryType;
 
-const shape = (row: Row): StoreSubcategory => ({
-  id: row.id,
-  categoryType: typeFor(row.category.name),
-  name: row.name,
-  hoverImage: row.hoverImage,
-  href: subcategoryHref(typeFor(row.category.name), row.id),
-});
+/**
+ * A catch-all entry ("All Flowers") links to the WHOLE parent category, not to itself.
+ *
+ * It holds no products of its own, so filtering by its id returned an empty listing — the
+ * strip's first tile appeared to show nothing. Driven by the admin's `isCatchAll` flag rather
+ * than by matching on the name, so the label can be renamed freely.
+ */
+const shape = (row: Row): StoreSubcategory => {
+  const categoryType = typeFor(row.category.name);
+  return {
+    id: row.id,
+    categoryType,
+    name: row.name,
+    hoverImage: row.hoverImage,
+    href: row.isCatchAll ? shopCategoryHref(categoryType) : subcategoryHref(categoryType, row.id),
+  };
+};
 
 const select = {
   id: true,
   name: true,
   hoverImage: true,
+  isCatchAll: true,
   category: { select: { name: true } },
 } as const;
 
@@ -163,6 +175,16 @@ export const getNavMenu = unstable_cache(
       })),
     }));
   },
-  ['nav-menu'],
+  /*
+   * The cache key carries a version.
+   *
+   * This entry stores fully-built hrefs, so a change to how a link is COMPUTED (rather than
+   * to the underlying rows) does not invalidate it — the tag only fires on subcategory
+   * writes. Adding `isCatchAll` routing meant the cache kept serving the old
+   * "?subcategory=<id>" link for All Flowers even though the code had changed.
+   *
+   * Bump this suffix whenever the shape or link logic below changes.
+   */
+  ['nav-menu-v2'],
   { tags: [NAV_MENU_TAG], revalidate: 3600 }
 );

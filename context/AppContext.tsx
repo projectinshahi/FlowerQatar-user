@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchJson } from '@/lib/fetch-json';
+
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Product } from '../types';
 import { ROSE_COLORS, BOX_COLORS } from '../data/products';
@@ -153,8 +155,10 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   /* ─────────────── Cart: server-backed ─────────────── */
   const refreshCart = useCallback(async () => {
     try {
-      const res = await fetch('/api/cart');
-      const data = await res.json();
+      // fetchJson, not res.json(): this runs on every page load and after every cart
+      // mutation, so any non-JSON response (dev-server restart, 500 error page) used to
+      // surface as an unexplained "Unexpected token '<'" SyntaxError in the console.
+      const data = await fetchJson<{ success?: boolean; data?: unknown }>('/api/cart');
       if (data?.success) setCart(mapServerCart(data.data));
     } catch (err) {
       console.error('Failed to load cart', err);
@@ -242,8 +246,10 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
     addToast('Item removed from cart.', 'info');
     (async () => {
       try {
-        const res = await fetch(`/api/cart/item/${itemId}`, { method: 'DELETE' });
-        const data = await res.json();
+        const data = await fetchJson<{ success?: boolean; data?: unknown }>(
+          `/api/cart/item/${itemId}`,
+          { method: 'DELETE' }
+        );
         if (data?.success) setCart(mapServerCart(data.data));
         else await refreshCart();
       } catch {
@@ -275,8 +281,9 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
     setCart([]);
     (async () => {
       try {
-        const res = await fetch('/api/cart', { method: 'DELETE' });
-        const data = await res.json();
+        const data = await fetchJson<{ success?: boolean; data?: unknown }>('/api/cart', {
+          method: 'DELETE',
+        });
         if (data?.success) setCart(mapServerCart(data.data));
       } catch {
         /* ignore */

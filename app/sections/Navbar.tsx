@@ -311,7 +311,10 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const navItemRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  const { setCartOpen, setAccountOpen, setSearchOpen, user, setUser, addToast } = useApp()
+  const { setCartOpen, setAccountOpen, setSearchOpen, user, setUser, addToast, getCartCount } = useApp()
+  // Reads the shared cart state, so the header count updates the moment an item is added —
+  // no refresh, and no extra request.
+  const cartCount = getCartCount()
   const pathname = usePathname()
 
   const isHomePage = pathname === '/'
@@ -467,14 +470,21 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          {/* Mobile Cart Icon */}
+          {/* Mobile Cart Icon — same live count as the desktop trigger. */}
           <button
-            className="md:hidden absolute top-4 right-4 z-10"
+            className="md:hidden absolute top-4 right-4 z-10 p-1"
             onClick={() => setCartOpen(true)}
-            aria-label="Open cart"
+            aria-label={cartCount > 0 ? `Open cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Open cart'}
             suppressHydrationWarning
           >
-            <ShoppingBag size={20} />
+            <span className="relative block">
+              <ShoppingBag size={20} />
+              {cartCount > 0 && (
+                <span className="absolute -right-2 -top-1.5 min-w-[16px] rounded-full bg-primary px-1 text-center font-sans text-[9px] font-semibold leading-4 text-white tabular-nums">
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </span>
           </button>
 
           {/* Top row — left links · logo · right links.
@@ -515,26 +525,31 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
             <div className="hidden md:flex items-center gap-2.5 lg:gap-6 xl:gap-8 whitespace-nowrap">
             {rightLinks.map((link) => (
               <div key={link} className="relative group">
-                <NavLink
-                  href={link === 'WISHLIST' ? '/wishlist' : '#'}
-                  onClick={(e) => {
-                    if (link === 'CART') {
-                      e.preventDefault();
-                      setCartOpen(true);
-                    } else if (link === 'ACCOUNT') {
-                      e.preventDefault();
-                      setAccountOpen(true);
-                    } else if (link === 'MY ACCOUNT') {
-                      e.preventDefault();
-                      setIsAccountDropdownOpen(!isAccountDropdownOpen);
-                    } else if (link === 'SEARCH') {
-                      e.preventDefault();
-                      setSearchOpen(true);
-                    }
-                  }}
-                >
-                  {link}
-                </NavLink>
+                {/*
+                  WISHLIST navigates, so it stays a link. The rest open panels — they are
+                  actions, not navigation, and used to be <Link href="#"> with
+                  preventDefault(). That reads as a broken link to assistive tech and to
+                  anyone middle-clicking it, so they are real buttons now.
+                */}
+                {link === 'WISHLIST' ? (
+                  <NavLink href="/wishlist">{link}</NavLink>
+                ) : (
+                  <NavTrigger
+                    isOpen={link === 'MY ACCOUNT' ? isAccountDropdownOpen : false}
+                    onClick={() => {
+                      if (link === 'CART') setCartOpen(true);
+                      else if (link === 'ACCOUNT') setAccountOpen(true);
+                      else if (link === 'MY ACCOUNT') setIsAccountDropdownOpen(!isAccountDropdownOpen);
+                      else if (link === 'SEARCH') setSearchOpen(true);
+                    }}
+                  >
+                    {link}
+                    {/* Live cart count — the header previously showed none at all. */}
+                    {link === 'CART' && cartCount > 0 && (
+                      <span className="ml-1.5 tabular-nums">({cartCount})</span>
+                    )}
+                  </NavTrigger>
+                )}
 
                 {/* Account Dropdown for Logged in Users */}
                 {link === 'MY ACCOUNT' && (
@@ -555,8 +570,10 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                         <div className="px-5 py-3 border-b border-secondary/10 mb-2">
                           <p className="font-serif text-sm text-primary capitalize truncate">Hi, {user?.firstName}</p>
                         </div>
+                        {/* Profile + Orders only. Addresses and Subscriptions stay reachable
+                            from the account sidebar; this menu is deliberately short. */}
                         <Link href="/account/profile" onClick={() => setIsAccountDropdownOpen(false)} className="px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5">PROFILE</Link>
-                        <Link href="/account/addresses" onClick={() => setIsAccountDropdownOpen(false)} className="px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5">ADDRESSES</Link>
+                        <Link href="/account/orders" onClick={() => setIsAccountDropdownOpen(false)} className="px-5 py-2 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5">MY ORDERS</Link>
                         <button onClick={handleLogout} className="text-left px-5 py-2 mt-2 border-t border-secondary/10 text-[10px] uppercase tracking-[0.2em] text-muted hover:text-primary transition-colors hover:bg-secondary/5 w-full">
                           LOGOUT
                         </button>
@@ -801,13 +818,13 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                             <p className="mb-4 font-serif text-[17px] capitalize text-primary">Hi, {user.firstName}</p>
                             <ul className="flex flex-col gap-1">
                               <li>
-                                <Link href="#" onClick={closeMobileMenu} className={SECONDARY_ROW}>
+                                <Link href="/account/profile" onClick={closeMobileMenu} className={SECONDARY_ROW}>
                                   <User size={18} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
                                   <span>PROFILE</span>
                                 </Link>
                               </li>
                               <li>
-                                <Link href="#" onClick={closeMobileMenu} className={SECONDARY_ROW}>
+                                <Link href="/account/orders" onClick={closeMobileMenu} className={SECONDARY_ROW}>
                                   <ShoppingBag size={18} strokeWidth={1.5} aria-hidden="true" className="shrink-0" />
                                   <span>ORDERS</span>
                                 </Link>

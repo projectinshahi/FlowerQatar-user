@@ -11,7 +11,10 @@ export interface Product {
   name: string;
   price: number;
   originalPrice?: number;
-  collection: string; // e.g., 'le-mini', 'round', 'square', 'heart', 'custom', 'vases', 'gift-sets'
+  /** Stable subcategory id — a filter key only. NEVER render this: it is a raw UUID. */
+  collection: string;
+  /** Human-readable subcategory name for display (e.g. "Baby Rose"). */
+  collectionName?: string;
   boxShape?: 'Round' | 'Square' | 'Heart' | 'Custom';
   colors: ProductColor[];
   boxColors?: ProductColor[];

@@ -52,7 +52,7 @@ export default function BrandStory() {
           </p>
           
           <Link
-            href="#"
+            href="/about"
             className="border border-white text-white px-8 py-4 font-sans text-[15px] uppercase tracking-[0.15em] hover:bg-white hover:text-[#2a0015] transition-colors duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] mt-10 inline-block"
           >
             LEARN MORE

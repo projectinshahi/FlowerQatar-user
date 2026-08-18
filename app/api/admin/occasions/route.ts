@@ -93,7 +93,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'One or more selected products no longer exist' }, { status: 400 });
     }
 
-    const occasion = await prisma.occasion.create({
+    /*
+     * Exactly one occasion may exist. Checked here so the admin gets a clear message rather
+     * than a raw constraint error; the unique `singleton` column is the real backstop for two
+     * requests arriving at once (handled as P2002 below).
+     */
+    const existing = await prisma.occasion.findFirst({ select: { id: true } });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'An occasion already exists. Edit or delete it before adding another.' },
+        { status: 409 }
+      );
+    }
+
+    /*
+     * Only ONE occasion may be featured — it is the single collection promoted above New
+     * Arrivals on the home page. Nothing enforced this before, so several rows could carry
+     * isFeatured and the storefront silently showed whichever came first.
+     *
+     * Demote-then-write inside one transaction, so there is never a moment with two featured
+     * rows (or, if the create fails, none).
+     */
+    const occasion = await prisma.$transaction(async (tx) => {
+      if (data.isFeatured) {
+        await tx.occasion.updateMany({ where: { isFeatured: true }, data: { isFeatured: false } });
+      }
+      return tx.occasion.create({
       data: {
         title: data.title,
         slug: await uniqueOccasionSlug(data.title),
@@ -108,6 +133,7 @@ export async function POST(request: Request) {
         products: { create: data.productIds.map((productId) => ({ productId })) },
       },
       include: { _count: { select: { products: true } } },
+      });
     });
 
     revalidateStorefront();
@@ -115,6 +141,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      // The singleton index rejected a concurrent second insert.
+      return NextResponse.json(
+        { error: 'An occasion already exists. Edit or delete it before adding another.' },
+        { status: 409 }
+      );
     }
     console.error('Failed to create occasion:', error);
     return NextResponse.json({ error: 'Failed to create occasion' }, { status: 500 });

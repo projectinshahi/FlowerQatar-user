@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Edit2, Trash2, Plus, Search, Loader2, ImageOff, ArrowUpDown } from 'lucide-react';
+import { Edit2, Trash2, Plus, Search, Loader2, ImageOff, ArrowUpDown, Play } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { isVideoMedia } from '@/lib/media';
 import { toast } from 'sonner';
 
 interface Occasion {
@@ -32,6 +33,9 @@ function SortHeader({
   return (
     <button
       onClick={() => onSort(field)}
+      // Form-filler extensions stamp `fdprocessedid` onto buttons before React hydrates;
+      // that attribute is not ours, so ignore the diff rather than logging a mismatch.
+      suppressHydrationWarning
       className={`inline-flex items-center gap-1.5 transition-colors hover:text-gray-900 ${
         sortBy === field ? 'text-gray-900' : ''
       }`}
@@ -132,6 +136,8 @@ export default function OccasionList() {
           <input
             type="text"
             placeholder="Search occasions..."
+            // Same extension-injected attribute as the sort buttons above.
+            suppressHydrationWarning
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -140,13 +146,24 @@ export default function OccasionList() {
             className="w-full rounded-xl border border-gray-200 py-2 pl-10 pr-4 outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#A83A22]"
           />
         </div>
-        <Link
-          href="/admin/occasions/new"
-          className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-[#A83A22] px-5 py-2.5 font-medium text-white transition hover:bg-[#8e311d]"
-        >
-          <Plus className="h-5 w-5" />
-          Add Occasion
-        </Link>
+        {/*
+          Only one occasion may exist, so the button is replaced by an explanation once there
+          is one — offering an action the server will reject with 409 is worse than not
+          offering it. Deleting the occasion brings the button back.
+        */}
+        {total > 0 ? (
+          <p className="whitespace-nowrap rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500">
+            One occasion at a time — edit or delete it to change the home page section.
+          </p>
+        ) : (
+          <Link
+            href="/admin/occasions/new"
+            className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-[#A83A22] px-5 py-2.5 font-medium text-white transition hover:bg-[#8e311d]"
+          >
+            <Plus className="h-5 w-5" />
+            Add Occasion
+          </Link>
+        )}
       </div>
 
       {/* Table */}
@@ -201,8 +218,32 @@ export default function OccasionList() {
                   <tr key={o.id} className="group transition hover:bg-gray-50/50">
                     <td className="p-4">
                       <div className="relative flex h-12 w-16 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                        {/*
+                          Banners can now be a video as well as a still. Feeding a video URL
+                          to next/image renders a broken-image icon, so branch on the media
+                          type — the same isVideoMedia rule the storefront banner uses.
+
+                          The clip is a silent, non-autoplaying poster frame: dozens of
+                          autoplaying videos in an admin table would be both noisy and heavy.
+                        */}
                         {o.bannerImage ? (
-                          <Image src={o.bannerImage} alt={o.title} fill sizes="64px" className="object-cover" />
+                          isVideoMedia({ url: o.bannerImage }) ? (
+                            <>
+                              <video
+                                src={o.bannerImage}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                aria-label={`${o.title} banner video`}
+                                className="h-full w-full object-cover"
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                                <Play className="h-3.5 w-3.5 fill-white text-white" />
+                              </span>
+                            </>
+                          ) : (
+                            <Image src={o.bannerImage} alt={o.title} fill sizes="64px" className="object-cover" />
+                          )
                         ) : (
                           <ImageOff className="h-4 w-4 text-gray-300" />
                         )}

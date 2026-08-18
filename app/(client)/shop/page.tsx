@@ -1,5 +1,5 @@
 import ShopClient from '../../../components/client/shop/ShopClient';
-import { getStoreProducts, getStoreCategories } from '../../../lib/store-products';
+import { getStoreProducts, getSubcategoryBanner } from '../../../lib/store-products';
 import { categoryFromSlug, CATEGORY_META, PRODUCT_TABS } from '../../../lib/category-config';
 import { PRODUCTS } from '../../../data/products';
 import type { Product } from '../../../types';
@@ -26,7 +26,7 @@ export default async function ShopPage({
   searchParams: Promise<{ category?: string; collection?: string; subcategory?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
-  const [dbProducts, categories] = await Promise.all([getStoreProducts(), getStoreCategories()]);
+  const dbProducts = await getStoreProducts();
   // Fall back to the curated mock catalog only if the DB has no published products yet.
   const all = dbProducts.length > 0 ? dbProducts : PRODUCTS;
 
@@ -39,16 +39,29 @@ export default async function ShopPage({
   const tabField = sp.tab ? TAB_FIELD[sp.tab] : undefined;
   if (tabField) products = products.filter((p) => !!p[tabField]);
 
-  const categoryOptions = categories
-    .filter((c) => c.productCount > 0)
-    .map((c) => ({ name: c.name, key: c.key }));
-
-  // Heading reflects the active filter: collection name › category label › tab label › default.
   if (sp.subcategory) products = products.filter((p) => p.collection === sp.subcategory);
-  const collectionName = sp.collection ? categories.find((c) => c.key === sp.collection)?.name : undefined;
+
+  /*
+   * Banner. When the listing is narrowed to one subcategory the hero uses THAT subcategory's
+   * admin-managed art and name; otherwise it falls back to the marketing image. Looked up by
+   * id rather than read off the products so the banner still resolves when a subcategory has
+   * no published products yet (an empty listing used to show the generic hero and title).
+   */
+  const activeSubcategoryId = sp.subcategory || sp.collection;
+  const subcategory = activeSubcategoryId ? await getSubcategoryBanner(activeSubcategoryId) : null;
+
   const tabLabel = sp.tab ? PRODUCT_TABS.find((t) => t.slug === sp.tab)?.label : undefined;
   const heroTitle =
-    collectionName || (activeType ? CATEGORY_META[activeType].label : undefined) || tabLabel || 'The Collection';
+    subcategory?.name ||
+    (activeType ? CATEGORY_META[activeType].label : undefined) ||
+    tabLabel ||
+    'The Collection';
 
-  return <ShopClient products={products} categories={categoryOptions} heroTitle={heroTitle} />;
+  return (
+    <ShopClient
+      products={products}
+      heroTitle={heroTitle}
+      heroImage={subcategory?.image ?? undefined}
+    />
+  );
 }

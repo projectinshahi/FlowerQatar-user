@@ -142,7 +142,7 @@ export default function GreetingCardSelector({
                 </div>
 
                 {/* Font */}
-                <div>
+                {/* <div>
                   <span className="text-[10px] uppercase tracking-[0.12em] text-[#9a9a9a] flex items-center gap-1 mb-1.5"><Type size={11} /> Font</span>
                   <div className="flex gap-1.5">
                     {(Object.keys(FONTS) as GreetingStyle["font"][]).map((f) => (
@@ -158,10 +158,10 @@ export default function GreetingCardSelector({
                       </button>
                     ))}
                   </div>
-                </div>
+                </div> */}
 
                 {/* Size */}
-                <div>
+                {/* <div>
                   <span className="text-[10px] uppercase tracking-[0.12em] text-[#9a9a9a] block mb-1.5">Text size</span>
                   <div className="flex gap-1.5">
                     {(["sm", "md", "lg"] as GreetingStyle["size"][]).map((s) => (
@@ -176,10 +176,10 @@ export default function GreetingCardSelector({
                       </button>
                     ))}
                   </div>
-                </div>
+                </div> */}
 
                 {/* Colour */}
-                <div>
+                {/* <div>
                   <span className="text-[10px] uppercase tracking-[0.12em] text-[#9a9a9a] block mb-1.5">Text colour</span>
                   <div className="flex gap-1.5 flex-wrap">
                     {COLORS.map((c) => (
@@ -194,7 +194,7 @@ export default function GreetingCardSelector({
                       />
                     ))}
                   </div>
-                </div>
+                </div> */}
               </div>
 
               {/* Live preview */}

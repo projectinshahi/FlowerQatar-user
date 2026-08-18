@@ -26,7 +26,9 @@ export const subcategorySchema = z.object({
   categoryId: z.string().uuid('Select a valid parent category'),
   name,
   hoverImage: imageUrl,
+  bannerImage: imageUrl,
   showInNavigation: z.boolean().default(true),
+  isCatchAll: z.boolean().default(false),
   isExploreGarden: z.boolean().default(false),
   hoverColor: hoverColor,
   isActive: z.boolean().default(true),
@@ -46,8 +48,10 @@ export const subcategoryPatchSchema = z
   .object({
     isActive: z.boolean().optional(),
     showInNavigation: z.boolean().optional(),
+    isCatchAll: z.boolean().optional(),
     isExploreGarden: z.boolean().optional(),
     hoverImage: z.union([z.string().url('Hover image must be a valid URL'), z.null()]).optional(),
+    bannerImage: z.union([z.string().url('Banner image must be a valid URL'), z.null()]).optional(),
     hoverColor: z.union([z.string().regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i, 'Must be a valid hex color'), z.null()]).optional(),
   })
   .strict();

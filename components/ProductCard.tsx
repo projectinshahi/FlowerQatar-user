@@ -46,6 +46,11 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
   const mainImage = product.image || (product.images && product.images[0]) || '';
   const hoverImage = product.hoverImage || (product.images && product.images[1]) || '';
 
+  // Only real, resolved names — never the subcategory id, which is a UUID.
+  const subtitle = [product.collectionName, product.colors?.[0]?.name]
+    .filter(Boolean)
+    .join(' • ');
+
   return (
     <div
       className={`group relative flex flex-col border-r border-b border-divider/40 ${className}`}
@@ -151,9 +156,18 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
           </span>
         </div>
         
-        <p className="font-sans text-[9px] text-muted uppercase tracking-[0.15em] mt-1.5 line-clamp-1">
-          {product.collection.replace('-', ' ')} • CRÈME CHANTILLY
-        </p>
+        {/*
+          Subcategory name + the first colour's name, both resolved from the database.
+          This line previously rendered `product.collection`, which is the subcategory UUID,
+          next to a hardcoded "CRÈME CHANTILLY" — so customers saw a raw id and a colour that
+          had nothing to do with the product. Renders nothing when neither is known rather
+          than falling back to an id.
+        */}
+        {subtitle && (
+          <p className="font-sans text-[9px] text-muted uppercase tracking-[0.15em] mt-1.5 line-clamp-1">
+            {subtitle}
+          </p>
+        )}
 
         {/* Color swatches */}
         {(product.colors && product.colors.length > 0) && (

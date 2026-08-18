@@ -8,6 +8,7 @@ import { ProductStatus } from "@prisma/client";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { requireAdmin } from "@/lib/admin-guard";
 import { logDbError } from "@/lib/prisma-error";
+import { supportsCountry } from "@/lib/category-config";
 
 /**
  * Normalizes the validated variants into the JSON shape stored on Product.variants.
@@ -94,7 +95,10 @@ export async function createProduct(data: ProductFormValues) {
         sku: parsed.sku || null,
         shortDescription: parsed.shortDescription || null,
         description: parsed.description || null,
-        country: parsed.country || null,
+        // Cleared for any category that does not use sourcing origin. Without this, moving a
+        // product out of Flower would leave a stale country stored — and the product page
+        // renders it on truthiness, so it would keep showing with no field to edit it.
+        country: supportsCountry(resolvedCategoryType) ? parsed.country || null : null,
         categoryType: resolvedCategoryType,
         subcategoryId: parsed.subcategoryId || null,
         status: parsed.status as ProductStatus,
@@ -164,7 +168,10 @@ export async function updateProduct(id: string, data: ProductFormValues) {
         sku: parsed.sku || null,
         shortDescription: parsed.shortDescription || null,
         description: parsed.description || null,
-        country: parsed.country || null,
+        // Cleared for any category that does not use sourcing origin. Without this, moving a
+        // product out of Flower would leave a stale country stored — and the product page
+        // renders it on truthiness, so it would keep showing with no field to edit it.
+        country: supportsCountry(resolvedCategoryType) ? parsed.country || null : null,
         categoryType: resolvedCategoryType,
         subcategoryId: parsed.subcategoryId || null,
         status: parsed.status as ProductStatus,

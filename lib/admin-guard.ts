@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
+import { isDbUnreachable, logDbError } from "@/lib/prisma-error";
 
 export class AuthError extends Error {
   status: number;
@@ -79,14 +80,32 @@ export async function requireAdmin(): Promise<AuthUser> {
  * handler when the caller is not an admin, or null when access is granted.
  * Usage:  const denied = await guardAdmin(); if (denied) return denied;
  */
+/**
+ * Turns a guard failure into a response.
+ *
+ * A database outage is reported as 503, NOT 401. Both used to collapse into "Unauthorized",
+ * which told an admin their session was invalid when in fact the server could not reach the
+ * database — sending them to re-authenticate against a database that is still down.
+ */
+function denyFor(e: unknown): NextResponse {
+  if (isDbUnreachable(e)) {
+    logDbError("auth guard", e);
+    return NextResponse.json(
+      { error: "Service temporarily unavailable — could not reach the database." },
+      { status: 503 }
+    );
+  }
+  const status = e instanceof AuthError ? e.status : 401;
+  const message = e instanceof AuthError ? e.message : "Unauthorized";
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function guardAdmin(): Promise<NextResponse | null> {
   try {
     await requireAdmin();
     return null;
   } catch (e) {
-    const status = e instanceof AuthError ? e.status : 401;
-    const message = e instanceof AuthError ? e.message : "Unauthorized";
-    return NextResponse.json({ error: message }, { status });
+    return denyFor(e);
   }
 }
 
@@ -96,8 +115,6 @@ export async function guardUser(): Promise<NextResponse | null> {
     await requireUser();
     return null;
   } catch (e) {
-    const status = e instanceof AuthError ? e.status : 401;
-    const message = e instanceof AuthError ? e.message : "Unauthorized";
-    return NextResponse.json({ error: message }, { status });
+    return denyFor(e);
   }
 }

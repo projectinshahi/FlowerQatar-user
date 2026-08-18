@@ -71,7 +71,9 @@ export function mapDbProductToStore(db: any): Product {
     price: onSale ? sale! : price,
     originalPrice: onSale ? price : undefined,
     // Browsing key: stable subcategory id (no URL slug is stored for subcategories).
+    // Display code must use `collectionName` — this is a UUID.
     collection: db.subcategory?.id || "signature",
+    collectionName: db.subcategory?.name || undefined,
     colors,
     image,
     hoverImage,
@@ -102,6 +104,79 @@ export const getStoreProducts = cache(async (): Promise<Product[]> => {
     return [];
   }
 });
+
+/**
+ * Name + banner art for one subcategory, for the shop hero when the listing is filtered to it.
+ *
+ * Uses the subcategory's own `bannerImage` (wide art, uploaded in Category System), falling
+ * back to `hoverImage` when none is set. Returns null for an unknown id so the caller can fall
+ * back to the default hero.
+ */
+export const getSubcategoryBanner = cache(
+  async (id: string): Promise<{ name: string; image: string | null } | null> => {
+    try {
+      const row = await prisma.subcategory.findFirst({
+        where: { id, isActive: true, category: { isActive: true } },
+        select: { name: true, bannerImage: true, hoverImage: true },
+      });
+      // Dedicated banner first; hoverImage is the fallback so a subcategory without a banner
+      // still gets its own art rather than the generic marketing shot.
+      return row ? { name: row.name, image: row.bannerImage || row.hoverImage } : null;
+    } catch (e) {
+      logDbError(`getSubcategoryBanner(${id})`, e);
+      return null;
+    }
+  }
+);
+
+/**
+ * "You may also like": published products from the SAME subcategory, falling back to the same
+ * fixed category when the subcategory is thin. Never returns unrelated products, and never
+ * the product being viewed.
+ *
+ * One indexed query (subcategoryId / categoryType are both indexed), taken on the server so
+ * the product page makes no extra client request.
+ */
+export const getRelatedProducts = cache(
+  async (
+    productId: string,
+    subcategoryId: string | null,
+    categoryType: CategoryType | null,
+    limit = 6
+  ): Promise<Product[]> => {
+    // No category information at all → nothing is genuinely "related", so show nothing.
+    if (!subcategoryId && !categoryType) return [];
+    try {
+      const rows = await prisma.product.findMany({
+        where: {
+          status: "PUBLISHED",
+          id: { not: productId },
+          // Prefer the narrower subcategory match; fall back to the parent category.
+          ...(subcategoryId ? { subcategoryId } : { categoryType: categoryType! }),
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        include: { subcategory: true },
+      });
+
+      // A subcategory with nothing else in it widens to the parent category — still related,
+      // never a random product from an unrelated one.
+      if (rows.length === 0 && subcategoryId && categoryType) {
+        const wider = await prisma.product.findMany({
+          where: { status: "PUBLISHED", id: { not: productId }, categoryType },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+          include: { subcategory: true },
+        });
+        return wider.map(mapDbProductToStore);
+      }
+      return rows.map(mapDbProductToStore);
+    } catch (e) {
+      logDbError(`getRelatedProducts(${productId})`, e);
+      return [];
+    }
+  }
+);
 
 /**
  * Published products in a fixed category, optionally narrowed to one subcategory and/or
@@ -243,7 +318,6 @@ export interface NewArrivalItem {
   slug: string;
   badge: string;
   name: string;
-  subtitle: string;
   price: number;
   rating: number;
   swatches: NewArrivalSwatch[];
@@ -262,7 +336,6 @@ export async function getNewArrivalItems(limit = 8): Promise<NewArrivalItem[]> {
     slug: p.slug,
     badge: p.badge || "New",
     name: p.name,
-    subtitle: (p.collection || "signature").toUpperCase().replace(/-/g, " "),
     price: p.price,
     rating: p.rating,
     // Each swatch carries its own image so clicking it swaps the card photo.

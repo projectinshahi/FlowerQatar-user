@@ -30,7 +30,8 @@ export async function GET() {
           price: p.originalPrice ?? p.price,
           salePrice: p.originalPrice != null ? p.price : null,
           rating: p.rating,
-          category: p.collection,
+          // The NAME, not `collection` — that is the subcategory UUID.
+          category: p.collectionName ?? null,
         })),
       })),
     });

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { uploadToCloudinary } from '@/lib/cloudinary-upload';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, UploadCloud, X, FolderTree, Sparkles, Palette, Check, Compass } from 'lucide-react';
+import { Loader2, UploadCloud, X, FolderTree, Sparkles, Palette, Check, Compass, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import { subcategorySchema, type SubcategoryFormData } from '@/lib/validations/subcategory';
 import { fixedCategoryLabel } from '@/lib/category-config';
@@ -45,6 +45,7 @@ export default function SubcategoryFormModal({
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const bannerRef = useRef<HTMLInputElement>(null);
 
   // Determine the target fixed category if inside a specific category view
   const targetCategory = fixedCategoryName
@@ -65,7 +66,9 @@ export default function SubcategoryFormModal({
       categoryId: defaultCategoryId,
       name: initial?.name ?? '',
       hoverImage: initial?.hoverImage ?? null,
+      bannerImage: initial?.bannerImage ?? null,
       showInNavigation: initial?.showInNavigation ?? true,
+      isCatchAll: initial?.isCatchAll ?? false,
       isExploreGarden: initial?.isExploreGarden ?? false,
       hoverColor: initial?.hoverColor ?? '#61000B',
       isActive: initial?.isActive ?? true,
@@ -80,6 +83,7 @@ export default function SubcategoryFormModal({
   }, [targetCategory, initial, setValue]);
 
   const hoverImage = useWatch({ control, name: 'hoverImage' });
+  const bannerImage = useWatch({ control, name: 'bannerImage' });
   const isExploreGarden = useWatch({ control, name: 'isExploreGarden' });
   const hoverColor = useWatch({ control, name: 'hoverColor' }) || '#61000B';
   const subName = useWatch({ control, name: 'name' }) || 'Flower Name';
@@ -95,13 +99,13 @@ export default function SubcategoryFormModal({
     return lum > 0.6 ? '#111111' : '#FFFFFF';
   };
 
-  const upload = async (source: File) => {
+  const upload = async (source: File, field: 'hoverImage' | 'bannerImage' = 'hoverImage') => {
     setUploading(true);
     setProgress(0);
     try {
       const url = await uploadToCloudinary(source, setProgress);
-      setValue('hoverImage', url, { shouldDirty: true, shouldValidate: true });
-      toast.success('Hover image uploaded');
+      setValue(field, url, { shouldDirty: true, shouldValidate: true });
+      toast.success(field === 'bannerImage' ? 'Banner image uploaded' : 'Hover image uploaded');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Upload failed');
     } finally {
@@ -289,6 +293,76 @@ export default function SubcategoryFormModal({
             {errors.hoverImage && (
               <p className="mt-1 text-sm text-red-600">{errors.hoverImage.message}</p>
             )}
+            <p className="mt-1.5 text-xs text-gray-500">
+              Square art — used for the circular navigation strip and the Explore Gardens tile.
+            </p>
+          </div>
+
+          {/*
+            Banner art is a separate field because it is a different shape: the hover image is
+            cropped to a circle, this one spans the full width of the shop listing. Optional —
+            without it the banner falls back to the hover image.
+          */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Listing Banner <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <input
+              ref={bannerRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], 'bannerImage')}
+            />
+            {bannerImage ? (
+              <div className="relative h-40 overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
+                <Image
+                  src={bannerImage}
+                  alt="Banner preview"
+                  fill
+                  sizes="(max-width: 640px) 100vw, 576px"
+                  className="object-cover"
+                />
+                <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2 bg-black/50 p-3">
+                  <button
+                    type="button"
+                    onClick={() => bannerRef.current?.click()}
+                    className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-100"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setValue('bannerImage', null, { shouldDirty: true })}
+                    className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => bannerRef.current?.click()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files[0];
+                  if (file) upload(file, 'bannerImage');
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                className="flex h-32 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 text-sm text-gray-500 transition hover:border-[#A83A22] hover:bg-orange-50/50 disabled:opacity-60"
+              >
+                <UploadCloud className="mb-2 h-6 w-6 text-gray-400" />
+                <span className="font-medium text-gray-700">Upload a wide banner</span>
+                <span className="mt-1 text-xs text-gray-400">
+                  Around 1600×500. Falls back to the hover image if left empty.
+                </span>
+              </button>
+            )}
+            {errors.bannerImage && (
+              <p className="mt-1 text-sm text-red-600">{errors.bannerImage.message}</p>
+            )}
           </div>
 
           {/* Show in the storefront category strip — independent of Explore for Garden below. */}
@@ -305,6 +379,30 @@ export default function SubcategoryFormModal({
               </div>
               <div className="relative inline-flex items-center">
                 <input type="checkbox" {...register('showInNavigation')} className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#A83A22]"></div>
+              </div>
+            </label>
+          </div>
+
+          {/*
+            Catch-all entries ("All Flowers") hold no products of their own. Without this flag
+            they behave like an ordinary empty subcategory and show nothing when clicked.
+          */}
+          <div className="rounded-2xl border border-gray-200/80 bg-stone-50/50 p-4 transition-all">
+            <label className="flex items-start justify-between gap-4 cursor-pointer select-none">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4 text-[#A83A22]" />
+                  <span className="text-sm font-semibold text-gray-900">Shows all category products</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  For entries like &quot;All Flowers&quot;. Links to every product in the parent
+                  category instead of filtering to this subcategory. Leave off for normal
+                  subcategories.
+                </p>
+              </div>
+              <div className="relative inline-flex items-center">
+                <input type="checkbox" {...register('isCatchAll')} className="sr-only peer" />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#A83A22]"></div>
               </div>
             </label>

@@ -2,11 +2,14 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/admin-guard";
 import type { AddItemInput, CartSelection } from "@/lib/validations/cart";
+import { NO_SHIPPING, calculateShipping, type ShippingConfig } from "@/lib/shipping";
+import { logDbError } from "@/lib/prisma-error";
 
 /* ───────────────────────── Config ───────────────────────── */
 
-const FREE_SHIPPING_THRESHOLD = 150;
-const SHIPPING_FEE = 15;
+// Shipping is NOT configured here any more — it comes from the admin's DeliveryCharge row
+// (see loadShippingConfig below). The old hardcoded 15 fee / 150 threshold meant the admin
+// screen had no effect on what customers were actually charged.
 const TAX_RATE = 0; // Qatar has no default sales tax.
 const MAX_QTY = 99;
 
@@ -164,12 +167,37 @@ function normalize(raw: unknown): StoredItem[] {
 
 /* ───────────────────── Resolve (JOIN) + serialize ───────────────────── */
 
-function computeSummary(lines: CartLine[]): CartSummary {
+/**
+ * The admin's shipping configuration.
+ *
+ * Falls back to "no shipping" when the row is missing or the database is unreachable —
+ * inventing a charge nobody configured would bill customers for something that was never
+ * set up, and failing the whole cart over a config read would be worse still.
+ */
+export async function loadShippingConfig(): Promise<ShippingConfig> {
+  try {
+    const row = await prisma.deliveryCharge.findFirst({
+      select: { isActive: true, chargeType: true, value: true, freeAbove: true },
+    });
+    if (!row) return NO_SHIPPING;
+    return {
+      isActive: row.isActive,
+      chargeType: row.chargeType as ShippingConfig["chargeType"],
+      value: Number(row.value),
+      freeAbove: Number(row.freeAbove),
+    };
+  } catch (error) {
+    logDbError("loadShippingConfig", error);
+    return NO_SHIPPING;
+  }
+}
+
+function computeSummary(lines: CartLine[], shippingConfig: ShippingConfig): CartSummary {
   const subtotal = round2(lines.reduce((s, l) => s + l.subtotal, 0));
   const discount = 0; // Coupons are applied at checkout.
   const taxable = Math.max(0, subtotal - discount);
   const tax = round2(taxable * TAX_RATE);
-  const shipping = subtotal <= 0 || subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  const shipping = calculateShipping(subtotal, shippingConfig);
   const total = round2(taxable + tax + shipping);
   const itemCount = lines.reduce((n, l) => n + l.quantity, 0);
   return { subtotal, discount, shipping, tax, total, itemCount };
@@ -219,7 +247,7 @@ async function resolveCart(userId: string): Promise<CartPayload> {
     : [];
   const map = new Map(products.map((p) => [p.id, p]));
   const lines = items.map((i) => resolveLine(i, i.productId ? map.get(i.productId) : undefined));
-  return { items: lines, summary: computeSummary(lines) };
+  return { items: lines, summary: computeSummary(lines, await loadShippingConfig()) };
 }
 
 /* ───────────────────── Auth ───────────────────── */
@@ -238,7 +266,7 @@ export async function getActiveUserId(): Promise<string | null> {
 
 /** A well-formed empty cart — returned for guests so reads never 401. */
 export function emptyCart(): CartPayload {
-  return { items: [], summary: computeSummary([]) };
+  return { items: [], summary: computeSummary([], NO_SHIPPING) };
 }
 
 /* ───────────────────── Operations ───────────────────── */

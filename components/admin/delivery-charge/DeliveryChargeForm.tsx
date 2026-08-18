@@ -27,7 +27,7 @@ export default function DeliveryChargeForm() {
   } = useForm<DeliveryChargeFormData>({
     resolver: zodResolver(deliveryChargeSchema) as never,
     mode: 'onChange', // so the submit button can disable while invalid
-    defaultValues: { chargeType: 'FIXED', value: '' },
+    defaultValues: { chargeType: 'FIXED', value: '', isActive: true, freeAbove: '' },
   });
 
   // Load the singleton config on mount (skeleton while loading).
@@ -39,7 +39,12 @@ export default function DeliveryChargeForm() {
         const json = await res.json();
         if (active && json?.success && json.data) {
           setRecordId(json.data.id);
-          reset({ chargeType: json.data.chargeType, value: String(json.data.value) });
+          reset({
+            chargeType: json.data.chargeType,
+            value: String(json.data.value),
+            isActive: json.data.isActive ?? true,
+            freeAbove: String(json.data.freeAbove ?? 0),
+          });
         }
       } catch {
         if (active) toast.error('Failed to load delivery charge');
@@ -69,7 +74,12 @@ export default function DeliveryChargeForm() {
       }
       // After a successful create, switch to update mode automatically.
       setRecordId(json.data.id);
-      reset({ chargeType: json.data.chargeType, value: String(json.data.value) });
+      reset({
+        chargeType: json.data.chargeType,
+        value: String(json.data.value),
+        isActive: json.data.isActive ?? true,
+        freeAbove: String(json.data.freeAbove ?? 0),
+      });
       toast.success(isEdit ? 'Delivery charge updated' : 'Delivery charge created');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Something went wrong');
@@ -105,6 +115,26 @@ export default function DeliveryChargeForm() {
             {isEdit ? 'Update the global delivery charge.' : 'Set the global delivery charge for all orders.'}
           </p>
         </div>
+      </div>
+
+      {/*
+        Master switch. Placed first because it governs everything below — and turning it off
+        keeps the configured amounts, so they do not have to be retyped when it comes back on.
+      */}
+      <div className="rounded-2xl border border-gray-200 bg-stone-50/60 p-4">
+        <label className="flex cursor-pointer select-none items-start justify-between gap-4">
+          <span className="space-y-0.5">
+            <span className="block text-sm font-semibold text-gray-900">Charge delivery fee</span>
+            <span className="block text-xs text-gray-500">
+              Turn off to make delivery free on every order. The amounts below are kept and
+              take effect again when you switch this back on.
+            </span>
+          </span>
+          <span className="relative inline-flex shrink-0 items-center">
+            <input type="checkbox" {...register('isActive')} className="peer sr-only" />
+            <span className="h-6 w-11 rounded-full bg-gray-200 transition-colors peer-checked:bg-[#A83A22] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white" />
+          </span>
+        </label>
       </div>
 
       {/* Charge Type */}
@@ -147,6 +177,26 @@ export default function DeliveryChargeForm() {
           {isPercentage ? 'Between 0 and 100. Decimals allowed.' : 'Any positive amount. Decimals allowed.'}
         </p>
         {errors.value && <p className="mt-1 text-sm text-red-500">{errors.value.message as string}</p>}
+      </div>
+
+      {/* Free-shipping threshold */}
+      <div>
+        <label className="mb-2 block text-sm font-medium text-gray-700">Free delivery above</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          {...register('freeAbove')}
+          placeholder="0"
+          className={inputCls}
+          suppressHydrationWarning
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Orders at or above this subtotal ship free. Leave 0 to always charge the fee.
+        </p>
+        {errors.freeAbove && (
+          <p className="mt-1 text-sm text-red-500">{errors.freeAbove.message as string}</p>
+        )}
       </div>
 
       {/* Submit — disabled while invalid or in-flight */}
