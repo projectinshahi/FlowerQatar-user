@@ -739,6 +739,7 @@ export default function ProductDetailClient({
                   <span className="font-serif text-[14px] text-gray-600 mb-3">
                     QAR {item.price}
                   </span>
+                  
                   {item.colors?.length > 0 && (
                     <div className="flex gap-1">
                       {item.colors.slice(0, 4).map((c, i) => (
