@@ -693,7 +693,20 @@ export default function ProductDetailClient({
               onScroll={(e) => measureRelated(e.currentTarget)}
               className="flex gap-4 md:gap-8 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {related.map((item) => (
+              {related.map((item) => {
+                /*
+                 * Second gallery image, shown on hover — the same crossfade the New Arrivals
+                 * and shop cards use, so a card behaves identically wherever it appears.
+                 *
+                 * `getStoreProducts` falls back to `image` when a product has no second
+                 * image, so an equal pair means there is genuinely nothing to swap to: skip
+                 * the overlay rather than fetch the same file twice and crossfade to an
+                 * identical frame.
+                 */
+                const hoverImage =
+                  item.hoverImage && item.hoverImage !== item.image ? item.hoverImage : null
+
+                return (
                 <Link
                   href={`/product/${item.slug}`}
                   key={item.id}
@@ -706,8 +719,21 @@ export default function ProductDetailClient({
                       alt={item.name}
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      className={
+                        hoverImage
+                          ? 'object-cover transition-opacity duration-500 group-hover:opacity-0'
+                          : 'object-cover transition-transform duration-500 group-hover:scale-105'
+                      }
                     />
+                    {hoverImage && (
+                      <Image
+                        src={hoverImage}
+                        alt={`${item.name} alternate view`}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                        className="object-cover scale-105 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                      />
+                    )}
                   </div>
                   <h3 className="font-serif text-[14px] mb-1">{item.name}</h3>
                   <span className="font-serif text-[14px] text-gray-600 mb-3">
@@ -726,7 +752,8 @@ export default function ProductDetailClient({
                     </div>
                   )}
                 </Link>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
