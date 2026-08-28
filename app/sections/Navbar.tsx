@@ -490,7 +490,7 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
           {/* Top row — left links · logo · right links.
               Flex (not absolute) so the groups can never overlap the logo at any width;
               the equal flex-1 sides keep the logo optically centred on every screen. */}
-          <div className="flex items-center gap-3 mb-3 md:mb-4">
+          <div className="relative z-20 flex items-center gap-3 mb-3 md:mb-4">
 
           {/* Top Left Links (Desktop) */}
           <div
@@ -498,6 +498,10 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
             onMouseEnter={() => setActiveMegaMenu(null)}
           >
             <div className="hidden md:flex items-center gap-3 lg:gap-6 xl:gap-8 whitespace-nowrap">
+              {/* Language switch leads the left cluster, ahead of CONTACT US. The wrapper is
+                  already `hidden md:flex`, so the toggle inherits desktop-only visibility and
+                  the mobile drawer keeps carrying its own copy. */}
+              <LanguageToggle />
               {leftLinks.map((link) => {
                 const href = link === 'CONTACT US' ? '/contact' : link === 'BOUTIQUES' ? '/boutiques' : '#';
                 return <NavLink key={link} href={href}>{link}</NavLink>;
@@ -511,7 +515,7 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
             onMouseEnter={() => setActiveMegaMenu(null)}
           >
             <Link href="/" className="flex items-center group">
-              <span className="font-serif text-3xl md:text-[30px] lg:text-[36px] font-light tracking-[0.2em] whitespace-nowrap">LEBAMI</span>
+              <span className="font-serif text-3xl md:text-[30px] lg:text-[36px] font-normal tracking-[0.2em] whitespace-nowrap">LEBAMI</span>
             </Link>
           </div>
 
@@ -544,9 +548,26 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                     }}
                   >
                     {link}
-                    {/* Live cart count — the header previously showed none at all. */}
+                    {/*
+                      Live cart count. "(3)" inside the label read as part of the word and was
+                      easy to miss; a badge pinned to the corner is the shape people already
+                      scan for, and matches the one the mobile header uses.
+
+                      `key={cartCount}` remounts the badge whenever the number changes, so it
+                      pops once on add — the notification the flat text never gave. No extra
+                      state: the key change IS the trigger.
+                    */}
                     {link === 'CART' && cartCount > 0 && (
-                      <span className="ml-1.5 tabular-nums">({cartCount})</span>
+                      <motion.span
+                        key={cartCount}
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+                        className="absolute -right-3.5 -top-2 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 font-sans text-[9px] font-semibold leading-[18px] text-white tabular-nums shadow-sm ring-1 ring-white/40"
+                      >
+                        {cartCount > 9 ? '9+' : cartCount}
+                        <span className="sr-only"> items in cart</span>
+                      </motion.span>
                     )}
                   </NavTrigger>
                 )}
@@ -584,10 +605,6 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                 )}
               </div>
             ))}
-            {/* Language switch sits at the end of the right-hand cluster. `hidden md:inline-flex`
-                keeps it off mobile, where the drawer carries it instead — adding it to the
-                mobile header would collide with the absolutely-positioned cart button. */}
-            <LanguageToggle className="hidden md:inline-flex" />
             </div>
           </div>
 

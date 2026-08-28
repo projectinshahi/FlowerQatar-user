@@ -5,7 +5,7 @@ import BannerSection from '../sections/BannerSection'
 import { getNewArrivalItems, getExploreGardenItems } from '../../lib/store-products'
 import { getActiveBanners } from '../../lib/actions/banner.actions'
 import { getFeaturedOccasion } from '../../lib/occasions'
-import { getActivePromotions } from '../../lib/promotions'
+import { getActivePromotions, getPromotionBarTheme } from '../../lib/promotions'
 import { getSubscriptionPlans } from '../../lib/subscription-plans'
 import ShopByOccasion from '../../components/home/ShopByOccasion'
 import SubscriptionPlans from '../../components/home/SubscriptionPlans'
@@ -36,10 +36,18 @@ export const revalidate = 60
  */
 
 async function BannerSlot() {
-  const [banners, promotions] = await Promise.all([getActiveBanners(), getActivePromotions()])
+  const [banners, promotions, promotionTheme] = await Promise.all([
+    getActiveBanners(),
+    getActivePromotions(),
+    getPromotionBarTheme(),
+  ])
   // Admin-managed banner is the hero. Falls back to the marketing Hero when no active banner exists.
   return banners.length > 0 ? (
-    <BannerSection banners={banners} promotions={promotions.map((p) => p.title)} />
+    <BannerSection
+      banners={banners}
+      promotions={promotions.map((p) => p.title)}
+      promotionTheme={promotionTheme}
+    />
   ) : (
     <Hero />
   )

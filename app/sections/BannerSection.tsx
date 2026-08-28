@@ -1,14 +1,30 @@
 import PromotionBar from "../../components/PromotionBar"
+import { PROMOTION_BAR_DEFAULTS, type PromotionBarTheme } from "@/lib/promotions"
+
+/** What each text element falls back to when the admin has not chosen a colour. */
+export const DEFAULT_BANNER_TEXT_COLOR = "#ffffff"
 
 interface BannerItem {
   id: string
   title: string | null
   subheading: string | null
   description: string | null
+  /** Admin-set hex colours, one per text element; null falls back to white. */
+  titleColor: string | null
+  subheadingColor: string | null
+  descriptionColor: string | null
   videoUrl: string
 }
 
-export default function BannerSection({ banners, promotions = [] }: { banners: BannerItem[]; promotions?: string[] }) {
+export default function BannerSection({
+  banners,
+  promotions = [],
+  promotionTheme = PROMOTION_BAR_DEFAULTS,
+}: {
+  banners: BannerItem[]
+  promotions?: string[]
+  promotionTheme?: PromotionBarTheme
+}) {
   if (!banners?.length) return null
 
   return (
@@ -39,23 +55,31 @@ export default function BannerSection({ banners, promotions = [] }: { banners: B
           {(banner.title || banner.subheading || banner.description) && (
             <div className="absolute inset-0 flex items-center">
               <div className="w-full max-w-[1280px] mx-auto px-6 md:px-12">
-                <div className="flex flex-col max-w-[560px] text-white">
+                <div className="flex flex-col max-w-[560px]">
                
                   {banner.title && (
                     <b>
-                    <h1 className="font-serif text-[40px] md:text-[56px] font-light tracking-[0.05em] leading-[1.1]">
-                      
+                    <h1
+                      className="font-serif text-[40px] md:text-[56px] font-light tracking-[0.05em] leading-[1.1]"
+                      style={{ color: banner.titleColor || DEFAULT_BANNER_TEXT_COLOR }}
+                    >
                       {banner.title}
                     </h1>
                     </b>
                   )}
                      {banner.subheading && (
-                    <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-white/90 mb-5">
+                    <p
+                      className="font-sans text-[11px] uppercase tracking-[0.2em] mb-5"
+                      style={{ color: banner.subheadingColor || DEFAULT_BANNER_TEXT_COLOR }}
+                    >
                       {banner.subheading}
                     </p>
                   )}
                   {banner.description && (
-                    <p className="font-sans text-[15px] md:text-[16px] text-white/85 mt-5 leading-[1.6]">
+                    <p
+                      className="font-sans text-[15px] md:text-[16px] mt-5 leading-[1.6]"
+                      style={{ color: banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR }}
+                    >
                       {banner.description}
                     </p>
                   )}
@@ -65,7 +89,7 @@ export default function BannerSection({ banners, promotions = [] }: { banners: B
           )}
 
           {/* Active promotions ticker, pinned to the bottom edge of the banner */}
-          <PromotionBar items={promotions} />
+          <PromotionBar items={promotions} theme={promotionTheme} />
         </section>
       ))}
     </>

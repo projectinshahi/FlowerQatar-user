@@ -177,6 +177,12 @@ model Banner {
   title         String?  @db.VarChar(255)
   subheading    String?  @db.VarChar(255)
   description   String?
+  /// Hex colours for the copy overlaid on this banner's video, one per text element so the
+  /// heading, subheading and description can be styled independently. Null on any of them
+  /// keeps the white the storefront used before these were configurable.
+  titleColor       String?  @db.VarChar(7)
+  subheadingColor  String?  @db.VarChar(7)
+  descriptionColor String?  @db.VarChar(7)
   videoUrl      String
   videoPublicId String?  @db.VarChar(255)
   isActive      Boolean  @default(true)
@@ -726,6 +732,19 @@ model DeliveryCharge {
   singleton  Boolean    @unique @default(true)
   createdAt  DateTime   @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime   @updatedAt @db.Timestamptz(6)
+}
+
+/// Appearance of the storefront promotion ticker pinned to the bottom of the home banner.
+/// A singleton — there is one bar — enforced by the unique `singleton` column, the same way
+/// DeliveryCharge and WelcomePopup do it. The defaults reproduce the colours that were
+/// hardcoded in components/PromotionBar.tsx, so an empty table renders the existing design.
+model PromotionBarSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  barColor  String   @default("#b0aca7") @db.VarChar(7)
+  textColor String   @default("#ffffff") @db.VarChar(7)
+  singleton Boolean  @unique @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 }
 
 /// Storefront welcome popup — a singleton config (heading + description). The unique

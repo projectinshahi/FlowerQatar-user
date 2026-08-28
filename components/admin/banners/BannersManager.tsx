@@ -7,11 +7,25 @@ import { Plus, Trash2, Power, PowerOff, Save, Loader2 } from "lucide-react";
 import BannerVideoUploader from "./BannerVideoUploader";
 import { createBanner, updateBanner, deleteBanner, toggleBannerActive } from "@/lib/actions/banner.actions";
 
+/** Storefront default when a banner has no colour of its own. */
+const DEFAULT_BANNER_TEXT_COLOR = "#ffffff";
+
+/**
+ * Picking the default colour means "no colour", not "pin it to white" — so it is saved as an
+ * empty string, which the schema turns into NULL. Otherwise a banner would be locked to white
+ * even if the storefront default ever changed.
+ */
+const clearIfDefault = (v: string) =>
+  v.toLowerCase() === DEFAULT_BANNER_TEXT_COLOR ? "" : v;
+
 interface Banner {
   id: string;
   title: string | null;
   subheading: string | null;
   description: string | null;
+  titleColor: string | null;
+  subheadingColor: string | null;
+  descriptionColor: string | null;
   videoUrl: string;
   videoPublicId: string | null;
   isActive: boolean;
@@ -187,18 +201,38 @@ function BannerRow({
   const [title, setTitle] = useState(banner.title || "");
   const [subheading, setSubheading] = useState(banner.subheading || "");
   const [description, setDescription] = useState(banner.description || "");
+  const [titleColor, setTitleColor] = useState(banner.titleColor || DEFAULT_BANNER_TEXT_COLOR);
+  const [subheadingColor, setSubheadingColor] = useState(
+    banner.subheadingColor || DEFAULT_BANNER_TEXT_COLOR
+  );
+  const [descriptionColor, setDescriptionColor] = useState(
+    banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR
+  );
 
   // Keep local edit fields in sync if the banner prop changes underneath us.
   useEffect(() => {
     setTitle(banner.title || "");
     setSubheading(banner.subheading || "");
     setDescription(banner.description || "");
-  }, [banner.title, banner.subheading, banner.description]);
+    setTitleColor(banner.titleColor || DEFAULT_BANNER_TEXT_COLOR);
+    setSubheadingColor(banner.subheadingColor || DEFAULT_BANNER_TEXT_COLOR);
+    setDescriptionColor(banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR);
+  }, [
+    banner.title,
+    banner.subheading,
+    banner.description,
+    banner.titleColor,
+    banner.subheadingColor,
+    banner.descriptionColor,
+  ]);
 
   const dirty =
     title !== (banner.title || "") ||
     subheading !== (banner.subheading || "") ||
-    description !== (banner.description || "");
+    description !== (banner.description || "") ||
+    titleColor !== (banner.titleColor || DEFAULT_BANNER_TEXT_COLOR) ||
+    subheadingColor !== (banner.subheadingColor || DEFAULT_BANNER_TEXT_COLOR) ||
+    descriptionColor !== (banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR);
 
   // Row-level runner: guards against thrown errors and updates local state on success.
   const run = (fn: () => Promise<any>, okMsg: string, onSuccess?: (data: any) => void) =>
@@ -224,6 +258,11 @@ function BannerRow({
           title: title || null,
           subheading: subheading || null,
           description: description || null,
+          // Sending "" clears the column so the storefront falls back to white; sending the
+          // default hex would pin it, which is a different thing.
+          titleColor: clearIfDefault(titleColor),
+          subheadingColor: clearIfDefault(subheadingColor),
+          descriptionColor: clearIfDefault(descriptionColor),
           videoUrl: banner.videoUrl,
           videoPublicId: banner.videoPublicId,
           isActive: banner.isActive,
@@ -240,6 +279,9 @@ function BannerRow({
           title: banner.title,
           subheading: banner.subheading,
           description: banner.description,
+          titleColor: banner.titleColor,
+          subheadingColor: banner.subheadingColor,
+          descriptionColor: banner.descriptionColor,
           videoUrl: url,
           videoPublicId: publicId,
           isActive: banner.isActive,
@@ -273,6 +315,88 @@ function BannerRow({
             placeholder="Description"
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-900 outline-none text-sm resize-none"
           />
+          {/* Copy colours + live preview. Each text element gets its own colour, and the
+              preview reuses the banner's own video and the storefront's gradient so the
+              admin judges them against the real backdrop — a row of swatches would hide a
+              legibility problem, and hide it differently for each line. */}
+          <div className="pt-2 border-t border-gray-100 space-y-2">
+            <span className="block text-xs font-medium text-gray-700">Text colours</span>
+            <div className="flex flex-wrap items-end gap-3">
+              <BannerColorField
+                id={`title-color-${banner.id}`}
+                label="Heading"
+                value={titleColor}
+                onChange={setTitleColor}
+              />
+              <BannerColorField
+                id={`subheading-color-${banner.id}`}
+                label="Subheading"
+                value={subheadingColor}
+                onChange={setSubheadingColor}
+              />
+              <BannerColorField
+                id={`description-color-${banner.id}`}
+                label="Description"
+                value={descriptionColor}
+                onChange={setDescriptionColor}
+              />
+              {[titleColor, subheadingColor, descriptionColor].some(
+                (c) => c.toLowerCase() !== DEFAULT_BANNER_TEXT_COLOR
+              ) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitleColor(DEFAULT_BANNER_TEXT_COLOR);
+                    setSubheadingColor(DEFAULT_BANNER_TEXT_COLOR);
+                    setDescriptionColor(DEFAULT_BANNER_TEXT_COLOR);
+                  }}
+                  className="pb-1.5 text-xs text-gray-500 underline hover:text-gray-900"
+                >
+                  Reset all
+                </button>
+              )}
+            </div>
+
+            <div className="relative h-28 w-full overflow-hidden rounded-lg bg-gray-900">
+              <video
+                src={banner.videoUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 h-full w-full object-cover"
+                aria-hidden
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/30 to-transparent" />
+              <div className="absolute inset-0 flex flex-col justify-center gap-0.5 px-4">
+                {title && (
+                  <span className="font-serif text-base leading-tight" style={{ color: titleColor }}>
+                    {title}
+                  </span>
+                )}
+                {subheading && (
+                  <span
+                    className="font-sans text-[8px] uppercase tracking-[0.2em]"
+                    style={{ color: subheadingColor }}
+                  >
+                    {subheading}
+                  </span>
+                )}
+                {description && (
+                  <span
+                    className="font-sans text-[9px] leading-snug line-clamp-2"
+                    style={{ color: descriptionColor }}
+                  >
+                    {description}
+                  </span>
+                )}
+                {!title && !subheading && !description && (
+                  <span className="font-serif text-base text-white/70">Preview</span>
+                )}
+              </div>
+            </div>
+          </div>
+
           {dirty && (
             <button
               type="button"
@@ -328,6 +452,47 @@ function BannerRow({
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Colour picker paired with a hex field, so a brand colour can be pasted as well as picked. */
+function BannerColorField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const valid = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-[11px] font-medium text-gray-600">
+        {label}
+      </label>
+      <div className="flex items-center gap-1.5">
+        <input
+          id={id}
+          type="color"
+          value={valid ? value : "#000000"}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-7 w-9 cursor-pointer rounded border border-gray-200 bg-white p-0.5"
+        />
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          spellCheck={false}
+          aria-label={`${label} hex value`}
+          aria-invalid={!valid}
+          className={`w-[86px] rounded-lg border px-2 py-1 font-mono text-xs uppercase outline-none focus:ring-1 focus:ring-gray-900 ${
+            valid ? "border-gray-200" : "border-red-300 bg-red-50"
+          }`}
+        />
       </div>
     </div>
   );

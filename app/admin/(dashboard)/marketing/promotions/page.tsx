@@ -1,5 +1,6 @@
 import { getPromotions } from "@/lib/actions/marketing.actions";
 import PromotionsClient from "@/components/admin/marketing/PromotionsClient";
+import PromotionBarTheme from "@/components/admin/marketing/PromotionBarTheme";
 
 export const metadata = { title: "Promotions | Marketing" };
 
@@ -32,5 +33,11 @@ export default async function PromotionsPage({
     if (v) rawParams[k] = v;
   });
 
-  return <PromotionsClient promotions={res.data.promotions} pagination={res.data.pagination} params={rawParams} />;
+  return (
+    <div className="space-y-6">
+      {/* The bar's colours are site-wide, not per-promotion, so they live above the list. */}
+      <PromotionBarTheme />
+      <PromotionsClient promotions={res.data.promotions} pagination={res.data.pagination} params={rawParams} />
+    </div>
+  );
 }

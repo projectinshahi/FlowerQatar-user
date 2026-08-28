@@ -44,6 +44,9 @@ export async function getActiveBanners() {
         title: true,
         subheading: true,
         description: true,
+        titleColor: true,
+        subheadingColor: true,
+        descriptionColor: true,
         videoUrl: true,
       },
       take: 1, // single-banner policy

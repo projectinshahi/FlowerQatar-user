@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { PROMOTION_BAR_DEFAULTS, type PromotionBarTheme } from '@/lib/promotions';
 
 /**
  * Active-promotions bar pinned to the bottom of the home banner. Mirrors the site's
@@ -14,7 +15,14 @@ import Link from 'next/link';
  * being absolutely positioned, so long promo sentences never get clipped on narrow screens.
  * "· Shop Now" is hidden on the smallest screens to keep the title readable.
  */
-export default function PromotionBar({ items }: { items: string[] }) {
+export default function PromotionBar({
+  items,
+  theme = PROMOTION_BAR_DEFAULTS,
+}: {
+  items: string[];
+  /** Admin-configured colours; defaults keep the bar looking as it always did. */
+  theme?: PromotionBarTheme;
+}) {
   const slides = items.map((t) => t.trim()).filter(Boolean);
   const [index, setIndex] = useState(0);
 
@@ -35,14 +43,15 @@ export default function PromotionBar({ items }: { items: string[] }) {
   return (
     <div
       aria-label="Current offers"
-      className="absolute inset-x-0 bottom-0 z-10 flex min-h-[40px] items-center justify-between gap-1 bg-[#b0aca7] px-1.5 py-1.5 text-white sm:px-4 md:px-12"
+      style={{ backgroundColor: theme.barColor, color: theme.textColor }}
+      className="absolute inset-x-0 bottom-0 z-10 flex min-h-[40px] items-center justify-between gap-1 px-1.5 py-1.5 sm:px-4 md:px-12"
     >
       {hasControls ? (
         <button
           onClick={prev}
           aria-label="Previous offer"
           suppressHydrationWarning
-          className="flex shrink-0 items-center p-1 transition-colors duration-300 hover:text-white/70"
+          className="flex shrink-0 items-center p-1 transition-opacity duration-300 hover:opacity-70"
         >
           <ChevronLeft size={16} />
         </button>
@@ -59,10 +68,10 @@ export default function PromotionBar({ items }: { items: string[] }) {
           className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-center font-sans text-[10px] uppercase leading-tight tracking-[0.1em] sm:tracking-[0.15em] md:text-[11px]"
         >
           <span className="font-medium">{title}</span>
-          <span className="hidden h-1 w-1 rounded-full bg-white/50 sm:inline" aria-hidden />
+          <span className="hidden h-1 w-1 rounded-full bg-current opacity-50 sm:inline" aria-hidden />
           <Link
             href="/shop"
-            className="hidden underline underline-offset-4 transition-colors duration-300 hover:text-white/70 sm:inline"
+            className="hidden underline underline-offset-4 transition-opacity duration-300 hover:opacity-70 sm:inline"
           >
             Shop Now
           </Link>
@@ -74,7 +83,7 @@ export default function PromotionBar({ items }: { items: string[] }) {
           onClick={next}
           aria-label="Next offer"
           suppressHydrationWarning
-          className="flex shrink-0 items-center p-1 transition-colors duration-300 hover:text-white/70"
+          className="flex shrink-0 items-center p-1 transition-opacity duration-300 hover:opacity-70"
         >
           <ChevronRight size={16} />
         </button>
