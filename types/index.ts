@@ -32,6 +32,8 @@ export interface Product {
   isTrending?: boolean;
   isFeatured?: boolean;
   categoryType?: string; // one of the six fixed CategoryType values (for shop category filtering)
+  /** Country of origin. Optional — most products are untagged, so treat absence as normal. */
+  country?: string;
   dimensions?: string;
   materials?: string;
   care?: string[];

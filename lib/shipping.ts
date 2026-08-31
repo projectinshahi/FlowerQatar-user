@@ -57,6 +57,36 @@ export function calculateShipping(subtotal: number, config: ShippingConfig): num
   return round2(Math.max(0, fee));
 }
 
+/**
+ * Express-courier surcharge, added on top of the base fee.
+ *
+ * Still a constant because the admin screen has no field for it; it is here rather than inlined
+ * at three call sites so the checkout display and the placed order cannot disagree about it.
+ */
+export const COURIER_SURCHARGE = 35;
+
+export type ShippingMethod = 'standard' | 'courier';
+
+/**
+ * Total shipping for a subtotal and a delivery method.
+ *
+ * The master switch wins over everything, the surcharge included: with delivery switched off in
+ * the admin, choosing express must still cost nothing. Checking `isActive` only around the base
+ * fee is what let a "free delivery" store keep billing QAR 35 for courier.
+ *
+ * The surcharge does apply when the base fee is waived by the free-shipping threshold — express
+ * is a faster service, not a discount.
+ */
+export function calculateShippingForMethod(
+  subtotal: number,
+  config: ShippingConfig,
+  method: ShippingMethod = 'standard'
+): number {
+  if (!config.isActive) return 0;
+  const base = calculateShipping(subtotal, config);
+  return method === 'courier' ? round2(base + COURIER_SURCHARGE) : base;
+}
+
 /** How much more the customer must spend to ship free, or null when not applicable. */
 export function amountToFreeShipping(subtotal: number, config: ShippingConfig): number | null {
   if (!config.isActive || config.freeAbove <= 0) return null;

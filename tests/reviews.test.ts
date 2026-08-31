@@ -9,10 +9,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  REVIEW_SORTS,
   filledStars,
   relativeTime,
   reviewPatchSchema,
   reviewSchema,
+  sortReviews,
   summarise,
 } from '../lib/reviews';
 
@@ -152,5 +154,54 @@ describe('reviewPatchSchema', () => {
 
   it('still enforces the rating range', () => {
     assert.equal(reviewPatchSchema.safeParse({ rating: 6 }).success, false);
+  });
+});
+
+describe('sortReviews', () => {
+  // As the server delivers it: newest first (orderBy reviewedAt desc).
+  const NEWEST_FIRST = [
+    { id: 'n1', rating: 4 },
+    { id: 'n2', rating: 5 },
+    { id: 'n3', rating: 3 },
+    { id: 'n4', rating: 5 },
+  ];
+
+  it('leaves the server order untouched for "recent"', () => {
+    assert.deepEqual(sortReviews(NEWEST_FIRST, 'recent').map((r) => r.id), ['n1', 'n2', 'n3', 'n4']);
+  });
+
+  it('reverses for "oldest"', () => {
+    // Exact, because the client never receives a sortable date — only "1 week ago".
+    assert.deepEqual(sortReviews(NEWEST_FIRST, 'oldest').map((r) => r.id), ['n4', 'n3', 'n2', 'n1']);
+  });
+
+  it('ranks by rating both ways', () => {
+    assert.deepEqual(sortReviews(NEWEST_FIRST, 'highest').map((r) => r.rating), [5, 5, 4, 3]);
+    assert.deepEqual(sortReviews(NEWEST_FIRST, 'lowest').map((r) => r.rating), [3, 4, 5, 5]);
+  });
+
+  it('keeps equal ratings in newest-first order (stable sort)', () => {
+    // n2 is newer than n4; a wobbly sort would let them swap between renders.
+    assert.deepEqual(sortReviews(NEWEST_FIRST, 'highest').slice(0, 2).map((r) => r.id), ['n2', 'n4']);
+    assert.deepEqual(sortReviews(NEWEST_FIRST, 'lowest').slice(2).map((r) => r.id), ['n2', 'n4']);
+  });
+
+  it('never mutates the source list', () => {
+    const before = NEWEST_FIRST.map((r) => r.id);
+    for (const { value } of REVIEW_SORTS) sortReviews(NEWEST_FIRST, value);
+    assert.deepEqual(NEWEST_FIRST.map((r) => r.id), before);
+  });
+
+  it('offers only options backed by real data', () => {
+    // No helpfulness votes and no review media exist, so those controls must not be offered.
+    const labels = REVIEW_SORTS.map((o) => o.label);
+    assert.deepEqual(labels, ['Most Recent', 'Oldest', 'Highest Rating', 'Lowest Rating']);
+    for (const banned of ['Helpful', 'Photos', 'Videos']) {
+      assert.ok(!labels.some((l) => l.includes(banned)), `${banned} must not be offered`);
+    }
+  });
+
+  it('handles an empty list', () => {
+    for (const { value } of REVIEW_SORTS) assert.deepEqual(sortReviews([], value), []);
   });
 });

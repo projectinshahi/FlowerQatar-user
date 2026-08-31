@@ -278,14 +278,20 @@ export async function getProductBySlug(slug: string) {
       include: { subcategory: true },
     });
 
-    if (!product) return { success: false, error: "Product not found" };
+    if (!product) return { success: false, reason: "not_found" as const, error: "Product not found" };
 
-    return { success: true, data: product };
+    return { success: true as const, data: product };
   } catch (error) {
     // Surface the real Prisma code (P1001 connection / P2021 table / P2022 column …)
     // instead of hiding it behind a generic message.
     logDbError(`getProductBySlug(${slug})`, error);
-    return { success: false, error: "Failed to fetch product" };
+    /*
+     * `reason` separates "this product does not exist" from "the database was unreachable".
+     * Both used to collapse into one falsy result, so a transient Neon blip rendered a
+     * permanent-looking 404 for a product that exists — bad for the shopper mid-purchase, and
+     * worse for a crawler, which treats it as the product being gone for good.
+     */
+    return { success: false, reason: "error" as const, error: "Failed to fetch product" };
   }
 }
 

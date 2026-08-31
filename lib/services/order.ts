@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { getCartPayload } from "@/lib/services/cart";
+import { getCartPayload, loadShippingConfig } from "@/lib/services/cart";
+import { calculateShippingForMethod } from "@/lib/shipping";
 import { validateCoupon } from "@/lib/services/marketing";
 import { redeemPoints, refundPoints } from "@/lib/services/wallet";
 import { getActiveMembership } from "@/lib/services/membership";
@@ -69,9 +70,14 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
     }
   }
 
-  // Shipping + tax — same formulas the checkout displays.
-  const baseShipping = subtotal >= 150 ? 0 : 15;
-  const shippingFee = baseShipping + (input.shippingMethod === "courier" ? 35 : 0);
+  /*
+   * Shipping comes from the admin's DeliveryCharge row — the same source the cart and checkout
+   * read. This used to be `subtotal >= 150 ? 0 : 15` with a hardcoded 35 courier surcharge, so
+   * switching delivery off in the admin changed the displayed cart but the customer was still
+   * billed QAR 15 on the order that was actually created.
+   */
+  const shippingConfig = await loadShippingConfig();
+  const shippingFee = calculateShippingForMethod(subtotal, shippingConfig, input.shippingMethod);
   const effectiveShipping = freeDelivery ? 0 : shippingFee;
   const tax = Math.round(subtotal * 0.08);
   const total = Math.max(0, round2(subtotal + effectiveShipping + tax - couponDiscount));
