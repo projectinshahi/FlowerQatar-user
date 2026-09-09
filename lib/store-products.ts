@@ -40,7 +40,19 @@ export function mapDbProductToStore(db: any): Product {
       const cGallery: string[] = imagesOnly(c.galleryImages).map((g) => g.url!);
       const cImage = cGallery[0] || c.swatchImage || c.hoverImage || PLACEHOLDER;
       const cHover = cGallery[1] || c.hoverImage || cImage;
-      colors.push({ name: c.colorName, hex: c.colorCode || "#000000", image: cImage, hoverImage: cHover });
+      // Per-colour pricing, mirroring the default-variant maths above so a colour on sale
+      // reports its sale price rather than its list price.
+      const cPrice = Number(c.price ?? 0);
+      const cSale = c.salePrice != null ? Number(c.salePrice) : null;
+      const cOnSale = cSale != null && cSale < cPrice;
+      colors.push({
+        name: c.colorName,
+        hex: c.colorCode || "#000000",
+        image: cImage,
+        hoverImage: cHover,
+        price: cOnSale ? cSale! : cPrice,
+        originalPrice: cOnSale ? cPrice : undefined,
+      });
     }
   }
   // Keep the default color first so it matches the product's primary image.

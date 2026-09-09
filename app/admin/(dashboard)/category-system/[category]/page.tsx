@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, FolderTree } from 'lucide-react';
 import SubcategoryManager from '@/components/admin/subcategories/SubcategoryManager';
+import BlushingBloomsPageForm from '@/components/admin/blushing-blooms/BlushingBloomsPageForm';
 import { FIXED_CATEGORY_TYPES, fixedCategoryLabel } from '@/lib/category-config';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,19 @@ export default async function CategorySubcategoriesPage({ params }: { params: Pr
         <div className="rounded-xl bg-white p-2.5 text-[#A83A22] shadow-sm"><FolderTree className="h-5 w-5" /></div>
         <div><h1 className="font-serif text-2xl font-bold text-gray-900">{label} Subcategories</h1><p className="mt-1 text-sm text-gray-600">Add, edit, search, and manage hover images for {label} subcategories.</p></div>
       </div>
+      {/* Blushing Blooms is the only category with its own storefront page design, so it is the
+          only one that needs a content editor. The other three are unchanged. */}
+      {category === 'BLUSHING_BLOOMS' && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="font-serif text-xl font-bold text-gray-900">Page content</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Banners, media and copy for the storefront Blushing Blooms page.
+            </p>
+          </div>
+          <BlushingBloomsPageForm />
+        </div>
+      )}
       <SubcategoryManager fixedCategoryName={category} />
     </div>
   );

@@ -3,20 +3,36 @@
 import { AlertCircle, PenLine, Check, Type } from "lucide-react";
 import { useGreetingCards } from "@/hooks/useProductOptions";
 import { Skeleton } from '@/components/ui/Skeleton';
+import type { GreetingFont } from '@/lib/validations/cart';
 
 export const GREETING_MAX = 250;
 
 export interface GreetingStyle {
   color: string;
-  font: "serif" | "script" | "sans";
+  /** Shared with the cart schema — see GREETING_FONTS in lib/validations/cart.ts. */
+  font: GreetingFont;
   size: "sm" | "md" | "lg";
 }
 export const DEFAULT_GREETING_STYLE: GreetingStyle = { color: "#61000B", font: "serif", size: "md" };
 
-const FONTS: Record<GreetingStyle["font"], { label: string; family: string }> = {
+/**
+ * Every storable greeting font maps to a family here.
+ *
+ * The map must stay exhaustive over GreetingFont: a cart line saved from the Blushing Blooms
+ * quick view can be re-rendered on this page, and a missing key would resolve to `undefined`
+ * and silently drop the customer's chosen face. The named faces are only actually loaded on
+ * the Blushing Blooms route, so they degrade to the generic fallback here rather than 404.
+ */
+const FONTS: Record<GreetingFont, { label: string; family: string }> = {
   serif: { label: "Elegant", family: "var(--font-serif), Georgia, serif" },
   script: { label: "Script", family: '"Segoe Script","Bradley Hand","Brush Script MT",cursive' },
   sans: { label: "Modern", family: "var(--font-sans), system-ui, sans-serif" },
+  montecarlo: { label: "MonteCarlo", family: "var(--font-montecarlo), cursive" },
+  "nothing-you-could-do": { label: "Nothing You Could Do", family: "var(--font-nothing-you-could-do), cursive" },
+  "marck-script": { label: "Marck Script", family: "var(--font-marck-script), cursive" },
+  "poltawski-nowy": { label: "Poltawski Nowy", family: "var(--font-poltawski-nowy), Georgia, serif" },
+  montez: { label: "Montez", family: "var(--font-montez), cursive" },
+  galada: { label: "Galada", family: "var(--font-galada), cursive" },
 };
 const SIZES: Record<GreetingStyle["size"], number> = { sm: 12.5, md: 15, lg: 19 };
 const COLORS = ["#61000B", "#941A2F", "#C45878", "#B8860B", "#2F6B46", "#2B3A67", "#333333", "#FFFFFF"];

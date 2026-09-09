@@ -3,6 +3,15 @@ export interface ProductColor {
   hex: string;
   image?: string; // this color variant's primary image
   hoverImage?: string; // this color variant's secondary/hover image
+  /**
+   * This colour's own price, which the database stores per colour variant.
+   * Optional and additive: the listing's top-level `price` remains the default colour's, so
+   * every existing consumer is unchanged. Surfaces that let the customer switch colour (the
+   * Blushing Blooms quick add / quick view) read this so the price follows the selection.
+   */
+  price?: number;
+  /** Struck-through original when this colour is on sale. */
+  originalPrice?: number;
 }
 
 export interface Product {

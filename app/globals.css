@@ -13,6 +13,8 @@
   
   --font-serif: "Cormorant Garamond", "Playfair Display", serif;
   --font-sans: "Montserrat", "Avenir", sans-serif;
+  /* Supplied by next/font on the Blushing Blooms page root; the stack below is the fallback. */
+  --font-jedira: "Jedira", "Cormorant Garamond", serif;
   
   --animate-marquee: marquee 30s linear infinite;
   
@@ -77,7 +79,14 @@ body {
   overflow-x: hidden;
 }
 
-h1, h2, h3, h4, h5, h6 {
+/*
+ * Brand colour for headings everywhere EXCEPT the Blushing Blooms subtree, which is dark and
+ * sets its own. Excluded here rather than overridden later: this rule is unlayered, and
+ * unlayered CSS beats Tailwind's layered utilities no matter how specific they are, so a
+ * `text-white` on a heading inside that page could never have won.
+ * Non-Blushing-Blooms pages are unaffected — they contain no [data-bb-page] ancestor.
+ */
+:is(h1, h2, h3, h4, h5, h6):not([data-bb-page] *) {
   color: var(--color-primary);
 }
 
@@ -107,7 +116,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Button styles */
-button, .btn-luxury {
+/*
+ * Storefront button defaults. Scoped away from the Blushing Blooms subtree for the same
+ * cascade reason as the headings above: unlayered rules outrank layered utilities, so
+ * `uppercase` / `tracking-[0.1em]` on a Blushing Blooms button had no effect while this
+ * applied to it. Every other button on the site keeps exactly these values.
+ */
+:is(button, .btn-luxury):not([data-bb-page] *) {
   text-transform: uppercase;
   letter-spacing: 0.15em;
   font-size: 11px;
@@ -322,4 +337,63 @@ font[style*="vertical-align"] {
 .goog-text-highlight {
   background: none !important;
   box-shadow: none !important;
+}
+
+/*
+ * Blushing Blooms — category-scoped page takeover.
+ *
+ * Everything below is gated on [data-bb-page], which only exists inside
+ * components/client/blushing-blooms/BlushingBloomsClient.tsx. No other route, category or
+ * component is affected, and removing that one attribute removes every rule here.
+ *
+ * The page ships its own navigation and footer, so the shared header/footer are hidden while
+ * it is mounted. They are direct children of <body> (AppContextProvider renders no element),
+ * which is what makes the `> header` / `> footer` selectors exact. Browsers without :has()
+ * simply show both chromes rather than breaking.
+ */
+body:has([data-bb-page]) {
+  background: #000;
+}
+
+body:has([data-bb-page]) > header,
+body:has([data-bb-page]) > footer {
+  display: none;
+}
+
+/*
+ * Opt-outs from the global form/button rules above.
+ *
+ * This file forces every input/select to a white background with !important and every button
+ * to uppercase 11px — both correct for the cream storefront and both wrong on a black page,
+ * so the dark surface unsets them for its own subtree only.
+ */
+[data-bb-page] input,
+[data-bb-page] textarea {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-bb-page] input:focus,
+[data-bb-page] textarea:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Shimmer palette for the dark pages. The `.skeleton` class above reads these two variables,
+ * so re-declaring them here re-themes every skeleton inside the Blushing Blooms subtree while
+ * reusing the same keyframe, the same compositor-friendly transform, and the same
+ * prefers-reduced-motion handling. Warm brown base with a gold-leaning sheen, sitting between
+ * the page black and the product card's #1e1918 so it reads as part of the surface.
+ */
+[data-bb-page] {
+  --skeleton-base: #1b1714;
+  --skeleton-sheen: #322718;
+}
+
+[data-bb-page] select {
+  background-color: #1e1918 !important;
+  border-color: transparent !important;
+  color: #ffffff;
 }
