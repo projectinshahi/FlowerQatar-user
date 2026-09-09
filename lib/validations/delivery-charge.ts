@@ -13,22 +13,8 @@ export const PERCENTAGE_MAX = 100;
 
 export const deliveryChargeSchema = z
   .object({
-    /**
-     * Master switch — when false nothing is charged, whatever `value` holds.
-     *
-     * NOT `z.coerce.boolean()`: that is JS truthiness, so the string "false" coerces to TRUE
-     * and switching delivery off would silently switch it back on. Real booleans pass through;
-     * the two boolean-ish strings are mapped by meaning rather than by truthiness.
-     *
-     * Optional rather than `.default(true)` for the same reason — a request that omits the key
-     * must leave the switch alone, never force it on.
-     */
-    isActive: z
-      .preprocess(
-        (v) => (v === 'false' ? false : v === 'true' ? true : v),
-        z.boolean({ message: 'Delivery charge switch must be true or false' })
-      )
-      .optional(),
+    /** Master switch — when false nothing is charged, whatever `value` holds. */
+    isActive: z.coerce.boolean().default(true),
     chargeType: z.enum(CHARGE_TYPES, { message: 'Select a charge type' }),
     // "" / null / undefined → required error (z.coerce would turn "" into 0).
     value: z.preprocess(

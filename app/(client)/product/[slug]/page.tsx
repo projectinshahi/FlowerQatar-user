@@ -20,16 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const result = await loadProduct(slug);
 
   if (!result.success || !result.data) {
-    /*
-     * A database failure is not the same as a missing product, and metadata must not claim it
-     * is — the page itself throws in that case and the error boundary renders. Either way the
-     * page is noindex, so a transient blip cannot get a real product recorded as gone.
-     */
-    const missing = result.reason === "not_found";
-    return {
-      title: missing ? "Product Not Found" : "Product Unavailable",
-      robots: { index: false, follow: false },
-    };
+    return { title: "Product Not Found" };
   }
 
   const product = result.data;
@@ -75,14 +66,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const result = await loadProduct(slug);
 
-  /*
-   * Only a genuinely missing product is a 404. A database failure re-throws so the error
-   * boundary renders and the response is a 5xx — honest, retryable, and never indexed as
-   * "this product is gone". `notFound()` throws, so it stays outside any try/catch.
-   */
-  if (!result.success && result.reason === "error") {
-    throw new Error(`Could not load product "${slug}" — the database was unreachable.`);
-  }
   if (!result.success || !result.data) {
     notFound();
   }
@@ -140,7 +123,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Breadcrumb trail: Home › [Category] › Product.
   const crumbs = [
     { name: "Home", item: SITE_URL },
-    ...(type && typeMeta && categoryLabel ? [{ name: categoryLabel, item: absoluteUrl(shopCategoryHref(type)) }] : []),
+    ...(type && typeMeta && categoryLabel ? [{ name: categoryLabel, item: absoluteUrl(shopCategoryHref(type as any)) }] : []),
     { name: data.name, item: productUrl },
   ];
   const breadcrumbLd = {

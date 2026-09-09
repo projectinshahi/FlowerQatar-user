@@ -57,13 +57,7 @@ export async function POST(request: Request) {
     }
 
     const created = await prisma.deliveryCharge.create({
-      data: {
-        chargeType: data.chargeType,
-        value: data.value,
-        freeAbove: data.freeAbove,
-        // `?? true` only here: a brand-new config with no switch sent starts enabled.
-        isActive: data.isActive ?? true,
-      },
+      data: { chargeType: data.chargeType, value: data.value },
     });
     return NextResponse.json({ success: true, data: serialize(created) }, { status: 201 });
   } catch (error) {
@@ -98,23 +92,9 @@ export async function PUT(request: Request) {
       );
     }
 
-    /*
-     * Every editable field is written. `isActive` and `freeAbove` used to be validated and then
-     * dropped here, so the admin could switch delivery off, the request would succeed, and the
-     * row kept isActive = true — the form then re-populated from that row and the toggle sprang
-     * back on. The free-shipping threshold never saved either, for the same reason.
-     *
-     * `isActive` stays undefined when the request omits it, which Prisma treats as "leave the
-     * column alone" rather than as false.
-     */
     const updated = await prisma.deliveryCharge.update({
       where: { id: existing.id },
-      data: {
-        chargeType: data.chargeType,
-        value: data.value,
-        freeAbove: data.freeAbove,
-        isActive: data.isActive,
-      },
+      data: { chargeType: data.chargeType, value: data.value },
     });
     return NextResponse.json({ success: true, data: serialize(updated) });
   } catch (error) {

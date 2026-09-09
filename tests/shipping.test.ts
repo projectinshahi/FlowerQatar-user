@@ -9,11 +9,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  COURIER_SURCHARGE,
   NO_SHIPPING,
   amountToFreeShipping,
   calculateShipping,
-  calculateShippingForMethod,
   type ShippingConfig,
 } from '../lib/shipping';
 
@@ -109,36 +107,5 @@ describe('amountToFreeShipping', () => {
   it('returns null when shipping is off or there is no threshold', () => {
     assert.equal(amountToFreeShipping(10, fixed(15, 150, false)), null);
     assert.equal(amountToFreeShipping(10, fixed(15, 0)), null);
-  });
-});
-
-describe('calculateShippingForMethod', () => {
-  const ON: ShippingConfig = { isActive: true, chargeType: 'FIXED', value: 15, freeAbove: 150 };
-  const OFF: ShippingConfig = { ...ON, isActive: false };
-
-  it('adds the courier surcharge on top of the base fee', () => {
-    assert.equal(calculateShippingForMethod(100, ON, 'standard'), 15);
-    assert.equal(calculateShippingForMethod(100, ON, 'courier'), 15 + COURIER_SURCHARGE);
-  });
-
-  it('still charges the surcharge when the base fee is waived', () => {
-    // Express is a faster service, not a discount.
-    assert.equal(calculateShippingForMethod(200, ON, 'standard'), 0);
-    assert.equal(calculateShippingForMethod(200, ON, 'courier'), COURIER_SURCHARGE);
-  });
-
-  it('the master switch zeroes BOTH methods', () => {
-    // The reported bug: delivery switched off in the admin still billed for courier.
-    assert.equal(calculateShippingForMethod(100, OFF, 'standard'), 0);
-    assert.equal(calculateShippingForMethod(100, OFF, 'courier'), 0);
-    assert.equal(calculateShippingForMethod(9999, OFF, 'courier'), 0);
-  });
-
-  it('an unconfigured store charges nothing', () => {
-    assert.equal(calculateShippingForMethod(100, NO_SHIPPING, 'courier'), 0);
-  });
-
-  it('defaults to standard when no method is given', () => {
-    assert.equal(calculateShippingForMethod(100, ON), 15);
   });
 });

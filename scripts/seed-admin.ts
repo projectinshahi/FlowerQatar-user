@@ -12,10 +12,6 @@ async function main() {
     where: { email },
   });
 
-
-
-  
-
   if (existingUser) {
     console.log(`Admin user ${email} already exists. Updating password and role to ADMIN...`);
     const salt = await bcrypt.genSalt(10);
