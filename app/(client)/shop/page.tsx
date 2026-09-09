@@ -53,7 +53,10 @@ export default async function ShopPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const sp = await searchParams;
-  const activeType = sp.category ? categoryFromSlug(sp.category) : null;
+  const str = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : undefined);
+
+  /* 1. SCOPE — the parent selection. Everything below is relative to this set. */
+  const activeType = str('category') ? categoryFromSlug(str('category')!) : null;
 
   /*
    * Blushing Blooms is the one category with its own page design, so it returns its own tree
@@ -76,17 +79,6 @@ export default async function ShopPage({
   // Fall back to the curated mock catalog only if the DB has no published products yet.
   const all = dbProducts.length > 0 ? dbProducts : PRODUCTS;
 
-  const str = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : undefined);
-  // Apply the navbar-driven filters on the SERVER so the first paint is already correct
-  // (no flash of unfiltered products). The sidebar/color/price/sort refine further on the client.
-  let products = all;
-  if (activeType) products = products.filter((p) => p.categoryType === activeType);
-  if (sp.collection) products = products.filter((p) => p.collection === sp.collection);
-  const tabField = sp.tab ? TAB_FIELD[sp.tab] : undefined;
-  if (tabField) products = products.filter((p) => !!p[tabField]);
-
-  /* 1. SCOPE — the parent selection. Everything below is relative to this set. */
-  const activeType = str('category') ? categoryFromSlug(str('category')!) : null;
   const tabKey = str('tab');
   const tabField = tabKey ? TAB_FIELD[tabKey] : undefined;
 
