@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronDown, Flower2, Gem, Gift, Heart, SlidersHorizontal, X } from 'lucide-react';
@@ -186,7 +186,15 @@ export default function BlushingBloomsClient({
       {/* ---------------------------------------------------------------- Hero */}
       <section className="relative flex min-h-[640px] flex-col overflow-hidden lg:min-h-[804px]">
         <div className="absolute inset-0 z-0">
-          <SectionMedia src={content.heroMedia} alt="" priority />
+          {/*
+            The hero shows only what an admin uploaded under Category System -> Blushing Blooms.
+            It deliberately does NOT read the shared storefront banners: those belong to the home
+            page, and borrowing them put the home video on this hero. With nothing uploaded the
+            slot stays empty rather than falling back to stock art.
+          */}
+          {content.heroMedia && <SectionMedia src={content.heroMedia} alt="" priority />}
+          {content.heroMedia && (
+          <>
           {/*
             No flat scrim. The Figma hero applies none — its render is luminance-identical to the
             raw asset — and a `bg-black/35` multiplied the whole image by 0.65, which is what made
@@ -202,6 +210,8 @@ export default function BlushingBloomsClient({
             className="absolute inset-0"
             style={{ background: 'radial-gradient(58% 46% at 50% 42%, rgba(0,0,0,0.42), rgba(0,0,0,0) 72%)' }}
           />
+          </>
+          )}
         </div>
 
         <BlushingNav />
@@ -244,7 +254,8 @@ export default function BlushingBloomsClient({
           the overlay composition returns at lg where there is room for it.
         */}
         <div className="relative aspect-[3/2] w-full sm:aspect-[2/1] lg:absolute lg:inset-0 lg:aspect-auto">
-          <SectionMedia src={content.bannerMedia} alt="" sizes="100vw" />
+          {/* Empty slot until an admin uploads one — never stock art. */}
+          {content.bannerMedia && <SectionMedia src={content.bannerMedia} alt="" sizes="100vw" />}
           {/* Two stacked scrims, matching the design's left-hand darkening rectangles. */}
           <div className="absolute inset-0 hidden bg-gradient-to-r from-black via-black/45 to-transparent lg:block" />
           <div className="absolute inset-0 hidden bg-gradient-to-r from-black/85 to-transparent lg:block lg:w-[42%]" />
