@@ -901,3 +901,43 @@ model Subcategory {
   @@index([isExploreGarden, isActive])
   @@index([categoryId, showInNavigation, navigationPosition])
 }
+
+/// Editable content for the Blushing Blooms category page (/shop?category=blushing-blooms).
+///
+/// A singleton, guarded the same way DeliveryCharge / WelcomePopup / Occasion are: `singleton`
+/// always defaults to true and carries a unique index, so a second row cannot be inserted even
+/// under concurrent requests.
+///
+/// Every column is nullable on purpose. The storefront merges this row over the defaults in
+/// lib/blushing-blooms.ts, so the page renders the designed content before an admin has ever
+/// opened the form, and a cleared field falls back rather than rendering blank.
+///
+/// `heroMedia` / `bannerMedia` / `videoMedia` each hold ONE url that may be an image or a video.
+/// Never branch on the file extension here — read them through isVideoMedia() in lib/media.ts,
+/// which also handles Cloudinary urls that carry no extension at all.
+model BlushingBloomsPage {
+  id                   String   @id @default(uuid()) @db.Uuid
+
+  heroMedia            String?
+  heroTitle            String?  @db.VarChar(80)
+  heroSubtitle         String?  @db.VarChar(400)
+
+  bannerMedia          String?
+  bannerEyebrow        String?  @db.VarChar(60)
+  bannerTitle          String?  @db.VarChar(80)
+  /// Rendered on its own line in the accent pink — the "speak from the heart" half.
+  bannerTitleAccent    String?  @db.VarChar(80)
+  bannerDescription    String?  @db.VarChar(400)
+  bannerCtaLabel       String?  @db.VarChar(40)
+  bannerCtaHref        String?  @db.VarChar(255)
+
+  videoMedia           String?
+  videoTitle           String?  @db.VarChar(80)
+  /// Accent-pink half of the video heading, same treatment as bannerTitleAccent.
+  videoTitleAccent     String?  @db.VarChar(80)
+  videoDescription     String?  @db.VarChar(400)
+
+  singleton            Boolean  @unique @default(true)
+  createdAt            DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(6)
+}

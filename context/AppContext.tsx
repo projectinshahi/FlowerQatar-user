@@ -6,6 +6,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { Product } from '../types';
 import { ROSE_COLORS, BOX_COLORS } from '../data/products';
 import { track } from '../lib/analytics';
+import type { GreetingFont } from '../lib/validations/cart';
 
 export interface CartItem {
   id: string; // cart line id (uuid) once persisted, or a temporary id while optimistic
@@ -26,7 +27,7 @@ export interface CartItem {
   deliveryTime?: string;
   greetingTemplateId?: string;
   greetingMessage?: string;
-  greetingStyle?: { color: string; font: 'serif' | 'script' | 'sans'; size: 'sm' | 'md' | 'lg' };
+  greetingStyle?: { color: string; font: GreetingFont; size: 'sm' | 'md' | 'lg' };
   calculatedPrice?: number;
 }
 
