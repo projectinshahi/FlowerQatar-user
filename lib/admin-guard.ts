@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
-import { isDbUnreachable, logDbError } from "@/lib/prisma-error";
+import { isDbUnreachable, logDbError, retryOnUnreachable } from "@/lib/prisma-error";
 
 export class AuthError extends Error {
   status: number;
@@ -33,7 +33,14 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   const payload = verifyToken(token);
   if (!payload?.userId) return null;
 
-  const user = await prisma.user.findUnique({
+  /*
+   * Retried on connection failure only. This one read gates every admin route, so a suspended
+   * database turned an ordinary click — saving a banner, uploading an image — into a 503 for
+   * something the request never needed the database for beyond checking who was asking.
+   * Idempotent, so replaying it is safe.
+   */
+  const user = await retryOnUnreachable(() =>
+    prisma.user.findUnique({
     where: { id: payload.userId },
     select: {
       id: true,
@@ -45,7 +52,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       isBlocked: true,
       isDeleted: true,
     },
-  });
+    })
+  );
 
   if (!user || !user.isActive || user.isBlocked || user.isDeleted) return null;
 
