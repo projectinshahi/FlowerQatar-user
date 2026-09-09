@@ -15,7 +15,7 @@ export const metadata = {
   description: 'Explore our signature boxes of preserved Eternity® Roses, handcrafted to order.',
 };
 
-// Revalidate periodically so newly published products appear without a redeploy.
+// Revalidate periodically so newly published products appear without a redeploy......
 export const revalidate = 60;
 
 // Maps a ?tab= slug to the product flag it filters on.
