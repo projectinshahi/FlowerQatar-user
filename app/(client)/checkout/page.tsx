@@ -7,6 +7,11 @@ import { ChevronRight, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag
 import Image from '../../../components/LuxuryImage';
 import CouponBox from '../../../components/checkout/CouponBox';
 import RedeemPointsBox from '../../../components/checkout/RedeemPointsBox';
+import {
+  NO_SHIPPING,
+  calculateShippingForMethod,
+  type ShippingConfig,
+} from '../../../lib/shipping';
 
 interface FormErrors {
   [key: string]: string;
@@ -58,16 +63,42 @@ export default function CheckoutPage() {
     setCity((v) => v || user.city || '');
   }, [user]);
 
+  /*
+   * Delivery rules come from the admin, not from constants here. Until they load, price at
+   * NO_SHIPPING (free) rather than guessing a fee: showing a charge that then disappears is
+   * worse than showing free and having a fee appear, and the server re-prices the order from
+   * this same rule on placement, so the displayed figure can never be what is actually billed
+   * if the two disagree.
+   */
+  const [shippingConfig, setShippingConfig] = useState<ShippingConfig>(NO_SHIPPING);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/shipping')
+      .then((r) => r.json())
+      .then((json) => {
+        if (alive && json?.success && json.data) setShippingConfig(json.data as ShippingConfig);
+      })
+      .catch(() => {
+        // Leave NO_SHIPPING in place; placeOrder re-derives the real figure server-side.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const subtotal = getCartTotal();
-  const baseShippingFee = subtotal >= 150 ? 0 : 15;
-  const shippingFee = shippingMethod === 'courier' ? baseShippingFee + 35 : baseShippingFee;
+  const shippingFee = calculateShippingForMethod(subtotal, shippingConfig, shippingMethod);
+  const standardFee = calculateShippingForMethod(subtotal, shippingConfig, 'standard');
+  const courierFee = calculateShippingForMethod(subtotal, shippingConfig, 'courier');
+  const money = (n: number) => (n <= 0 ? 'Complimentary' : `QAR ${n}`);
   const tax = Math.round(subtotal * 0.08);
 
   // Coupon-derived adjustments (default to no-ops when no coupon is applied).
   const couponDiscount = appliedCoupon?.discount ?? 0;
   const effectiveShipping = appliedCoupon?.freeDelivery ? 0 : shippingFee;
   // Order value before points; points can offset up to this amount.
-  const total = Math.max(0, subtotal + effectiveShipping + tax - couponDiscount);
+  const total = Math.max(0, subtotal + effectiveShipping - couponDiscount);
   const pointsDiscount = Math.min(pointsRedeemed, total); // 1 point = 1 QAR
   const grandTotal = Math.max(0, total - pointsDiscount);
 
@@ -388,7 +419,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <span className="text-xs font-semibold text-secondary">
-                    {subtotal >= 150 ? 'Complimentary' : 'QAR 15'}
+                    {money(standardFee)}
                   </span>
                 </button>
 
@@ -409,7 +440,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <span className="text-xs font-semibold text-secondary">
-                    {subtotal >= 150 ? '+QAR 35' : 'QAR 50'}
+                    {money(courierFee)}
                   </span>
                 </button>
               </div>
@@ -659,10 +690,10 @@ export default function CheckoutPage() {
                 <span>Shipping</span>
                 <span>{effectiveShipping === 0 ? 'Complimentary' : `$${effectiveShipping}`}</span>
               </div>
-              <div className="flex justify-between text-muted">
+              {/* <div className="flex justify-between text-muted">
                 <span>Estimated Taxes</span>
                 <span>${tax}</span>
-              </div>
+              </div> */}
               {pointsDiscount > 0 && (
                 <div className="flex justify-between text-green-600 font-medium">
                   <span>Points Redeemed</span>

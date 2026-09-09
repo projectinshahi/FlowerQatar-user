@@ -127,3 +127,46 @@ export const reviewListQuerySchema = z.object({
 
 export type ReviewInput = z.output<typeof reviewSchema>;
 export type ReviewFormData = z.input<typeof reviewSchema>;
+
+/* ─────────────────────────── storefront sort order ─────────────────────────── */
+
+/**
+ * Sort options offered on the product page.
+ *
+ * "Most / Least Helpful" are deliberately absent: ProductReview carries no helpfulness vote,
+ * so those could only sort by nothing — a control that looks functional and is not. "Photos &
+ * Videos" is absent for the same reason: reviews hold no media.
+ */
+export const REVIEW_SORTS = [
+  { value: 'recent', label: 'Most Recent' },
+  { value: 'oldest', label: 'Oldest' },
+  { value: 'highest', label: 'Highest Rating' },
+  { value: 'lowest', label: 'Lowest Rating' },
+] as const;
+
+export type ReviewSort = (typeof REVIEW_SORTS)[number]['value'];
+
+/**
+ * Reorders a review list that arrives NEWEST-FIRST from the server.
+ *
+ * That ordering is the contract `getProductReviews` provides (`orderBy: reviewedAt desc`), and
+ * "oldest" depends on it: the client is handed a relative string ("1 week ago"), never a
+ * sortable date, so reversing is exact where comparing those strings would be nonsense.
+ *
+ * Rating sorts rely on Array.prototype.sort being stable (guaranteed since ES2019) so equal
+ * ratings keep their newest-first order. Always returns a new array — the caller's list is a
+ * memoised source and must not be mutated.
+ */
+export function sortReviews<T extends { rating: number }>(reviews: T[], sort: ReviewSort): T[] {
+  switch (sort) {
+    case 'oldest':
+      return [...reviews].reverse();
+    case 'highest':
+      return [...reviews].sort((a, b) => b.rating - a.rating);
+    case 'lowest':
+      return [...reviews].sort((a, b) => a.rating - b.rating);
+    case 'recent':
+    default:
+      return [...reviews];
+  }
+}

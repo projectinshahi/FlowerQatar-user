@@ -14,8 +14,15 @@ import PriceSummary from './PriceSummary'
 import { usePriceCalculator, type AddOn } from '@/hooks/useProductOptions'
 import { isVideoMedia } from '@/lib/media'
 import type { Product as StoreProduct } from '@/types'
+import type {
+  ProductColorVariant,
+  ProductDetail,
+  ProductSpecification,
+  ProductVariant,
+} from '@/types/product-detail'
+import type { GalleryMedia } from '@/lib/media'
 import type { ProductReviews } from '@/lib/services/reviews'
-import { filledStars, MAX_RATING } from '@/lib/reviews'
+import { filledStars, MAX_RATING, REVIEW_SORTS, sortReviews, type ReviewSort } from '@/lib/reviews'
 
 // Define the colors from the user prompt
 const PALETTE = {
@@ -50,7 +57,7 @@ export default function ProductDetailClient({
   related = [],
   reviews,
 }: {
-  product: any;
+  product: ProductDetail;
   /** Same-category products resolved on the server; empty hides the section entirely. */
   related?: StoreProduct[];
   /** Published reviews + summary, resolved on the server. */
@@ -66,13 +73,15 @@ export default function ProductDetailClient({
   const [filtersOpen, setFiltersOpen] = useState(false)
   // Review controls. These existed as buttons that did nothing; they now drive real state.
   const [ratingFilter, setRatingFilter] = useState<number | null>(null)
-  const [sortOrder, setSortOrder] = useState<'recent' | 'highest'>('recent')
+  const [sortOrder, setSortOrder] = useState<ReviewSort>('recent')
+  const [sortOpen, setSortOpen] = useState(false)
   const relatedTrackRef = useRef<HTMLDivElement | null>(null)
   // Both false until measured; the row starts at the left, so only "right" becomes true.
   const [relatedEdges, setRelatedEdges] = useState({ canScrollLeft: false, canScrollRight: false })
 
   const [quantity, setQuantity] = useState(1)
-  const [openSection, setOpenSection] = useState<string | null>('description');
+  // 'details' because the description panel moved up into the buying column.
+  const [openSection, setOpenSection] = useState<string | null>('details');
 
   // M05: gift add-ons, delivery schedule, greeting card
   const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([])
@@ -82,13 +91,18 @@ export default function ProductDetailClient({
   const [greetingMessage, setGreetingMessage] = useState('')
   const [greetingStyle, setGreetingStyle] = useState<GreetingStyle>(DEFAULT_GREETING_STYLE)
 
-  const selectedVariant = product.variants?.find((v: any) => v.id === selectedVariantId) || defaultVariant
-  const selectedColor = selectedVariant?.colorVariants?.find((c: any) => c.id === selectedColorId) || selectedVariant?.colorVariants?.[0]
+  const selectedVariant = product.variants?.find((v: ProductVariant) => v.id === selectedVariantId) || defaultVariant
+  const selectedColor = selectedVariant?.colorVariants?.find((c: ProductColorVariant) => c.id === selectedColorId) || selectedVariant?.colorVariants?.[0]
 
   // Videos are kept here (unlike the card mapper) — the gallery plays them inline. Older rows
   // predate the `type` field, so isVideoMedia sniffs the URL as a fallback.
-  const allImages = selectedColor?.galleryImages?.length > 0
-    ? selectedColor.galleryImages.map((img: any) => ({
+  // Entries with no url are dropped rather than passed through: the gallery renders `url`
+  // directly, so a media row missing one produced a broken frame. `any` hid that.
+  const galleryMedia = (selectedColor?.galleryImages ?? []).filter(
+    (m: GalleryMedia): m is GalleryMedia & { url: string } => typeof m?.url === 'string' && m.url !== ''
+  )
+  const allImages = galleryMedia.length > 0
+    ? galleryMedia.map((img) => ({
         url: img.url,
         type: isVideoMedia(img) ? ('video' as const) : ('image' as const),
       }))
@@ -204,11 +218,10 @@ export default function ProductDetailClient({
   const visibleReviews = React.useMemo(() => {
     const filtered =
       ratingFilter === null ? reviewList : reviewList.filter((r) => r.rating === ratingFilter)
-    // The server already returns newest-first, so only "highest" needs re-sorting — and it
-    // copies the array first, since sort() mutates and would reorder the source list.
-    return sortOrder === 'highest'
-      ? [...filtered].sort((a, b) => b.rating - a.rating)
-      : filtered
+
+    // Ordering lives in lib/reviews.ts so the newest-first contract it depends on is pinned
+    // by tests rather than by a comment in a component.
+    return sortReviews(filtered, sortOrder)
   }, [reviewList, ratingFilter, sortOrder])
 
   const displayTitle = selectedVariant?.variantName || product.name
@@ -255,25 +268,79 @@ export default function ProductDetailClient({
           </h1>
 
           <div className="flex flex-wrap items-center gap-3 mb-2">
+            {/* Subcategory leads, price follows. The price uses the brand maroon via the
+                `text-primary` token rather than another hardcoded hex, so it tracks the
+                palette in globals.css instead of drifting from it. */}
+            <span className="font-sans text-[12px] tracking-widest uppercase" style={{ color: PALETTE.textPrimary }}>{displaySubtitle}</span>
+            <span className="font-sans text-[14px] text-gray-400 mx-1">·</span>
             {/* One price only. The struck original alongside a red sale price was removed —
                 the customer sees just what they will pay. */}
-            <span className="font-serif text-[18px]" style={{ color: PALETTE.textPrimary }}>
+            <span className="font-serif text-[18px] text-primary">
               QAR {effectivePrice.toFixed(2)}
             </span>
-            <span className="font-sans text-[14px] text-gray-400 mx-1">·</span>
-            <span className="font-sans text-[12px] tracking-widest uppercase" style={{ color: PALETTE.textPrimary }}>{displaySubtitle}</span>
           </div>
 
-          <div className="flex items-center gap-3 mb-8">
-            <div className="flex gap-[2px]" style={{ color: PALETTE.starGold }}>
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} fill="currentColor" strokeWidth={0} />
-              ))}
+          {/*
+            Short description — the one-line summary the admin writes per product. It was
+            captured in the admin and stored on the row, but rendered nowhere on the storefront,
+            so the effort of writing it was invisible to shoppers. It belongs here, under the
+            price and above the buying controls, rather than inside the collapsed accordion
+            where the long description already lives.
+
+            Falls back to the variant's own summary; renders nothing at all when neither exists,
+            so an untagged product simply has no gap.
+          */}
+          {/* {(product.shortDescription || selectedVariant?.shortDescription) && (
+            <p className="font-sans text-[14px] leading-[1.7] text-gray-600 mb-4 whitespace-pre-line">
+              {product.shortDescription || selectedVariant?.shortDescription}
+            </p>
+          )} */}
+
+          {/*
+            Detailed description, directly under the summary it expands on.
+            
+            It used to live only in the "PRODUCT DESCRIPTION" accordion further down the page,
+            which is a long scroll past the buying controls — most shoppers never reached it.
+            That accordion panel has been removed rather than left in place, so the same
+            paragraph is not printed twice on one page.
+
+            The product's own text wins over the variant's; the generic sentence is the last
+            resort for a product with neither.
+          */}
+          <p className="font-sans text-[14px] leading-[1.8] text-gray-500 mb-6 whitespace-pre-line">
+            {product.description ||
+              selectedVariant?.description ||
+              'A timeless preserved arrangement, hand-selected and handcrafted to last for years with no water and minimal care.'}
+          </p>
+
+          {/*
+            Real rating, from the published reviews. This was a hardcoded "4.8 (8 Reviews)" with
+            five filled stars on EVERY product — the same claim whether a product had fifty
+            reviews or none. It renders nothing at all when there are no reviews yet, rather
+            than inventing a score.
+          */}
+          {summary.count > 0 && (
+            <div className="flex items-center gap-3 mb-8">
+              <div className="flex gap-[2px]" style={{ color: PALETTE.starGold }}>
+                {[...Array(MAX_RATING)].map((_, i) => (
+                  <Star
+                    key={i}
+                    size={14}
+                    fill="currentColor"
+                    strokeWidth={0}
+                    className={i < filledStars(summary.average) ? '' : 'text-gray-200'}
+                  />
+                ))}
+              </div>
+              <a
+                href="#reviews"
+                className="font-sans text-[13px] cursor-pointer transition-colors hover:underline"
+                style={{ color: PALETTE.textPrimary }}
+              >
+                {summary.average?.toFixed(1)} ({summary.count} Review{summary.count === 1 ? '' : 's'})
+              </a>
             </div>
-            <span className="font-sans text-[13px] cursor-pointer transition-colors" style={{ color: PALETTE.textPrimary }}>
-              4.8 (8 Reviews)
-            </span>
-          </div>
+          )}
 
           <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
 
@@ -488,13 +555,6 @@ export default function ProductDetailClient({
             <h2 className="font-serif text-[24px] tracking-widest uppercase mb-10" style={{ color: PALETTE.textPrimary }}>Product Information</h2>
             {[
               {
-                id: 'description', title: 'PRODUCT DESCRIPTION', content: (
-                  <div className="whitespace-pre-line leading-relaxed">
-                    {selectedVariant?.description || product.description || 'A timeless preserved arrangement, hand-selected and handcrafted to last for years with no water and minimal care.'}
-                  </div>
-                )
-              },
-              {
                 id: 'details', title: 'PRODUCT DETAILS', content: (
                   <div className="space-y-4">
                     {product.country && (
@@ -503,9 +563,9 @@ export default function ProductDetailClient({
                         <span className="text-gray-600">{product.country}</span>
                       </p>
                     )}
-                    {selectedVariant?.specifications?.length > 0 && (
+                    {(selectedVariant?.specifications?.length ?? 0) > 0 && (
                       <div className="space-y-1.5">
-                        {selectedVariant.specifications.map((s: any) => (
+                        {selectedVariant?.specifications?.map((s: ProductSpecification) => (
                           <p key={s.id || s.title} className="leading-relaxed">
                             <span className="font-semibold text-gray-900">{s.title}:</span>{' '}
                             <span className="text-gray-600">{s.value}</span>
@@ -524,21 +584,21 @@ export default function ProductDetailClient({
                 id: 'care', title: 'PRODUCT CARE', content: (
                   (selectedVariant?.productCare?.dos?.length || selectedVariant?.productCare?.donts?.length) ? (
                     <div className="space-y-8">
-                      {selectedVariant?.productCare?.dos?.length > 0 && (
+                      {(selectedVariant?.productCare?.dos?.length ?? 0) > 0 && (
                         <div>
                           <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-900 mb-4">DO:</p>
                           <ul className="space-y-2.5 list-disc pl-5 marker:text-gray-400">
-                            {(selectedVariant.productCare.dos as string[]).map((item, i) => (
+                            {(selectedVariant?.productCare?.dos ?? []).map((item, i) => (
                               <li key={i} className="font-serif text-[15px] leading-relaxed text-gray-700">{item}</li>
                             ))}
                           </ul>
                         </div>
                       )}
-                      {selectedVariant?.productCare?.donts?.length > 0 && (
+                      {(selectedVariant?.productCare?.donts?.length ?? 0) > 0 && (
                         <div>
                           <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-900 mb-4">DON&apos;T:</p>
                           <ul className="space-y-2.5 list-disc pl-5 marker:text-gray-400">
-                            {(selectedVariant.productCare.donts as string[]).map((item, i) => (
+                            {(selectedVariant?.productCare?.donts ?? []).map((item, i) => (
                               <li key={i} className="font-serif text-[15px] leading-relaxed text-gray-700">{item}</li>
                             ))}
                           </ul>
@@ -767,7 +827,8 @@ export default function ProductDetailClient({
         showing an empty five-star summary.
       */}
       {reviewList.length > 0 && (
-        <div className="w-full py-24 px-6 bg-white">
+        // Anchor target for the rating link beside the stars, so "4.8 (10 Reviews)" jumps here.
+        <div id="reviews" className="w-full py-24 px-6 bg-white scroll-mt-24">
           <div className="max-w-[1000px] mx-auto flex flex-col items-center">
             <h2 className="font-serif text-[40px] uppercase tracking-widest mb-4 text-gray-200 font-light">REVIEWS</h2>
             <div className="flex items-center gap-3 mb-2 font-serif text-[24px]">
@@ -834,12 +895,69 @@ export default function ProductDetailClient({
                   </div>
                 )}
 
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'recent' ? 'highest' : 'recent')}
-                  className={`flex items-center gap-2 font-sans text-[10px] uppercase font-bold tracking-widest cursor-pointer border-b border-black pb-1 ${filtersOpen ? 'self-end mt-4' : ''}`}
-                >
-                  {sortOrder === 'recent' ? 'MOST RECENT' : 'HIGHEST RATED'} <ChevronDown size={14} />
-                </button>
+                {/* Sort menu. Was a two-state toggle whose label only ever alternated, so the
+                    other orderings were unreachable and the chevron implied a list that never
+                    appeared. */}
+                <div className={`relative ${filtersOpen ? 'self-end mt-4' : ''}`}>
+                  <button
+                    onClick={() => setSortOpen(!sortOpen)}
+                    aria-haspopup="listbox"
+                    aria-expanded={sortOpen}
+                    className="flex items-center gap-2 font-sans text-[10px] uppercase font-bold tracking-widest cursor-pointer border-b border-black pb-1"
+                  >
+                    {REVIEW_SORTS.find((o) => o.value === sortOrder)?.label}
+                    <ChevronDown
+                      size={14}
+                      className={`transition-transform duration-200 ${sortOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  <AnimatePresence>
+                    {sortOpen && (
+                      <>
+                        {/* Click-anywhere-else to dismiss, the same pattern the account menu
+                            uses. Sits under the menu so the options stay clickable. */}
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setSortOpen(false)}
+                          aria-hidden
+                        />
+                        <motion.ul
+                          role="listbox"
+                          aria-label="Sort reviews"
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.15 }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') setSortOpen(false)
+                          }}
+                          className="absolute right-0 top-[calc(100%+8px)] z-50 w-52 border border-gray-200 bg-white py-1 shadow-xl"
+                        >
+                          {REVIEW_SORTS.map((option) => (
+                            <li key={option.value}>
+                              <button
+                                role="option"
+                                aria-selected={sortOrder === option.value}
+                                onClick={() => {
+                                  setSortOrder(option.value)
+                                  setSortOpen(false)
+                                }}
+                                className={`w-full px-4 py-2.5 text-left font-serif text-[14px] transition-colors hover:bg-gray-50 ${
+                                  sortOrder === option.value
+                                    ? 'bg-gray-50 font-semibold text-black'
+                                    : 'text-gray-600'
+                                }`}
+                              >
+                                {option.label}
+                              </button>
+                            </li>
+                          ))}
+                        </motion.ul>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
 

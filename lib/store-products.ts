@@ -99,6 +99,10 @@ export function mapDbProductToStore(db: any): Product {
     isTrending: !!db.isTrending,
     isFeatured: !!db.isFeatured,
     categoryType: db.categoryType ?? undefined,
+    // Origin was fetched from the database but never mapped, so the shop could not filter
+    // on it however the admin tagged products. Blank strings normalise to undefined so an
+    // empty admin field does not become a facet value of "".
+    country: db.country?.trim() || undefined,
   };
 }
 

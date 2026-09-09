@@ -1,125 +1,163 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 import ProductCard from '../../../components/ProductCard';
 import QuickViewModal from '../../../components/QuickViewModal';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import { Product } from '../../../types';
+import {
+  CHILD_FILTER_PARAMS,
+  DEFAULT_SORT,
+  type ChildFilters,
+  type ShopFacets,
+} from '../../../lib/shop-facets';
 
 /** Marketing shot used whenever the listing is not narrowed to one subcategory. */
 const DEFAULT_HERO_IMAGE = '/images/hero_background_1782286769476.png';
 
-function ShopContent({
-  products,
-  heroTitle,
-  heroImage,
-}: {
+const PAGE_SIZE = 6;
+
+interface ShopViewProps {
+  /** Already scoped, filtered and sorted on the server. The client never re-filters. */
   products: Product[];
+  /** Options and counts for the current scope. */
+  facets: ShopFacets;
+  /** The values that actually survived reconciliation — never the raw query string. */
+  filters: ChildFilters;
+  /** Params the server refused; stripped from the URL on mount. */
+  dropped: string[];
   heroTitle: string;
   /** Active subcategory's banner art; undefined falls back to the marketing shot. */
   heroImage?: string;
-}) {
-  /*
-   * Every filter option is derived from the products actually on this page.
-   *
-   * Previously the subcategory list came from ALL subcategories in the database and the
-   * colour swatches came from ROSE_COLORS — a static mock list. Both offered options that
-   * matched nothing here, so choosing one emptied the grid and the filters looked broken.
-   * Deriving them means an option can never produce zero results.
-   */
-  const subcategoryOptions = useMemo(() => {
-    const counts = new Map<string, { key: string; name: string; count: number }>();
-    for (const p of products) {
-      if (!p.collectionName || !p.collection) continue;
-      const entry = counts.get(p.collection);
-      if (entry) entry.count += 1;
-      else counts.set(p.collection, { key: p.collection, name: p.collectionName, count: 1 });
-    }
-    return [...counts.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [products]);
+}
 
-  const colorOptions = useMemo(() => {
-    const seen = new Map<string, { name: string; hex: string }>();
-    for (const p of products) {
-      for (const c of p.colors ?? []) {
-        if (c?.name && !seen.has(c.name)) seen.set(c.name, { name: c.name, hex: c.hex });
+function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage }: ShopViewProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+
+  /*
+   * THE URL IS THE ONLY FILTER STATE.
+   *
+   * Subcategory, colour, price and sort used to live in `useState` while category and tab lived
+   * in the query string — two lifecycles that never spoke. Because this component is not
+   * remounted when the category changes (navigation only hands it a new `products` prop), the
+   * local half survived the switch: choosing Red under Flowers and moving to Gift Combos left
+   * the colour filter applied while its swatch vanished from the panel, so the grid emptied
+   * with nothing to clear. One source of truth removes that class of bug outright, and makes
+   * every filter shareable, bookmarkable and reversible with Back.
+   */
+  const writeParams = useCallback(
+    (patch: Record<string, string | number | null>, opts?: { replace?: boolean }) => {
+      const next = new URLSearchParams(params.toString());
+
+      // Changing the parent invalidates every child. Sweeping the known set keeps this correct
+      // when a facet is added, instead of a delete-list that silently goes stale.
+      if ('category' in patch) {
+        for (const key of CHILD_FILTER_PARAMS) next.delete(key);
+      }
+
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null || value === '') next.delete(key);
+        else next.set(key, String(value));
+      }
+
+      const qs = next.toString();
+      const url = qs ? `${pathname}?${qs}` : pathname;
+      // `replace` for corrections the shopper did not make, so Back does not walk through them.
+      if (opts?.replace) router.replace(url, { scroll: false });
+      else router.push(url, { scroll: false });
+    },
+    [params, pathname, router]
+  );
+
+  /*
+   * Self-healing links. A pasted or bookmarked URL can carry values that are invalid for its
+   * category; the server has already ignored them, and this strips them so the address bar
+   * matches what is actually on screen. `replace` keeps it out of the history.
+   */
+  useEffect(() => {
+    if (dropped.length === 0) return;
+    const next = new URLSearchParams(params.toString());
+    let changed = false;
+    for (const key of dropped) {
+      if (next.has(key)) {
+        next.delete(key);
+        changed = true;
+      }
+      // `collection` is the legacy alias and has to go with its canonical partner.
+      if (key === 'subcategory' && next.has('collection')) {
+        next.delete('collection');
+        changed = true;
       }
     }
-    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [products]);
+    if (!changed) return;
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [dropped, params, pathname, router]);
 
-  // Real price bounds. The range was hardcoded 39–600, so anything dearer than QAR 600 was
-  // permanently filtered out and the slider's ceiling was meaningless on a small catalogue.
-  const { minPrice, maxPrice } = useMemo(() => {
-    const prices = products.map((p) => p.price).filter((n) => Number.isFinite(n));
-    if (prices.length === 0) return { minPrice: 0, maxPrice: 0 };
-    return { minPrice: Math.floor(Math.min(...prices)), maxPrice: Math.ceil(Math.max(...prices)) };
-  }, [products]);
+  const setFilter = (patch: Record<string, string | number | null>) => {
+    setVisibleCount(PAGE_SIZE);
+    writeParams(patch);
+  };
 
-  // Navbar-driven filters (category/collection/tab) are already applied on the server;
-  // the sidebar below refines the result (subcategory, colour, price, sort).
-  const [selectedShape, setSelectedShape] = useState<string>('');
-  const [selectedColor, setSelectedColor] = useState<string>('');
-  const [selectedPriceRange, setSelectedPriceRange] = useState<number | null>(null);
-  const [sortOption, setSortOption] = useState<string>('best-selling');
+  const clearFilters = () => {
+    setVisibleCount(PAGE_SIZE);
+    const cleared = Object.fromEntries(CHILD_FILTER_PARAMS.map((k) => [k, null]));
+    writeParams(cleared);
+  };
 
-  // `null` means "no price filter". Resolved to the real ceiling for display and filtering,
-  // so the slider starts at the top of the actual catalogue rather than an invented 600.
-  const priceCeiling = selectedPriceRange ?? maxPrice;
+  /*
+   * Price is the one control with a local mirror, and deliberately: a range input fires on every
+   * pixel of the drag, and routing per pixel would be unusable. The draft drives the thumb, the
+   * URL is written once on release. `null` means no ceiling, shown at the top of the range.
+   */
+  const priceMin = facets.price?.min ?? 0;
+  const priceMax = facets.price?.max ?? 0;
+  const committedPrice = filters.maxPrice ?? priceMax;
+  const [priceDraft, setPriceDraft] = useState<number | null>(null);
+  const [syncedTo, setSyncedTo] = useState(committedPrice);
+
+  // Drop the draft once the URL catches up, so the thumb follows Back/Forward too. Adjusted
+  // DURING RENDER rather than in an effect: React re-runs this component before touching the
+  // DOM, so the thumb never paints at the stale position, and it keeps the render pure of the
+  // cascading-update problem `react-hooks/set-state-in-effect` exists to catch.
+  if (syncedTo !== committedPrice) {
+    setSyncedTo(committedPrice);
+    setPriceDraft(null);
+  }
+
+  const priceCeiling = priceDraft ?? committedPrice;
+
+  const commitPrice = () => {
+    if (priceDraft === null) return;
+    setFilter({ maxPrice: priceDraft >= priceMax ? null : priceDraft });
+  };
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
-  const [visibleCount, setVisibleCount] = useState(6);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
 
-  useEffect(() => {
-    let result = [...products];
-
-    if (selectedShape) {
-      result = result.filter((p) => p.collection === selectedShape);
-    }
-    if (selectedColor) {
-      result = result.filter((p) => p.colors.some((c) => c.name === selectedColor));
-    }
-    if (selectedPriceRange !== null) {
-      result = result.filter((p) => p.price <= selectedPriceRange);
-    }
-
-    if (sortOption === 'price-low-high') {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortOption === 'price-high-low') {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sortOption === 'best-selling') {
-      result.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0));
-    } else if (sortOption === 'newest') {
-      result.reverse();
-    }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFilteredProducts(result);
-    setVisibleCount(6);
-  }, [products, selectedShape, selectedColor, selectedPriceRange, sortOption]);
-
-  const handleResetFilters = () => {
-    setSelectedShape('');
-    setSelectedColor('');
-    setSelectedPriceRange(null);
-    setSortOption('best-selling');
-  };
-
-  const handleLoadMore = () => {
-    setVisibleCount((prev) => Math.min(prev + 3, filteredProducts.length));
-  };
+  // Clamped rather than reset on every prop change: a shorter result set must not keep
+  // claiming "Showing 12 of 4".
+  const shown = Math.min(visibleCount, products.length);
+  const handleLoadMore = () => setVisibleCount((prev) => prev + PAGE_SIZE);
 
   const openQuickView = (product: Product) => {
     setSelectedProduct(product);
     setIsQuickViewOpen(true);
   };
+
+  const hasActiveFilters =
+    !!filters.subcategory ||
+    !!filters.country ||
+    filters.maxPrice !== null ||
+    filters.sort !== DEFAULT_SORT;
 
   return (
     <div className="w-full mx-auto font-sans text-primary">
@@ -167,19 +205,19 @@ function ShopContent({
         </button>
 
         <div className="text-[10px] uppercase tracking-widest text-primary font-medium hidden md:block">
-          {filteredProducts.length} PRODUCTS
+          {products.length} PRODUCTS
         </div>
 
         <div className="flex items-center space-x-2">
           <div className="relative flex items-center gap-2 text-[11px] uppercase tracking-widest text-primary font-medium">
             <span>SORT BY:</span>
             <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
+              value={filters.sort}
+              onChange={(e) => setFilter({ sort: e.target.value === DEFAULT_SORT ? null : e.target.value })}
               className="appearance-none bg-transparent border-none pr-5 text-[11px] uppercase tracking-widest text-primary focus:outline-none focus:ring-0 cursor-pointer"
               suppressHydrationWarning
             >
-              <option value="best-selling">FEATURED</option>
+              <option value="featured">FEATURED</option>
               <option value="price-low-high">PRICE: LOW TO HIGH</option>
               <option value="price-high-low">PRICE: HIGH TO LOW</option>
               <option value="newest">NEWEST</option>
@@ -196,77 +234,106 @@ function ShopContent({
           }`}
         >
           <div className="flex flex-col border-t border-divider/40 px-6 w-[280px]">
-            {subcategoryOptions.length > 0 && (
+            {facets.subcategories.length > 0 && (
               <div className="border-b border-divider/40 py-5">
                 <h4 className="text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">Subcategory</h4>
                 <div className="flex flex-col gap-1.5">
                   <button
-                    onClick={() => setSelectedShape('')}
-                    className={`flex justify-between text-left text-[12px] py-1 transition-colors ${!selectedShape ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
+                    onClick={() => setFilter({ subcategory: null, collection: null })}
+                    className={`flex justify-between text-left text-[12px] py-1 transition-colors ${!filters.subcategory ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
                   >
                     <span>All Subcategories</span>
-                    <span className="tabular-nums">{products.length}</span>
+                    <span className="tabular-nums">{facets.total}</span>
                   </button>
-                  {subcategoryOptions.map((c) => (
+                  {facets.subcategories.map((c) => (
                     <button
-                      key={c.key}
-                      onClick={() => setSelectedShape(c.key)}
-                      className={`flex justify-between gap-2 text-left text-[12px] py-1 capitalize transition-colors ${selectedShape === c.key ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
+                      key={c.value}
+                      onClick={() => setFilter({ subcategory: c.value, collection: null })}
+                      className={`flex justify-between gap-2 text-left text-[12px] py-1 capitalize transition-colors ${filters.subcategory === c.value ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
                     >
-                      <span className="truncate">{c.name}</span>
+                      <span className="truncate">{c.label}</span>
                       <span className="tabular-nums">{c.count}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-            {colorOptions.length > 0 && (
+            {/* Country of origin. Only rendered where products are tagged, so it appears under
+                Flowers and stays out of the way elsewhere. The "All" row carries no number on
+                purpose: origin is optional, so a total here would look like it should sum to
+                the scope when most products are simply untagged. */}
+            {facets.countries.length > 0 && (
               <div className="border-b border-divider/40 py-5">
-                <h4 className="text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">Colour</h4>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setSelectedColor('')} className={`px-2.5 py-1 text-[10px] border ${!selectedColor ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>ALL</button>
-                  {colorOptions.map((c) => (
-                    <button key={c.name} onClick={() => setSelectedColor(c.name)} className={`px-2.5 py-1 text-[10px] border flex items-center gap-1.5 ${selectedColor === c.name ? 'bg-secondary text-white border-secondary' : 'border-divider text-muted'}`}>
-                      <span className="w-2 h-2 rounded-full border border-black/10" style={{ backgroundColor: c.hex }} />
-                      <span>{c.name}</span>
+                <h4 className="text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">Country of Origin</h4>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => setFilter({ country: null })}
+                    className={`flex justify-between text-left text-[12px] py-1 transition-colors ${!filters.country ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
+                  >
+                    <span>All Countries</span>
+                  </button>
+                  {facets.countries.map((c) => (
+                    <button
+                      key={c.value}
+                      onClick={() => setFilter({ country: c.value })}
+                      className={`flex justify-between gap-2 text-left text-[12px] py-1 capitalize transition-colors ${filters.country === c.value ? 'text-secondary font-semibold' : 'text-muted hover:text-primary'}`}
+                    >
+                      <span className="truncate">{c.label}</span>
+                      <span className="tabular-nums">{c.count}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-            <div className="border-b border-divider/40 py-5">
-              <div className="flex justify-between text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">
-                <span>Price</span>
-                <span className="text-secondary font-bold">QAR {priceCeiling}</span>
+            {facets.price && priceMax > priceMin && (
+              <div className="border-b border-divider/40 py-5">
+                <div className="flex justify-between text-[11px] uppercase tracking-[0.2em] font-sans text-primary mb-3">
+                  <span>Price</span>
+                  <span className="text-secondary font-bold">QAR {priceCeiling}</span>
+                </div>
+                <input
+                  type="range"
+                  min={priceMin}
+                  max={priceMax}
+                  step="1"
+                  value={priceCeiling}
+                  onChange={(e) => setPriceDraft(Number(e.target.value))}
+                  onPointerUp={commitPrice}
+                  onKeyUp={commitPrice}
+                  onBlur={commitPrice}
+                  className="w-full accent-gold h-1 bg-divider"
+                  aria-label="Maximum price"
+                />
               </div>
-              <input type="range" min={minPrice} max={maxPrice} step="1" value={priceCeiling} onChange={(e) => setSelectedPriceRange(Number(e.target.value))} className="w-full accent-gold h-1 bg-divider" aria-label="Maximum price" />
-            </div>
+            )}
           </div>
         </aside>
 
         <div className="flex-grow transition-all duration-700 ease-in-out">
-          {filteredProducts.length === 0 ? (
+          {products.length === 0 ? (
             <div className="py-24 text-center border border-dashed border-divider bg-cream rounded-none space-y-4">
               <p className="text-sm text-muted italic">No items found matching the selected criteria.</p>
-              <button onClick={handleResetFilters} className="px-6 py-2.5 bg-secondary hover:bg-secondary-hover text-white text-xs uppercase tracking-widest transition-colors">
-                Clear Filters
-              </button>
+              {hasActiveFilters && (
+                <button onClick={clearFilters} className="px-6 py-2.5 bg-secondary hover:bg-secondary-hover text-white text-xs uppercase tracking-widest transition-colors">
+                  Clear Filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-12">
               <div className="grid gap-0 border-l border-t border-divider/40 grid-cols-2 lg:grid-cols-3">
-                {filteredProducts.slice(0, visibleCount).map((product, i) => (
+                {products.slice(0, shown).map((product, i) => (
                   <ProductCard key={product.slug} product={product} onQuickView={openQuickView} priority={i < 3} />
                 ))}
               </div>
 
-              {visibleCount < filteredProducts.length && (
+              {shown < products.length && (
                 <div className="text-center pt-8">
                   <button onClick={handleLoadMore} className="px-8 py-3.5 border border-secondary text-secondary hover:bg-secondary hover:text-white uppercase text-xs tracking-[0.2em] font-semibold transition-colors duration-500 shadow-sm">
                     Load More Arrangements
                   </button>
                   <p className="text-[10px] text-muted uppercase tracking-widest mt-3 font-medium">
-                    Showing {Math.min(visibleCount, filteredProducts.length)} of {filteredProducts.length} arrangements
+                    Showing {shown} of {products.length} arrangements
                   </p>
                 </div>
               )}
@@ -285,41 +352,52 @@ function ShopContent({
                 <h3 className="text-sm uppercase tracking-[0.2em] font-medium text-primary">Filter Arrangements</h3>
                 <button onClick={() => setIsFilterDrawerOpen(false)} className="text-muted hover:text-primary"><X size={20} /></button>
               </div>
-              {subcategoryOptions.length > 0 && (
+              {facets.subcategories.length > 0 && (
                 <div className="mb-6">
                   <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Subcategory</h4>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setSelectedShape('')} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!selectedShape ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
-                    {subcategoryOptions.map((c) => (
-                      <button key={c.key} onClick={() => setSelectedShape(c.key)} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${selectedShape === c.key ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.name} ({c.count})</button>
+                    <button onClick={() => setFilter({ subcategory: null, collection: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!filters.subcategory ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
+                    {facets.subcategories.map((c) => (
+                      <button key={c.value} onClick={() => setFilter({ subcategory: c.value, collection: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${filters.subcategory === c.value ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.label} ({c.count})</button>
                     ))}
                   </div>
                 </div>
               )}
-              {colorOptions.length > 0 && (
+              {facets.countries.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Colour</h4>
+                  <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Country of Origin</h4>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setSelectedColor('')} className={`px-2.5 py-1 text-[10px] border ${!selectedColor ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>ALL</button>
-                    {colorOptions.map((c) => (
-                      <button key={c.name} onClick={() => setSelectedColor(c.name)} className={`px-2.5 py-1 text-[10px] border flex items-center space-x-1.5 ${selectedColor === c.name ? 'bg-secondary text-white border-secondary' : 'border-divider text-muted'}`}>
-                        <span className="w-2 h-2 rounded-full border border-black/10" style={{ backgroundColor: c.hex }} />
-                        <span>{c.name}</span>
-                      </button>
+                    <button onClick={() => setFilter({ country: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!filters.country ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
+                    {facets.countries.map((c) => (
+                      <button key={c.value} onClick={() => setFilter({ country: c.value })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${filters.country === c.value ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.label} ({c.count})</button>
                     ))}
                   </div>
                 </div>
               )}
-              <div className="mb-6">
-                <div className="flex justify-between text-[10px] uppercase tracking-widest font-semibold mb-3">
-                  <span>Price Cap</span>
-                  <span className="text-secondary font-bold">QAR {priceCeiling}</span>
+              {facets.price && priceMax > priceMin && (
+                <div className="mb-6">
+                  <div className="flex justify-between text-[10px] uppercase tracking-widest font-semibold mb-3">
+                    <span>Price Cap</span>
+                    <span className="text-secondary font-bold">QAR {priceCeiling}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={priceMin}
+                    max={priceMax}
+                    step="1"
+                    value={priceCeiling}
+                    onChange={(e) => setPriceDraft(Number(e.target.value))}
+                    onPointerUp={commitPrice}
+                    onKeyUp={commitPrice}
+                    onBlur={commitPrice}
+                    className="w-full accent-gold h-1 bg-divider"
+                    aria-label="Maximum price"
+                  />
                 </div>
-                <input type="range" min={minPrice} max={maxPrice} step="1" value={priceCeiling} onChange={(e) => setSelectedPriceRange(Number(e.target.value))} className="w-full accent-gold h-1 bg-divider" aria-label="Maximum price" />
-              </div>
+              )}
             </div>
             <div className="pt-6 border-t border-divider flex gap-3">
-              <button onClick={handleResetFilters} className="flex-grow py-3 border border-divider hover:border-primary text-[10px] uppercase tracking-widest transition-colors font-medium text-center">Clear</button>
+              <button onClick={clearFilters} className="flex-grow py-3 border border-divider hover:border-primary text-[10px] uppercase tracking-widest transition-colors font-medium text-center">Clear</button>
               <button onClick={() => setIsFilterDrawerOpen(false)} className="flex-grow py-3 bg-primary hover:bg-secondary text-white text-[10px] uppercase tracking-widest font-semibold transition-colors text-center">Apply</button>
             </div>
           </div>
@@ -331,22 +409,14 @@ function ShopContent({
   );
 }
 
-export default function ShopClient({
-  products,
-  heroTitle = 'The Collection',
-  heroImage,
-}: {
-  products: Product[];
-  heroTitle?: string;
-  heroImage?: string;
-}) {
+export default function ShopClient(props: ShopViewProps) {
   return (
     <Suspense fallback={
       <div className="max-w-7xl mx-auto px-6 md:px-12 py-24 text-center font-sans text-muted">
         Loading Atelier Collection...
       </div>
     }>
-      <ShopContent products={products} heroTitle={heroTitle} heroImage={heroImage} />
+      <ShopContent {...props} />
     </Suspense>
   );
 }
