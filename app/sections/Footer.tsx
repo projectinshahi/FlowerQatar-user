@@ -14,9 +14,11 @@ import Image from 'next/image'
  * project, and inventing them would send customers to accounts that may not be the business's.
  * Add real URLs here and the column renders itself.
  */
-type FooterLink = { label: string; href: string; external?: boolean }
+export type FooterLink = { label: string; href: string; external?: boolean }
 
-const linkColumns: { title: string; links: FooterLink[] }[] = [
+// Exported so the Blushing Blooms footer renders the same destinations without a second copy
+// of the list — one edit here updates both footers.
+export const linkColumns: { title: string; links: FooterLink[] }[] = [
   {
     title: "INFORMATION",
     links: [

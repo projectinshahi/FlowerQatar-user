@@ -1,0 +1,112 @@
+'use client';
+
+import Image from 'next/image';
+import Link from 'next/link';
+import { Home, Heart, Search, ShoppingCart } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
+import { BB_ASSETS } from '@/lib/blushing-blooms';
+
+/**
+ * Floating glass navigation for the Blushing Blooms page.
+ *
+ * This page hides the shared storefront header (see the [data-bb-page] rules in globals.css),
+ * so this is its only navigation. It deliberately does NOT re-implement search, cart or
+ * account: those drawers are mounted once in app/(client)/layout.tsx and stay mounted here, so
+ * the icons drive the same `useApp()` state the shared header drives.
+ *
+ * The wishlist icon links to /wishlist rather than opening a drawer — there is no wishlist
+ * drawer component in the project, only the page.
+ *
+ * `fixed`, not `absolute`: it stays pinned over the page as it scrolls, which is what the
+ * design shows (the glass pill sits over the product grid, not only over the hero). It was
+ * already out of normal flow, so nothing below it shifts. Inside the quick view it is a child
+ * of the dialog, which sets no transform/filter, so it pins to the viewport there too.
+ */
+
+const ICON = 'h-6 w-6 sm:h-7 sm:w-7';
+const TAP =
+  'flex items-center justify-center rounded-full p-1.5 text-white/90 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70';
+
+export default function BlushingNav({ onNavigate }: { onNavigate?: () => void } = {}) {
+  const { setCartOpen, setSearchOpen, getCartCount } = useApp();
+  const cartCount = getCartCount();
+
+  /*
+   * The quick view renders this nav inside a modal. Its drawers live in the storefront layout,
+   * outside that modal, so they must not be opened underneath it — `onNavigate` lets the quick
+   * view close itself first. Undefined on the page itself, where there is nothing to close.
+   */
+  const leave = () => onNavigate?.();
+  const act = (fn: () => void) => () => {
+    leave();
+    fn();
+  };
+
+  return (
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 px-4 pt-4 sm:px-6 sm:pt-7">
+      {/*
+        Glass, built in layers rather than as one flat tint.
+
+        `bg-black/20` alone over a 12px blur ghosted whatever passed behind it — the hero
+        headline came through as a washed-out double image. The blur is dialled back to 10px so
+        the backdrop stays readable as itself, saturation is lifted because blurring drains
+        colour, and the tint is split: a dark base that keeps the icons legible over bright
+        photography, plus a faint top-down white sheen and a bright hairline along the top edge
+        so the panel reads as a lit pane of glass instead of a grey box.
+
+        Deliberately not clipped with `overflow-hidden`: the cart badge sits outside the pill.
+      */}
+      <nav
+        aria-label="Blushing Blooms"
+        className="pointer-events-auto relative isolate mx-auto flex h-[60px] max-w-[1360px] items-center justify-between rounded-[24px] border border-white/20 bg-black/20 px-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.55)] backdrop-blur-[10px] backdrop-saturate-150 sm:h-[72px] sm:px-10"
+      >
+        {/* Sheen: brightest at the top, gone by halfway down. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 rounded-[24px] bg-gradient-to-b from-white/[0.10] via-white/[0.03] to-transparent"
+        />
+        {/* Lit top edge, faded at both ends so it never looks like a drawn border. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-8 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
+        />
+        <Link href="/shop?category=blushing-blooms" onClick={leave} className="relative block h-9 w-[54px] shrink-0 sm:h-[72px] sm:w-[108px]">
+          <Image
+            src={BB_ASSETS.logo}
+            alt="Blushing Blooms"
+            fill
+            sizes="108px"
+            priority
+            className="object-contain"
+          />
+        </Link>
+
+        <div className="flex items-center gap-1 sm:gap-3">
+          <Link href="/" onClick={leave} className={TAP} aria-label="Home">
+            <Home className={ICON} strokeWidth={1.5} />
+          </Link>
+          <Link href="/wishlist" onClick={leave} className={TAP} aria-label="Wishlist">
+            <Heart className={ICON} strokeWidth={1.5} />
+          </Link>
+          <button type="button" onClick={act(() => setSearchOpen(true))} className={TAP} aria-label="Search" suppressHydrationWarning>
+            <Search className={ICON} strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={act(() => setCartOpen(true))}
+            className={`${TAP} relative`}
+            aria-label={cartCount > 0 ? `Cart, ${cartCount} items` : 'Cart'}
+            suppressHydrationWarning
+          >
+            <ShoppingCart className={ICON} strokeWidth={1.5} />
+            {cartCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#cc965a] px-1 text-[10px] font-medium leading-none text-white">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </nav>
+    </header>
+  );
+}

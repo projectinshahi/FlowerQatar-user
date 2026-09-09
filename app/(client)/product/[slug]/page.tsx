@@ -10,6 +10,7 @@ import { absoluteUrl, stripHtml, SITE_NAME, SITE_URL } from "@/lib/site";
 import { buildKeywords, productMetaDescription } from "@/lib/seo";
 import JsonLd from "@/components/seo/JsonLd";
 import ProductDetailClient from "@/components/client/product/ProductDetailClient";
+import BlushingProductDetail from "@/components/client/blushing-blooms/BlushingProductDetail";
 
 // Dedupe the DB read across generateMetadata + the page render (one query per request).
 const loadProduct = cache((slug: string) => getProductBySlug(slug));
@@ -135,6 +136,29 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       item: c.item,
     })),
   };
+
+  /*
+   * Blushing Blooms products get their own page design, the same way the category gets its own
+   * listing. Placed here, at the end, so all of the SEO work above (metadata, product and
+   * breadcrumb JSON-LD) is shared rather than duplicated — only the rendered surface differs.
+   *
+   * `store` carries rating 5 / reviewCount 0 from mapDbProductToStore, which is fine where
+   * nothing renders them; this page shows both, so the real summary is merged in.
+   */
+  if (type === "BLUSHING_BLOOMS") {
+    return (
+      <>
+        <JsonLd data={[productLd, breadcrumbLd]} />
+        <BlushingProductDetail
+          product={{
+            ...store,
+            rating: reviews.summary.average ?? store.rating,
+            reviewCount: reviews.summary.count,
+          }}
+        />
+      </>
+    );
+  }
 
   return (
     <>
