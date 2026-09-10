@@ -41,6 +41,8 @@ export default function ProductForm({ subcategories, initialData }: { subcategor
       isBestSeller: false,
       isTrending: false,
       isNewArrival: false,
+      // Blank means "use the real reviews".
+      rating: "",
       variants: [{
         variantName: "Default Variant",
         sku: "",

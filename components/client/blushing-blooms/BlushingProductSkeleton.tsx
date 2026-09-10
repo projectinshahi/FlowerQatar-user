@@ -37,16 +37,17 @@ export default function BlushingProductSkeleton() {
         label="Loading product"
         className="mx-auto w-full max-w-[1440px] px-0 pb-16 pt-32 md:px-12 lg:pb-24 lg:pt-40"
       >
-        {/* Back control */}
-        <Skeleton className="mb-6 ml-4 h-12 w-12 rounded-full md:ml-0 lg:mb-8" />
-
-        {/* Same 60/40 split and padding as ProductDetailClient, so the real page lands here. */}
+        {/* No back-control placeholder: the real one is fixed and outside this flow, so a
+            block here would reserve space the loaded page never uses and shift everything
+            below it up by 72px the moment the product arrives. */}
+        {/* Same 62/38 split, padding and viewport-capped frame as the real page, so the
+            product lands exactly where this placeholder sat instead of jumping. */}
         <div className="flex flex-col gap-0 lg:flex-row lg:items-start lg:gap-16">
-          <div className="w-full px-4 md:px-0 lg:w-[60%] lg:pr-8">
-            <Skeleton className="aspect-[4/5] w-full rounded-[24px]" />
+          <div className="w-full px-4 md:px-0 lg:w-[62%] lg:pr-8">
+            <Skeleton className="aspect-[9/10] w-full rounded-[24px] lg:mx-auto lg:w-[min(100%,calc((100vh-8rem)*0.9))]" />
           </div>
 
-          <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[40%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
+          <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[38%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
             {/* Title · price · rating · description */}
             <div className="flex flex-col gap-4 border-b pb-8 lg:gap-6 lg:pb-[60px]" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
               <Skeleton className="h-7 w-[70%] rounded-md lg:h-9" />

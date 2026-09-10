@@ -104,11 +104,13 @@ export default function BlushingListingSkeleton() {
         <section className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 lg:px-5 lg:py-[60px]">
           {/* Filter / sort row */}
           <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
-            <div className="flex items-center gap-6 sm:gap-10">
+            {/* Same three columns as the real toolbar — filters left, the centred count, sort
+                right — so the row does not shift when the listing replaces this. */}
+            <div className="flex flex-1 items-center">
               <Skeleton className="h-5 w-32 rounded-md" />
-              <Skeleton className="h-5 w-24 rounded-md" />
             </div>
-            <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-24 rounded-md" />
+            <div className="flex flex-1 items-center justify-end gap-2">
               <Skeleton className="h-5 w-24 rounded-md" />
               <Skeleton className="h-8 w-[180px] rounded-[24px] sm:w-[200px]" />
             </div>

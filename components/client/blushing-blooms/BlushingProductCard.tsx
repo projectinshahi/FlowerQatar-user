@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Heart, Star, PlusCircle, Eye } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import LuxuryImage from '@/components/LuxuryImage';
+import { BlushingBadge, ColorSwatch, GoldButton } from './ui';
 import type { Product } from '@/types';
 
 /**
@@ -96,9 +97,7 @@ export default function BlushingProductCard({
           <div className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-between px-4 sm:top-5 sm:px-5">
             <div className="pointer-events-auto flex items-center gap-[11px]">
               {badge && (
-                <span className="rounded-full bg-[#cc965a] px-[9.5px] py-[2px] text-[10px] font-medium uppercase tracking-[0.1em] text-white sm:text-[11.5px]">
-                  {badge}
-                </span>
+                <BlushingBadge>{badge}</BlushingBadge>
               )}
               {isLinked && (
                 <button
@@ -141,28 +140,22 @@ export default function BlushingProductCard({
           {isLinked && (
             <div className="absolute inset-x-3 bottom-2 flex gap-[5px] transition-all duration-300 ease-out md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:motion-safe:translate-y-2">
               {onQuickView && (
-                <button
-                  type="button"
+                <GoldButton
+                  variant="outline"
                   onClick={(e) => {
                     e.preventDefault();
                     onQuickView(product);
                   }}
-                  suppressHydrationWarning
-                  className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[24px] border-[0.3px] border-black/20 bg-white text-[12px] font-medium uppercase tracking-[0.1em] text-[#cc965a] transition-colors hover:bg-white/90"
+                  className="h-10 flex-1 rounded-[24px]"
                 >
                   <PlusCircle size={20} strokeWidth={1.5} />
                   Quick View
-                </button>
+                </GoldButton>
               )}
-              <button
-                type="button"
-                onClick={handleQuickAdd}
-                suppressHydrationWarning
-                className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[24px] bg-[#cc965a] text-[12px] font-medium uppercase tracking-[0.1em] text-white transition-colors hover:bg-[#b9834a]"
-              >
+              <GoldButton onClick={handleQuickAdd} className="h-10 flex-1 rounded-[24px]">
                 <Eye size={20} strokeWidth={1.5} />
                 Quick Add
-              </button>
+              </GoldButton>
             </div>
           )}
         </div>
@@ -182,13 +175,12 @@ export default function BlushingProductCard({
         {product.colors?.length > 0 && (
           <ul className="flex items-center gap-2" aria-label="Available colours">
             {product.colors.slice(0, MAX_SWATCHES).map((color) => (
-              <li
-                key={color.name}
-                title={color.name}
-                className="h-4 w-4 rounded-full ring-1 ring-white/10 sm:h-5 sm:w-5"
-                style={{ backgroundColor: color.hex }}
-              >
-                <span className="sr-only">{color.name}</span>
+              <li key={color.name} className="flex">
+                <ColorSwatch
+                  hex={color.hex}
+                  name={color.name}
+                  className="h-4 w-4 ring-white/10 sm:h-5 sm:w-5"
+                />
               </li>
             ))}
           </ul>

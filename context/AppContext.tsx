@@ -98,6 +98,12 @@ const defaultCustomizer: CustomArrangementState = {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * How long a toast stays up before it dismisses itself. One value for every surface — the
+ * cream storefront and the Blushing Blooms pages share this provider and its ToastContainer.
+ */
+export const TOAST_DURATION_MS = 3000;
+
 /** Stable key for de-duping identical selections in the optimistic UI. */
 const dedupKey = (i: Omit<CartItem, 'id'>) => {
   const p = (i.product as any).id || i.product.slug || 'custom';
@@ -148,7 +154,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const addToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), TOAST_DURATION_MS);
   }, []);
 
   const removeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));

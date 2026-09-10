@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Heart, Minus, Plus, ShoppingCart, Star, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Heart, Minus, Plus, ShoppingCart, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import LuxuryImage from '@/components/LuxuryImage';
 import { MAX_CART_QUANTITY } from '@/lib/validations/cart';
 import type { Product } from '@/types';
 import { blushingFontVars } from './fonts';
+import { ColorSwatch, GoldButton, SOFT_GOLD, StarRating } from './ui';
 
 /**
  * Blushing Blooms quick view (Figma node 184:2040).
@@ -24,19 +26,53 @@ import { blushingFontVars } from './fonts';
  * are re-declared here — without them the scoped rules in globals.css stop applying.
  */
 
-const GOLD = '#cc965a';
-const SOFT_GOLD = 'rgba(204,150,90,0.1)';
+
+/*
+ * Open/close motion.
+ *
+ * A spring on the way in — a modal that settles rather than stops reads as a physical object,
+ * and a spring stays smooth if you close it again mid-open instead of jumping. Damping is high
+ * enough that the panel never visibly overshoots its size; this is a 4xl box, and bounce on
+ * something that large looks like a glitch.
+ *
+ * Out is a plain tween at roughly 60% of the in duration, easing IN rather than out: a
+ * dismissal should leave promptly and accelerate away, while an entrance should decelerate
+ * into place. Only `opacity` and `transform` are animated, so both directions stay on the
+ * compositor.
+ */
+const EASE_IN = [0.4, 0, 1, 1] as const;
+const PANEL_IN = { type: 'spring', stiffness: 320, damping: 32, mass: 0.9 } as const;
+const PANEL_OUT = { duration: 0.16, ease: EASE_IN } as const;
+const OVERLAY_IN = { duration: 0.24, ease: [0.23, 1, 0.32, 1] } as const;
+const OVERLAY_OUT = { duration: 0.16, ease: EASE_IN } as const;
 
 const qar = (n: number) => `QAR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function BlushingQuickView({
-  product,
+  product: requested,
   onClose,
 }: {
   product: Product | null;
   onClose: () => void;
 }) {
   const { addToCart, wishlist, toggleWishlist } = useApp();
+  const reduceMotion = useReducedMotion();
+
+  /*
+   * `requested` drops to null the moment something closes the dialog, but the panel is still
+   * animating out at that point — rendering from it directly would blank the contents mid-flight
+   * and collapse the box. So the last product opened is held here and only `open` flips; the
+   * subtree is torn down by AnimatePresence once the exit finishes.
+   *
+   * Everything below therefore reads `product`, unchanged, and the reset effect keys off it —
+   * which also stops the colour selection snapping back to the first swatch on the way out.
+   */
+  const [product, setProduct] = useState<Product | null>(requested);
+  const open = requested !== null;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (requested) setProduct(requested);
+  }, [requested]);
   const [colorName, setColorName] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
 
@@ -70,23 +106,57 @@ export default function BlushingQuickView({
     onClose();
   };
 
+  /*
+   * Reduced motion keeps the cross-fade — which carries the "something appeared" signal — and
+   * drops the travel and the scale, the parts that actually provoke motion sickness.
+   */
+  const panelFrames = reduceMotion
+    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    : {
+        initial: { opacity: 0, scale: 0.96, y: 12 },
+        animate: { opacity: 1, scale: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.98, y: 6 },
+      };
+
   return (
-    <Dialog.Root open onOpenChange={(o) => !o && onClose()}>
-      <Dialog.Portal>
-        {/* The grid stays visible and dimmed behind, as the design shows. */}
-        <Dialog.Overlay className="fixed inset-0 z-[90] bg-black/70" />
-        {/*
-          Box geometry is copied from components/QuickViewModal.tsx so both quick views are the
-          same size at every breakpoint: the same centring wrapper and padding, `max-w-4xl`, a
-          50/50 split at `md`, and a 500px-tall media panel with a scrolling detail column.
-          Only the surface is different — dark ground, gold accents, rounded corners.
-        */}
-        <div className="fixed inset-0 z-[91] flex items-center justify-center overflow-y-auto p-4 md:p-6">
-          <Dialog.Content
+    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+      {/*
+        `forceMount` on all three, with AnimatePresence owning the unmount.
+        Radix's own Presence drops the portal as soon as `open` flips, which cuts any exit
+        animation off at the first frame — the panel simply vanished. Handing the teardown to
+        AnimatePresence is what lets the close actually play.
+      */}
+      <AnimatePresence>
+        {open && (
+          // Explicit key: opening a second card while the first is still closing then
+          // reverses the same spring instead of racing two subtrees.
+          <Dialog.Portal key="bb-quick-view" forceMount>
+            {/* The grid stays visible and dimmed behind, as the design shows. */}
+            <Dialog.Overlay asChild forceMount>
+              <motion.div
+                className="fixed inset-0 z-[90] bg-black/70"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: OVERLAY_OUT }}
+                transition={OVERLAY_IN}
+              />
+            </Dialog.Overlay>
+            {/*
+              Box geometry is copied from components/QuickViewModal.tsx so both quick views are the
+              same size at every breakpoint: the same centring wrapper and padding, `max-w-4xl`, a
+              50/50 split at `md`, and a 500px-tall media panel with a scrolling detail column.
+              Only the surface is different — dark ground, gold accents, rounded corners.
+            */}
+            <div className="fixed inset-0 z-[91] flex items-center justify-center overflow-y-auto p-4 md:p-6">
+          <Dialog.Content asChild forceMount aria-describedby={undefined}>
+            <motion.div
             data-bb-page
             className={`${blushingFontVars} relative flex w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border bg-[#0b0a09] font-sans text-white focus:outline-none md:flex-row`}
             style={{ borderColor: 'rgba(255,255,255,0.16)' }}
-            aria-describedby={undefined}
+            initial={panelFrames.initial}
+            animate={panelFrames.animate}
+            exit={{ ...panelFrames.exit, transition: PANEL_OUT }}
+            transition={PANEL_IN}
           >
           <Dialog.Close
             aria-label="Close"
@@ -133,26 +203,12 @@ export default function BlushingQuickView({
                     </span>
                   )}
                 </p>
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                  <span className="flex items-center gap-1.5" aria-hidden="true">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        size={18}
-                        strokeWidth={1.5}
-                        className="md:h-5 md:w-5"
-                        style={{ color: GOLD, fill: i < Math.round(product.rating ?? 0) ? GOLD : 'transparent' }}
-                      />
-                    ))}
-                  </span>
-                  <p className="text-[13px] tracking-[0.02em] text-white/70 md:text-[14px]">
-                    <span className="sr-only">Rated </span>
-                    {(product.rating ?? 5).toFixed(1)}
-                    <span className="sr-only"> out of 5</span>
-                    {/* Hidden at zero rather than advertising "(0 Reviews)". */}
-                    {product.reviewCount > 0 && ` (${product.reviewCount} Reviews)`}
-                  </p>
-                </div>
+                <StarRating
+                  rating={product.rating}
+                  starSize={18}
+                  starClassName="md:h-5 md:w-5"
+                  textClassName="text-[13px] md:text-[14px]"
+                />
               </div>
 
               {product.description && (
@@ -166,24 +222,16 @@ export default function BlushingQuickView({
                 <div className="flex flex-col gap-4 border-b pb-6" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                   <h3 className="text-[12px] font-medium uppercase tracking-[0.1em] text-white md:text-[13px]">CHOOSE COLOR</h3>
                   <div className="flex flex-wrap items-center gap-3">
-                    {product.colors.map((c) => {
-                      const on = c.name === colorName;
-                      return (
-                        <button
-                          key={c.name}
-                          type="button"
-                          onClick={() => setColorName(c.name)}
-                          aria-pressed={on}
-                          aria-label={c.name}
-                          title={c.name}
-                          suppressHydrationWarning
-                          className={`h-7 w-7 rounded-full transition-shadow md:h-8 md:w-8 ${
-                            on ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0b0a09]' : 'ring-1 ring-white/15'
-                          }`}
-                          style={{ backgroundColor: c.hex }}
-                        />
-                      );
-                    })}
+                    {product.colors.map((c) => (
+                      <ColorSwatch
+                        key={c.name}
+                        hex={c.hex}
+                        name={c.name}
+                        selected={c.name === colorName}
+                        onSelect={() => setColorName(c.name)}
+                        className="h-7 w-7 ring-offset-[#0b0a09] md:h-8 md:w-8"
+                      />
+                    ))}
                   </div>
                 </div>
               )}
@@ -220,16 +268,10 @@ export default function BlushingQuickView({
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                suppressHydrationWarning
-                className="flex h-11 min-w-[150px] flex-1 items-center justify-center gap-2 rounded-[62px] text-[12px] font-medium uppercase tracking-[0.1em] text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: GOLD }}
-              >
+              <GoldButton onClick={handleAddToCart} className="h-11 min-w-[150px] flex-1 rounded-[62px]">
                 <ShoppingCart size={18} strokeWidth={1.5} />
                 Add to Cart
-              </button>
+              </GoldButton>
 
               <button
                 type="button"
@@ -248,9 +290,12 @@ export default function BlushingQuickView({
               </button>
             </div>
           </div>
+            </motion.div>
           </Dialog.Content>
-        </div>
-      </Dialog.Portal>
+            </div>
+          </Dialog.Portal>
+        )}
+      </AnimatePresence>
     </Dialog.Root>
   );
 }

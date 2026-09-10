@@ -106,6 +106,9 @@ export async function createProduct(data: ProductFormValues) {
         isBestSeller: parsed.isBestSeller,
         isTrending: parsed.isTrending,
         isNewArrival: parsed.isNewArrival,
+        // `?? null`, not `|| null`: the schema already normalises a blank field to null, and
+        // `||` would additionally swallow any falsy rating the admin actually chose.
+        rating: parsed.rating ?? null,
         variants: buildVariantsJson(parsed.variants),
       },
     });
@@ -179,6 +182,9 @@ export async function updateProduct(id: string, data: ProductFormValues) {
         isBestSeller: parsed.isBestSeller,
         isTrending: parsed.isTrending,
         isNewArrival: parsed.isNewArrival,
+        // `?? null`, not `|| null`: the schema already normalises a blank field to null, and
+        // `||` would additionally swallow any falsy rating the admin actually chose.
+        rating: parsed.rating ?? null,
         variants: buildVariantsJson(parsed.variants),
       },
     });

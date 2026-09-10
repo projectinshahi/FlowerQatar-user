@@ -397,3 +397,110 @@ body:has([data-bb-page]) > footer {
   border-color: transparent !important;
   color: #ffffff;
 }
+
+/*
+ * Toasts on the dark pages.
+ *
+ * ToastContainer is mounted once in app/(client)/layout.tsx, as a sibling of the page rather
+ * than inside it, so a `[data-bb-page] ...` descendant selector could never reach it — it is
+ * scoped from the body exactly like the shared header and footer above. Success / error / info
+ * keep their own icon colours; only the cream panel, the maroon accent bar and the dark type
+ * are restated for the black surface. No other route has a [data-bb-page] element, so the
+ * storefront toast is untouched.
+ *
+ * Unlayered, like the rest of this file, which is what lets it win over Tailwind's `bg-white`
+ * and `text-primary` utilities without !important.
+ */
+body:has([data-bb-page]) [data-toast-panel] {
+  background-color: #1e1918;
+  border-color: rgba(43, 43, 43, 0.8);
+  border-radius: 20px;
+}
+
+body:has([data-bb-page]) [data-toast-bar] {
+  background-color: #cc965a;
+}
+
+body:has([data-bb-page]) [data-toast-panel] p {
+  color: #ffffff;
+}
+
+body:has([data-bb-page]) [data-toast-close] {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+body:has([data-bb-page]) [data-toast-close]:hover {
+  color: #ffffff;
+}
+
+/* `text-secondary` is the storefront maroon — invisible on this surface. */
+body:has([data-bb-page]) [data-toast-panel] .text-secondary {
+  color: #cc965a;
+}
+
+/*
+ * Dual-handle price slider (components/client/blushing-blooms/BlushingBloomsClient.tsx).
+ *
+ * Two native range inputs stacked on one track. Both span the full width, so the upper one's
+ * track sits over the lower one's handle and would swallow every drag aimed at it — hence
+ * pointer events off across the input and back on for the thumb alone. That is the whole trick;
+ * everything else here is just painting the handle.
+ *
+ * The track is drawn by two divs behind the inputs, not by the inputs themselves, because a
+ * `::-webkit-slider-runnable-track` on each would stack two opaque bars and hide the selected
+ * span between them.
+ */
+[data-bb-page] .bb-range {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+[data-bb-page] .bb-range:focus {
+  outline: none;
+}
+
+[data-bb-page] .bb-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: #cc965a;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+
+[data-bb-page] .bb-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+
+[data-bb-page] .bb-range:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+}
+
+/* Firefox needs its own thumb, and its own track cleared to transparent. */
+[data-bb-page] .bb-range::-moz-range-thumb {
+  pointer-events: auto;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: #cc965a;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+
+[data-bb-page] .bb-range::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+
+[data-bb-page] .bb-range:focus-visible::-moz-range-thumb {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+}

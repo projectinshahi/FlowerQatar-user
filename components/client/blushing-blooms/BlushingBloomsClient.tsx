@@ -10,6 +10,7 @@ import BlushingNav from './BlushingNav';
 import BlushingFooter from './BlushingFooter';
 import BlushingProductCard from './BlushingProductCard';
 import { blushingFontVars } from './fonts';
+import { BlushingBackButton, GOLD } from './ui';
 import type { BlushingBloomsContent } from '@/lib/blushing-blooms';
 import type { Product } from '@/types';
 
@@ -45,7 +46,6 @@ const SORT_OPTIONS = [
 const PRODUCTS_BEFORE_VIDEO = 6;
 
 const ACCENT = '#e05ba2';
-const GOLD = '#cc965a';
 
 /**
  * Ambient gold pools — the four decorative ellipses the design floats behind the listing.
@@ -105,6 +105,157 @@ function SectionMedia({
   return <Image src={src} alt={alt} fill sizes={sizes} priority={priority} className="object-cover" />;
 }
 
+/**
+ * One labelled filter dropdown.
+ *
+ * A native `<select>`, not a custom popup: it is the control the SORTED BY row beside it
+ * already uses, it costs no library, and on a phone it opens the OS picker — the most compact
+ * and the most usable thing a filter row can do on a small screen. `[data-bb-page] select` in
+ * globals.css already themes it dark, so it matches the sort control without extra styling.
+ *
+ * Semantics are unchanged from the chips this replaces: one value at a time, and the blank
+ * option is the "no filter" state the empty string already meant.
+ *
+ * `swatch` paints the chosen colour inside the closed control. A native option list cannot
+ * show one, and without it the colour filter would read as plain text where the design has dots.
+ */
+function FilterSelect({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  allLabel,
+  swatch,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  allLabel: string;
+  swatch?: string | null;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <label htmlFor={id} className="shrink-0 text-[12px] tracking-[0.1em] text-white/40">
+        {label}
+      </label>
+      {/* Grows to fill the row when the panel stacks on mobile; fixed width once it goes
+          horizontal at sm, so the two dropdowns line up. */}
+      <div className="relative min-w-0 flex-1 sm:flex-none">
+        {swatch && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full ring-1 ring-white/25"
+            style={{ backgroundColor: swatch }}
+          />
+        )}
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          suppressHydrationWarning
+          className={`w-full min-w-0 cursor-pointer appearance-none rounded-[24px] bg-[#1e1918] py-1.5 pr-9 text-[13px] tracking-[0.04em] text-white focus:outline-none sm:w-[180px] sm:text-[16px] ${
+            swatch ? 'pl-9' : 'pl-4'
+          }`}
+        >
+          <option value="">{allLabel}</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          size={16}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white"
+          aria-hidden="true"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Dual-handle price slider.
+ *
+ * Two native `<input type="range">` stacked on one track, rather than a slider library or a
+ * hand-rolled pointer-drag: each handle is then a real slider to the browser, which brings
+ * touch dragging, arrow/Home/End keys and the announced value with it, and adds no dependency.
+ *
+ * The stacking is what needs care, and it is handled in globals.css — both inputs cover the
+ * full width, so the upper one's track would otherwise swallow every drag aimed at the lower
+ * handle. `.bb-range` turns pointer events off across the input and back on for the thumb
+ * alone, leaving only the two handles hittable.
+ *
+ * Handles clamp against each other instead of swapping, so the low value can never exceed the
+ * high one and the selected span cannot invert.
+ */
+function PriceRangeFilter({
+  floor,
+  ceil,
+  low,
+  high,
+  onChange,
+}: {
+  floor: number;
+  ceil: number;
+  low: number;
+  high: number;
+  onChange: (range: [number, number]) => void;
+}) {
+  const span = ceil - floor;
+  const pct = (v: number) => ((v - floor) / span) * 100;
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <label htmlFor="bb-filter-price-min" className="shrink-0 text-[12px] tracking-[0.1em] text-white/40">
+        PRICE
+      </label>
+
+      <div className="relative h-4 min-w-0 flex-1 sm:w-[180px] sm:flex-none">
+        {/* Unselected track */}
+        <span aria-hidden="true" className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-white/15" />
+        {/* Selected span, in the page gold */}
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-[#cc965a]"
+          style={{ left: `${pct(low)}%`, right: `${100 - pct(high)}%` }}
+        />
+        <input
+          id="bb-filter-price-min"
+          type="range"
+          className="bb-range absolute inset-0 h-4 w-full"
+          min={floor}
+          max={ceil}
+          value={low}
+          onChange={(e) => onChange([Math.min(Number(e.target.value), high), high])}
+          aria-label="Minimum price"
+          suppressHydrationWarning
+        />
+        <input
+          type="range"
+          className="bb-range absolute inset-0 h-4 w-full"
+          min={floor}
+          max={ceil}
+          value={high}
+          onChange={(e) => onChange([low, Math.max(Number(e.target.value), low)])}
+          aria-label="Maximum price"
+          suppressHydrationWarning
+        />
+      </div>
+
+      <output
+        htmlFor="bb-filter-price-min"
+        className="shrink-0 whitespace-nowrap text-[12px] tracking-[0.04em] text-white/70"
+      >
+        QAR {low} &ndash; {high}
+      </output>
+    </div>
+  );
+}
+
 export default function BlushingBloomsClient({
   products,
   content,
@@ -115,6 +266,15 @@ export default function BlushingBloomsClient({
   const [showFilters, setShowFilters] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
+  /*
+   * Price range, or null for "the whole range".
+   *
+   * Null rather than seeding the bounds into state: the bounds are derived from the products
+   * on the page, so a seeded pair would have to be re-synced every time that set changed, and
+   * "untouched" would be indistinguishable from "dragged back to the ends". Null makes the
+   * unfiltered state explicit — it is what CLEAR FILTERS restores and what `hasFilters` tests.
+   */
+  const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
   const [sortOption, setSortOption] = useState<string>('featured');
   const [quickView, setQuickView] = useState<Product | null>(null);
 
@@ -136,11 +296,27 @@ export default function BlushingBloomsClient({
     return [...seen.entries()].map(([name, hex]) => ({ name, hex }));
   }, [products]);
 
+  /*
+   * Slider bounds, from every product on the page — the same rule the other two facets follow,
+   * so narrowing by colour never shrinks the track under the handles mid-drag. Rounded outwards
+   * so the extremes are always reachable at a step of 1.
+   */
+  const [priceFloor, priceCeil] = useMemo(() => {
+    if (products.length === 0) return [0, 0];
+    const prices = products.map((p) => p.price);
+    return [Math.floor(Math.min(...prices)), Math.ceil(Math.max(...prices))];
+  }, [products]);
+
+  // A single-price catalogue has nothing to drag between, so the control is hidden entirely.
+  const hasPriceRange = priceCeil > priceFloor;
+  const [priceLow, priceHigh] = priceRange ?? [priceFloor, priceCeil];
+
   const visible = useMemo(() => {
     let result = products.filter(
       (p) =>
         (!selectedSubcategory || p.collection === selectedSubcategory) &&
-        (!selectedColor || p.colors?.some((c) => c.name === selectedColor))
+        (!selectedColor || p.colors?.some((c) => c.name === selectedColor)) &&
+        (!priceRange || (p.price >= priceRange[0] && p.price <= priceRange[1]))
     );
     if (sortOption === 'price-low-high') result = [...result].sort((a, b) => a.price - b.price);
     else if (sortOption === 'price-high-low') result = [...result].sort((a, b) => b.price - a.price);
@@ -150,7 +326,7 @@ export default function BlushingBloomsClient({
     // table's default). Sorting by best-seller here meant reordering products in the admin had
     // no visible effect on the storefront.
     return result;
-  }, [products, selectedSubcategory, selectedColor, sortOption]);
+  }, [products, selectedSubcategory, selectedColor, priceRange, sortOption]);
 
   /*
    * The listing is: first six products, the video feature, then EVERY remaining product.
@@ -161,7 +337,7 @@ export default function BlushingBloomsClient({
    */
   const beforeVideo = visible.slice(0, PRODUCTS_BEFORE_VIDEO);
   const afterVideo = visible.slice(PRODUCTS_BEFORE_VIDEO);
-  const hasFilters = Boolean(selectedSubcategory || selectedColor);
+  const hasFilters = Boolean(selectedSubcategory || selectedColor || priceRange);
 
   const grid = (items: Product[], priorityCount = 0) => (
     <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-3">
@@ -215,6 +391,7 @@ export default function BlushingBloomsClient({
         </div>
 
         <BlushingNav />
+        <BlushingBackButton href="/" label="Back to home" />
 
         <div className="relative z-10 flex flex-1 items-center justify-center px-5 pb-10 pt-32 sm:pt-40">
           <div className="flex flex-col items-center gap-3 text-center">
@@ -338,7 +515,15 @@ export default function BlushingBloomsClient({
         </span>
         {/* Filter / sort row */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
-          <div className="flex items-center gap-6 sm:gap-10">
+          {/*
+            Three columns, not two groups: the count is its own child between them, and both
+            side groups are `flex-1` from a zero basis so they claim equal width whatever their
+            contents measure — "SHOW FILTERS" on the left is nothing like "SORTED BY :" plus a
+            200px select on the right. That equality is what puts the count on the section's
+            true midpoint; sitting it between two auto-width groups would only ever centre it
+            between them, which is visibly off.
+          */}
+          <div className="flex flex-1 items-center">
             <button
               type="button"
               onClick={() => setShowFilters((v) => !v)}
@@ -350,12 +535,13 @@ export default function BlushingBloomsClient({
               {showFilters ? 'HIDE FILTERS' : 'SHOW FILTERS'}
               <SlidersHorizontal size={20} strokeWidth={1.5} />
             </button>
-            <p className="text-[13px] tracking-[0.04em] text-white sm:text-[16px]">
-              {visible.length} {visible.length === 1 ? 'PRODUCT' : 'PRODUCTS'}
-            </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <p className="text-[13px] tracking-[0.04em] text-white sm:text-[16px]">
+            {visible.length} {visible.length === 1 ? 'PRODUCT' : 'PRODUCTS'}
+          </p>
+
+          <div className="flex flex-1 items-center justify-end gap-2">
             <label htmlFor="bb-sort" className="text-[13px] tracking-[0.04em] text-white/70 sm:text-[16px]">
               SORTED BY :
             </label>
@@ -384,51 +570,69 @@ export default function BlushingBloomsClient({
 
         {/*
           The design shows the collapsed control only, so this panel is deliberately minimal:
-          the same two facets ShopClient derives, as chips. Anything richer would be invented.
+          the same two facets ShopClient derives, one dropdown each. Anything richer would be
+          invented.
         */}
         {showFilters && (
-          <div id="bb-filters" className="mb-8 flex flex-col gap-5 rounded-[24px] border border-[rgba(43,43,43,0.8)] bg-[#1e1918] p-5">
+          <div
+            id="bb-filters"
+            /*
+              The same glass BlushingNav is built from, layer for layer: a dark tint over a
+              10px blur with saturation lifted (blurring drains colour), a hairline border, and
+              the same lifted shadow. It replaces a flat `#1e1918` slab, which read as a grey
+              card dropped on the page rather than part of it — and, being opaque, hid the gold
+              ambient glows behind the listing instead of diffusing them.
+
+              `relative isolate` gives the two sheen layers below a stacking context of their
+              own, so their `-z-10` puts them behind the controls without escaping this box.
+            */
+            className="relative isolate mb-8 flex flex-col gap-x-8 gap-y-4 rounded-[24px] border border-white/20 bg-black/20 p-5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.55)] backdrop-blur-[10px] backdrop-saturate-150 sm:flex-row sm:flex-wrap sm:items-center"
+          >
+            {/* Sheen: brightest at the top, gone by halfway down. */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 -z-10 rounded-[24px] bg-gradient-to-b from-white/[0.10] via-white/[0.03] to-transparent"
+            />
+            {/* Lit top edge, faded at both ends so it never looks like a drawn border. */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-8 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
+            />
             {subcategoryOptions.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-1 text-[12px] tracking-[0.1em] text-white/40">COLLECTION</span>
-                {subcategoryOptions.map((s) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => setSelectedSubcategory((v) => (v === s.key ? '' : s.key))}
-                    suppressHydrationWarning
-                    aria-pressed={selectedSubcategory === s.key}
-                    className={`rounded-full border px-3 py-1 text-[12px] tracking-[0.06em] transition-colors ${
-                      selectedSubcategory === s.key
-                        ? 'border-transparent bg-[#cc965a] text-white'
-                        : 'border-white/20 text-white/70 hover:text-white'
-                    }`}
-                  >
-                    {s.name}
-                  </button>
-                ))}
-              </div>
+              <FilterSelect
+                id="bb-filter-collection"
+                label="COLLECTION"
+                value={selectedSubcategory}
+                onChange={setSelectedSubcategory}
+                options={subcategoryOptions.map((s) => ({ value: s.key, label: s.name }))}
+                allLabel="ALL COLLECTIONS"
+              />
             )}
 
             {colorOptions.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-1 text-[12px] tracking-[0.1em] text-white/40">COLOUR</span>
-                {colorOptions.map((c) => (
-                  <button
-                    key={c.name}
-                    type="button"
-                    onClick={() => setSelectedColor((v) => (v === c.name ? '' : c.name))}
-                    suppressHydrationWarning
-                    aria-pressed={selectedColor === c.name}
-                    aria-label={c.name}
-                    title={c.name}
-                    className={`h-6 w-6 rounded-full ring-offset-2 ring-offset-[#1e1918] transition-shadow ${
-                      selectedColor === c.name ? 'ring-2 ring-white' : 'ring-1 ring-white/20'
-                    }`}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                ))}
-              </div>
+              <FilterSelect
+                id="bb-filter-colour"
+                label="COLOUR"
+                value={selectedColor}
+                onChange={setSelectedColor}
+                options={colorOptions.map((c) => ({ value: c.name, label: c.name }))}
+                allLabel="ALL COLOURS"
+                swatch={colorOptions.find((c) => c.name === selectedColor)?.hex ?? null}
+              />
+            )}
+
+            {hasPriceRange && (
+              <PriceRangeFilter
+                floor={priceFloor}
+                ceil={priceCeil}
+                low={priceLow}
+                high={priceHigh}
+                /* Dragging back to both ends is not a filter — normalising to null there keeps
+                   CLEAR FILTERS from offering to clear a range that selects everything. */
+                onChange={(range) =>
+                  setPriceRange(range[0] === priceFloor && range[1] === priceCeil ? null : range)
+                }
+              />
             )}
 
             {hasFilters && (
@@ -437,6 +641,7 @@ export default function BlushingBloomsClient({
                 onClick={() => {
                   setSelectedSubcategory('');
                   setSelectedColor('');
+                  setPriceRange(null);
                 }}
                 suppressHydrationWarning
                 className="flex w-fit items-center gap-1.5 text-[12px] tracking-[0.1em] text-white/50 transition-colors hover:text-white"
@@ -499,7 +704,14 @@ export default function BlushingBloomsClient({
         here — it stays exactly as it is for /shop, search and wishlist — but the cart and
         pricing logic underneath both is the same.
       */}
-      {quickView && <BlushingQuickView product={quickView} onClose={() => setQuickView(null)} />}
+      {/*
+        Always rendered, never gated on `quickView`.
+
+        A `{quickView && ...}` guard tears the dialog out on the same tick the state clears, so
+        the close animation never gets a frame to run. The component itself renders nothing until
+        it has had a product, and owns its own exit.
+      */}
+      <BlushingQuickView product={quickView} onClose={() => setQuickView(null)} />
     </div>
   );
 }

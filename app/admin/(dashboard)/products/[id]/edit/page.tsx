@@ -39,6 +39,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     isBestSeller: product.isBestSeller,
     isTrending: product.isTrending,
     isNewArrival: product.isNewArrival,
+    // `?? ""` keeps the number input controlled and blank when nothing is curated — a null
+    // would make React drop back to an uncontrolled input and warn on the first keystroke.
+    rating: product.rating ?? "",
     variants: ((product.variants as any[]) || []).map((v: any) => ({
       id: v.id,
       variantName: v.variantName || "",

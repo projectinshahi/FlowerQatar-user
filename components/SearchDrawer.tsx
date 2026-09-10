@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -24,6 +24,7 @@ const TOP_SEARCHES = [
 
 export default function SearchDrawer() {
   const { isSearchOpen, setSearchOpen } = useApp();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,6 +56,24 @@ export default function SearchDrawer() {
     };
   }, [query]);
 
+  /*
+   * Focus the field without letting the browser scroll it into view.
+   *
+   * This replaces `autoFocus`, which is what made the drawer appear to open instantly while
+   * closing stayed smooth. The panel enters at `translateX(100%)` — off to the right, inside a
+   * `fixed inset-0 overflow-hidden` box. `overflow: hidden` is still programmatically
+   * scrollable, so focusing a control inside that off-screen panel made the browser scroll it
+   * into view: the container's scrollLeft jumped and the panel was simply *there*, with the
+   * spring still running behind a view that had already arrived. Closing has no focus event,
+   * which is why only one direction looked wrong.
+   *
+   * `preventScroll` keeps the caret behaviour identical and lets the same spring play out in
+   * both directions.
+   */
+  useEffect(() => {
+    if (isSearchOpen) inputRef.current?.focus({ preventScroll: true });
+  }, [isSearchOpen]);
+
   // Clear query when drawer closes
   useEffect(() => {
     if (!isSearchOpen) {
@@ -67,12 +86,19 @@ export default function SearchDrawer() {
       {isSearchOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden font-sans">
           {/* Backdrop */}
+          {/*
+            No `transition-opacity` class here any more: Framer writes `opacity` inline on every
+            frame, and a CSS transition on the same property tries to ease each of those writes,
+            so the two fought and the fade stuttered. One owner, one explicit tween, same curve
+            and duration both ways.
+          */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
             onClick={() => setSearchOpen(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-300"
+            className="absolute inset-0 bg-black/40 backdrop-blur-xs"
           />
 
           {/* Panel */}
@@ -107,8 +133,8 @@ export default function SearchDrawer() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="SEARCH HERE..."
+                        ref={inputRef}
                         className="w-full bg-transparent outline-none text-[11px] md:text-[12px] uppercase tracking-widest placeholder:text-black/60 focus:ring-0 px-3 md:px-4 h-full min-w-0"
-                        autoFocus
                       />
                     </div>
                     <button 
