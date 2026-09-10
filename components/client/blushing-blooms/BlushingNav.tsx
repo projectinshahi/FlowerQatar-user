@@ -24,7 +24,8 @@ import { BB_ASSETS } from '@/lib/blushing-blooms';
  * of the dialog, which sets no transform/filter, so it pins to the viewport there too.
  */
 
-const ICON = 'h-6 w-6 sm:h-7 sm:w-7';
+/* 20px -> 24px, scaling with the viewport instead of stepping 24 -> 28 at one breakpoint. */
+const ICON = 'h-[clamp(1.25rem,1.186rem_+_0.2614vw,1.5rem)] w-[clamp(1.25rem,1.186rem_+_0.2614vw,1.5rem)]';
 const TAP =
   'flex items-center justify-center rounded-full p-1.5 transition-[color,background-color,transform] duration-150 hover:text-white active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70';
 
@@ -81,7 +82,7 @@ export default function BlushingNav({ onNavigate }: { onNavigate?: () => void } 
       */}
       <nav
         aria-label="Blushing Blooms"
-        className="pointer-events-auto relative isolate mx-auto flex h-[60px] max-w-[1360px] items-center justify-between rounded-[24px] border border-white/20 bg-black/20 px-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.55)] backdrop-blur-[10px] backdrop-saturate-150 sm:h-[72px] sm:px-10"
+        className="pointer-events-auto relative isolate mx-auto flex h-[clamp(3.25rem,2.995rem_+_1.046vw,4.25rem)] max-w-[1360px] items-center justify-between rounded-[24px] border border-white/20 bg-black/20 px-[clamp(1rem,2.5vw,2.5rem)] shadow-[0_10px_30px_-12px_rgba(0,0,0,0.55)] backdrop-blur-[10px] backdrop-saturate-150"
       >
         {/* Sheen: brightest at the top, gone by halfway down. */}
         <span
@@ -93,7 +94,8 @@ export default function BlushingNav({ onNavigate }: { onNavigate?: () => void } 
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-8 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent"
         />
-        <Link href="/shop?category=blushing-blooms" onClick={leave} className="relative block h-9 w-[54px] shrink-0 sm:h-[72px] sm:w-[108px]">
+        {/* 3:2, the Figma ratio (108x72), scaled so it stops occupying the pill's full height. */}
+        <Link href="/shop?category=blushing-blooms" onClick={leave} className="relative block h-[clamp(2rem,1.745rem_+_1.046vw,3rem)] w-[clamp(3rem,2.618rem_+_1.569vw,4.5rem)] shrink-0">
           <Image
             src={BB_ASSETS.logo}
             alt="Blushing Blooms"

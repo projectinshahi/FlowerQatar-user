@@ -176,8 +176,10 @@ export default function BlushingProductDetail({ product }: { product: Product })
     });
   };
 
+  /* Shared by the delivery-date rail and the wishing-font row. Fluid padding so the tiles
+     shrink with the column instead of holding a laptop-sized footprint at every width. */
   const tile = (on: boolean) =>
-    `rounded-[12px] px-3 py-2 text-left transition-colors ${on ? 'text-white' : 'text-white hover:border-[rgba(204,150,90,0.8)]'}`;
+    `rounded-[12px] px-[clamp(0.625rem,0.593rem_+_0.1307vw,0.75rem)] py-[clamp(0.375rem,0.343rem_+_0.1307vw,0.5rem)] text-left transition-colors ${on ? 'text-white' : 'text-white hover:border-[rgba(204,150,90,0.8)]'}`;
 
   return (
     <div
@@ -368,13 +370,13 @@ export default function BlushingProductDetail({ product }: { product: Product })
                             }}
                           >
                             <span className="flex min-w-0 flex-1 flex-col gap-1 pl-1">
-                              <span className="text-[15px] leading-tight tracking-[0.04em] text-white/70 lg:text-[18px]">{g.name}</span>
+                              <span className="text-[clamp(0.8125rem,0.7647rem_+_0.1961vw,1rem)] leading-tight tracking-[0.04em] text-white/70">{g.name}</span>
                               {/* QAR strings are longer than the mock's "₹ 45" and would wrap. */}
-                              <span className="whitespace-nowrap text-[17px] font-medium tracking-[0.04em] text-white/30 lg:text-[20px]">
+                              <span className="whitespace-nowrap text-[clamp(0.9375rem,0.8897rem_+_0.1961vw,1.125rem)] font-medium tracking-[0.04em] text-white/30">
                                 {qar(g.price)}
                               </span>
                             </span>
-                            <span className="relative h-16 w-16 shrink-0 lg:h-20 lg:w-20">
+                            <span className="relative h-[clamp(3rem,2.681rem_+_1.307vw,4.25rem)] w-[clamp(3rem,2.681rem_+_1.307vw,4.25rem)] shrink-0">
                               {g.image ? (
                                 <LuxuryImage src={g.image} alt="" fill sizes="80px" className="object-contain" />
                               ) : (

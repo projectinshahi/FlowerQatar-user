@@ -81,7 +81,7 @@ export default function BlushingProductCard({
   );
 
   return (
-    <article className="group flex flex-col items-center gap-[18px] rounded-[28px] border border-[rgba(43,43,43,0.8)] bg-[#1e1918] px-3 pb-7 pt-[19px] lg:rounded-[40px]">
+    <article className="group flex flex-col items-center gap-[clamp(0.75rem,1.2vw,1.125rem)] rounded-[clamp(1.25rem,2.2vw,2rem)] border border-[rgba(43,43,43,0.8)] bg-[#1e1918] px-3 pb-[clamp(1rem,1.6vw,1.5rem)] pt-[clamp(0.75rem,1.3vw,1.1875rem)]">
       {/* Media + overlays. aspect-[42/41] is the design's 420x410 frame. */}
       <div className="relative w-full overflow-hidden rounded-t-[20px] lg:rounded-t-[28px]">
         <div className="relative aspect-[42/41] w-full">
@@ -164,10 +164,10 @@ export default function BlushingProductCard({
       {/* Title / price / swatches */}
       <div className="flex w-full flex-col gap-[10px] px-1">
         <div>
-          <h3 className="truncate text-[15px] font-medium capitalize tracking-[0.1em] text-[#7f7f7f] sm:text-[17px] lg:text-[20px]">
+          <h3 className="truncate text-[clamp(0.875rem,0.8113rem_+_0.2614vw,1.125rem)] font-medium capitalize tracking-[0.1em] text-[#7f7f7f]">
             {isLinked ? <Link href={href}>{product.name}</Link> : product.name}
           </h3>
-          <p className="mt-2 text-[19px] font-medium tracking-[0.1em] text-white sm:text-[21px] lg:text-[24px]">
+          <p className="mt-2 text-[clamp(1.0625rem,0.9988rem_+_0.2614vw,1.3125rem)] font-medium tracking-[0.1em] text-white">
             QAR {product.price}
           </p>
         </div>

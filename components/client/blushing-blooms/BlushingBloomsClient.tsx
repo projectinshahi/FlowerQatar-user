@@ -338,12 +338,24 @@ export default function BlushingBloomsClient({
     <div data-bb-page className={`${blushingFontVars} bg-black font-sans text-white [overflow-x:clip]`}>
       {/* ---------------------------------------------------------------- Hero */}
       {/*
-        `bb-hero` (globals.css) carries the 100dvh height with a 100vh fallback; the two fixed
-        floors it replaces (640px / 804px) were shorter than most laptops and taller than a
-        landscape phone. Everything inside is placed by the flex column below — the copy takes
-        the free space and the strip sits at the end — rather than by hard top offsets.
+        Full viewport, replacing two fixed floors (640px / 804px) that were shorter than most
+        laptops and taller than a landscape phone.
+
+        `min-h-screen` is the 100vh fallback and the `supports-[min-height:100dvh]` variant
+        overrides it where `dvh` exists — Tailwind emits variants after base utilities, so the
+        cascade resolves in that order. This was a hand-written rule in globals.css first;
+        Lightning CSS dropped it from the bundle entirely (every neighbouring rule survived),
+        so it silently never applied and the section kept collapsing to its content height.
+
+        `dvh` matters on mobile: `vh` is pinned to the LARGEST viewport, so with the URL bar
+        showing a 100vh hero is taller than the screen and pushes the feature strip under the
+        fold. `min-h-`, never `h-`: a landscape phone is shorter than this content, and a fixed
+        height would clip the strip rather than let the section grow.
+
+        Everything inside is placed by the flex column below — the copy takes the free space and
+        the strip sits at the end — rather than by hard top offsets.
       */}
-      <section className="bb-hero relative flex w-full flex-col overflow-hidden">
+      <section className="relative flex w-full flex-col overflow-hidden min-h-screen supports-[min-height:100dvh]:min-h-[100dvh]">
         <div className="absolute inset-0 z-0">
           {/*
             The hero shows only what an admin uploaded under Category System -> Blushing Blooms.
