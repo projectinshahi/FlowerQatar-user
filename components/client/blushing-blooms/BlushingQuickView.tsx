@@ -147,7 +147,7 @@ export default function BlushingQuickView({
               50/50 split at `md`, and a 500px-tall media panel with a scrolling detail column.
               Only the surface is different — dark ground, gold accents, rounded corners.
             */}
-            <div className="fixed inset-0 z-[91] flex items-center justify-center overflow-y-auto p-4 md:p-6">
+            <div className="fixed inset-0 z-[91] flex items-center justify-center overflow-y-auto p-[clamp(0.75rem,2.5vw,1.5rem)]">
           <Dialog.Content asChild forceMount aria-describedby={undefined}>
             <motion.div
             data-bb-page
@@ -166,7 +166,12 @@ export default function BlushingQuickView({
           </Dialog.Close>
 
           {/* Media — a square-ish panel on the left at desktop, a banner on top below lg. */}
-          <div className="relative aspect-square w-full shrink-0 bg-[#151211] md:aspect-auto md:h-125 md:w-1/2">
+          {/*
+            `md:h-125` was a flat 500px: taller than the usable area on a short laptop, so the
+            dialog outgrew the screen. Tied to viewport height it keeps the designed size where
+            there is room and shrinks instead of overflowing where there is not.
+          */}
+          <div className="relative aspect-square w-full shrink-0 bg-[#151211] md:aspect-auto md:h-[clamp(20rem,52vh,31.25rem)] md:w-1/2">
             {image ? (
               <LuxuryImage
                 key={image}
@@ -190,7 +195,7 @@ export default function BlushingQuickView({
             />
 
             <div className="flex flex-col gap-3">
-              <Dialog.Title className="font-serif text-[22px] font-semibold capitalize leading-tight tracking-[0.08em] text-white md:text-[26px]">
+              <Dialog.Title className="font-serif text-[clamp(1.375rem,2.2vw,1.625rem)] font-semibold capitalize leading-tight tracking-[0.08em] text-white">
                 {product.name}
               </Dialog.Title>
 

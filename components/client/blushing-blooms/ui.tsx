@@ -30,6 +30,48 @@ export const GOLD_HOVER = '#b9834a';
 /** 10% gold — the quick view's quantity pill and wishlist button sit on this. */
 export const SOFT_GOLD = 'rgba(204,150,90,0.1)';
 
+/*
+ * Card surfaces, sampled from the Figma product page (file 7f3mL0yDv102RCbV81u2rq, node
+ * 156:1318) rather than derived as alpha over the gold. The design's greys are warm but far
+ * darker than a tint of #cc965a produces, which is why the tiles used to read as washed-out
+ * gold rectangles instead of near-black cards with a warm edge.
+ */
+/** ADD A GIFT tile outline. */
+export const CARD_BORDER = '#231c13';
+/** DELIVERY DATE / WISHING FONT tile outline. */
+export const TILE_BORDER = '#2f2518';
+/** Unselected greeting-card fill. */
+export const TILE_BG = '#14110d';
+/** Selected greeting-card fill. */
+export const TILE_BG_ON = '#382a1a';
+/** Base Price / Subtotal panel — the diagonal golden wash, measured corner to corner. */
+export const PRICE_GRADIENT = 'linear-gradient(135deg, #3e301f 0%, #6b5031 100%)';
+
+/**
+ * Ambient gold pools — the decorative ellipses the design floats behind both Blushing Blooms
+ * surfaces.
+ *
+ * Measured off the Figma render rather than guessed: the peak reads rgb(89,66,41) against the
+ * black ground, which is GOLD at ~44% alpha, and the warmth falls to nothing about 850px out —
+ * hence the 1700px box, whose closest-side radius is exactly that. The stops trace the measured
+ * curve, so this lands as ambient light rather than a coloured block.
+ *
+ * Reproduced as CSS gradients instead of the exported SVGs: a blurred ellipse *is* a gradient,
+ * and this keeps the decorative assets out of the bundle for an identical result.
+ */
+export function Glow({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none absolute -z-10 h-[1800px] w-[1700px] max-w-none ${className}`}
+      style={{
+        background:
+          'radial-gradient(closest-side, rgba(204,150,90,0.44), rgba(204,150,90,0.30) 32%, rgba(204,150,90,0.10) 58%, rgba(204,150,90,0) 80%)',
+      }}
+    />
+  );
+}
+
 /* ------------------------------------------------------------------ Gold CTA */
 
 const CTA_BASE =

@@ -27,7 +27,19 @@ import {
 import type { Product } from '@/types';
 import BlushingNav from './BlushingNav';
 import { GWENDOLYN_CSS, WISHING_FONTS, blushingFontVars, wishingFontCss, type WishingFontKey } from './fonts';
-import { BlushingBackButton, ColorSwatch, GOLD, GoldButton, StarRating } from './ui';
+import {
+  BlushingBackButton,
+  CARD_BORDER,
+  ColorSwatch,
+  GOLD,
+  Glow,
+  GoldButton,
+  PRICE_GRADIENT,
+  StarRating,
+  TILE_BG,
+  TILE_BG_ON,
+  TILE_BORDER,
+} from './ui';
 
 /**
  * Blushing Blooms product page (Figma "Desktop - 7", node 156:1318).
@@ -47,10 +59,8 @@ import { BlushingBackButton, ColorSwatch, GOLD, GoldButton, StarRating } from '.
  */
 
 
+/** Section rules between blocks — the one value still derived from the gold. */
 const HAIRLINE = 'rgba(204,150,90,0.2)';
-const TILE_BORDER = 'rgba(204,150,90,0.5)';
-const TILE_BG = 'rgba(204,150,90,0.05)';
-const TILE_BG_ON = 'rgba(204,150,90,0.25)';
 
 /** Greeting templates are seeded rows; the glyph is matched on name, with a neutral default. */
 const CARD_ICONS: Record<string, LucideIcon> = {
@@ -183,8 +193,42 @@ export default function BlushingProductDetail({ product }: { product: Product })
             horizontal and vertical padding, the same 60/40 split at `lg` with the same gap.
             Only the surface differs — dark ground, gold accents, Blushing Blooms type.
           */}
-          <div className="mx-auto w-full max-w-[1440px] px-0 pb-16 pt-32 md:px-12 lg:pb-24 lg:pt-40">
-            <div className="flex flex-col gap-0 lg:flex-row lg:items-start lg:gap-16">
+          <div className="relative mx-auto w-full max-w-[1440px] px-0 pb-16 pt-32 md:px-[clamp(1.5rem,4vw,3rem)] lg:px-10 lg:pb-24 lg:pt-40">
+            {/*
+              Ambient gold pools, the three ellipses the Figma frame floats behind this page —
+              the listing already had them, the product page never did, which is what made it
+              read as flat black beside the reference. Positions are the Figma centres.
+
+              Clipped on the vertical axis only (`overflow: visible clip`), exactly as the
+              listing does it: the pools still bleed sideways to the viewport edge, but a pool
+              sitting past the last section can no longer drag the document's scroll height
+              with it and leave an empty tail below the footer.
+            */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 -z-10 [overflow:visible_clip]"
+            >
+              {/*
+                Two pools only, both anchored off the right edge so what reaches the page is the
+                faint outer falloff rather than the hot centre — the gradient is meant to be
+                felt, not seen as a shape. `opacity` dials the shared Glow down for this page
+                without touching the listing, which wants it stronger.
+
+                The lower one is anchored to `bottom`, not a fixed `top`: product pages vary in
+                height with the number of gifts and greeting cards, and a hard offset would put
+                it off the end of a short page and halfway up a long one.
+              */}
+              <Glow className="right-[-220px] top-[80px] translate-x-1/2 -translate-y-1/2 opacity-70" />
+              <Glow className="right-[-200px] bottom-[120px] translate-x-1/2 translate-y-1/2 opacity-60" />
+            </span>
+
+            {/*
+              Proportions taken from the Figma frame, not estimated: within its 1360px content
+              width the gallery is 650px, the gap 28px and the details column 682px — 47.8% /
+              2.1% / 50.1%. The page had been running 62/38 with a 64px gap, which is why the
+              details column felt cramped and the gift grid crowded next to the reference.
+            */}
+            <div className="flex flex-col gap-0 lg:flex-row lg:items-start lg:gap-[2.1%]">
               {/* ---------------------------------------------------------- Media */}
               {/*
                 Pinned from the top, so the gallery holds still and only the details scroll.
@@ -206,7 +250,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
                 Still `lg:` only. Below that the layout is stacked and full-bleed, where pinning
                 the gallery would eat the screen the details need.
               */}
-              <div className="w-full px-4 md:px-0 lg:sticky lg:top-[4.5rem] lg:w-[62%] lg:pr-8">
+              <div className="w-full px-4 md:px-0 lg:sticky lg:top-[4.5rem] lg:w-[47.8%] lg:pr-0">
                 {/*
                   Height-capped so the WHOLE image is on screen when it pins.
 
@@ -215,7 +259,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
                   be above the fold. The cap is expressed as a width because that is the axis
                   `aspect-ratio` derives from: take the shorter of the column's own width and the
                   width a viewport-tall frame would have (height x 4/5), and the ratio then
-                  yields a height that fits. The 0.9 factor IS the aspect ratio (9/10) — the
+                  yields a height that fits. The 0.912 factor IS the aspect ratio (650/713) — the
                   two move together, so changing one without the other breaks the cap.
 
                   `min()` is what keeps this from being a downgrade on large displays — past
@@ -235,7 +279,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
                   The floating back button overlaps the top-left corner by design; it is a
                   control over the page, not part of this column's flow.
                 */}
-                <div className="relative aspect-[9/10] w-full overflow-hidden rounded-[24px] bg-[#0d0b0b] lg:mx-auto lg:w-[min(100%,calc((100vh-8rem)*0.9))]">
+                <div className="relative aspect-[650/713] w-full overflow-hidden rounded-[24px] bg-[#0d0b0b] lg:mx-auto lg:w-[min(100%,calc((100vh-8rem)*0.912))]">
                   {heroImage ? (
                     <LuxuryImage
                       src={heroImage}
@@ -250,15 +294,15 @@ export default function BlushingProductDetail({ product }: { product: Product })
               </div>
 
               {/* ---------------------------------------------------------- Detail */}
-              <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[38%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
+              <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[50.1%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 border-b pb-8 lg:gap-6 lg:pb-[60px]" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <h1 className="font-serif text-[26px] font-semibold capitalize leading-tight tracking-[0.08em] text-white sm:text-[30px] lg:text-[34px] lg:tracking-[0.1em]">
+                  <h1 className="font-serif text-[clamp(1.625rem,2.4vw,2.125rem)] font-semibold capitalize leading-tight tracking-[0.08em] text-white lg:tracking-[0.1em]">
                     {product.name}
                   </h1>
 
                   <div className="flex flex-col gap-2">
-                    <p className="text-[18px] font-medium tracking-[0.1em] text-white sm:text-[20px]">
+                    <p className="text-[clamp(1.125rem,1.5vw,1.25rem)] font-medium tracking-[0.1em] text-white">
                       {qar(product.price)}
                     </p>
                     <StarRating
@@ -269,7 +313,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
                   </div>
 
                   {product.description && (
-                    <p className="text-[13px] leading-relaxed tracking-[0.04em] text-white/50 sm:text-[15px]">
+                    <p className="text-[clamp(0.8125rem,1.1vw,0.9375rem)] leading-relaxed tracking-[0.04em] text-white/50">
                       {product.description}
                     </p>
                   )}
@@ -319,7 +363,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
                             suppressHydrationWarning
                             className="flex items-start gap-2 rounded-[24px] border px-2 py-3 text-left transition-colors"
                             style={{
-                              borderColor: on ? GOLD : HAIRLINE,
+                              borderColor: on ? GOLD : CARD_BORDER,
                               backgroundColor: on ? TILE_BG_ON : 'transparent',
                             }}
                           >
@@ -411,22 +455,39 @@ export default function BlushingProductDetail({ product }: { product: Product })
                 <section className="flex flex-col gap-5 lg:gap-[32px]">
                   <SectionLabel>GREETING CARD</SectionLabel>
                   {cards.loading ? (
-                    <div className="flex flex-wrap gap-2">
-                      {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[92px] w-[180px] rounded-[24px]" />)}
+                    // Same 4-up grid and 4:3 tiles the loaded cards use, so the section does
+                    // not reflow when they arrive.
+                    <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
+                      {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] w-full rounded-[24px]" />)}
                     </div>
                   ) : cards.error ? (
                     <LoadError message={cards.error} onRetry={cards.reload} />
                   ) : (
                     <>
-                      <div className="flex flex-wrap gap-[9px]">
+                      {/*
+                        Four equal cards to a row, as the reference lays them out — a fixed grid
+                        rather than the wrapping flex row this used to be, so every tile is the
+                        same size instead of NO CARD carrying its own width and height while the
+                        rest sized to their labels.
+
+                        `aspect-[4/3]` is the reference's card proportion (255x190). Sizing by
+                        ratio rather than a fixed height is what lets four of them sit in a
+                        682px column: they scale down together and keep the shape.
+
+                        2 -> 3 -> 4 columns, because four landscape cards across a phone would
+                        leave each one too narrow to hold its label.
+                      */}
+                      <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
                         <button
                           type="button"
                           onClick={() => setTemplateId(null)}
                           aria-pressed={!templateId}
                           suppressHydrationWarning
-                          className="flex h-[76px] min-w-[140px] flex-1 items-center justify-center rounded-[24px] border px-6 text-center font-serif text-[15px] font-medium tracking-[0.04em] text-white/70 transition-colors sm:flex-none sm:px-7 lg:h-[92px] lg:w-[191px] lg:text-[18px]"
+                          className="flex aspect-[4/3] items-center justify-center break-words rounded-[24px] border px-2 text-center font-serif text-[13px] font-medium leading-tight tracking-[0.02em] text-white/70 transition-colors"
                           style={{
-                            borderColor: !templateId ? GOLD : HAIRLINE,
+                            // TILE_BORDER, not HAIRLINE: NO CARD is one of the greeting tiles
+                            // and the reference draws it identically to its siblings.
+                            borderColor: !templateId ? GOLD : TILE_BORDER,
                             backgroundColor: !templateId ? TILE_BG_ON : TILE_BG,
                           }}
                         >
@@ -442,11 +503,25 @@ export default function BlushingProductDetail({ product }: { product: Product })
                               onClick={() => setTemplateId(c.id)}
                               aria-pressed={on}
                               suppressHydrationWarning
-                              className="flex min-w-[140px] flex-1 flex-col items-center justify-center gap-3 rounded-[24px] border px-6 py-3.5 text-center transition-colors sm:flex-none sm:px-7 lg:gap-4"
-                              style={{ borderColor: on ? GOLD : HAIRLINE, backgroundColor: on ? TILE_BG_ON : TILE_BG }}
+                              className="flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-[24px] border px-2 text-center transition-colors lg:gap-4"
+                              style={{ borderColor: on ? GOLD : TILE_BORDER, backgroundColor: on ? TILE_BG_ON : TILE_BG }}
                             >
                               <Icon size={24} className="shrink-0" style={{ color: GOLD }} />
-                              <span className="font-serif text-[15px] font-medium uppercase tracking-[0.04em] text-white/70 lg:text-[18px]">
+                              {/*
+                                `w-full` and `break-words` are the fix, and both are needed.
+                                Centred in a flex column the span sized to max-content, so a
+                                long label ran past the padded box instead of wrapping inside
+                                it; and CONGRATULATIONS is a single 15-character word, which
+                                `word-break: normal` will not break at all — so even with a
+                                width it would still have overflowed.
+
+                                The size is set so every real label ("CONGRATULATIONS" is the
+                                longest) fits on one line in the narrowest card, which is the
+                                lg one: four columns in a 682px column is 157px wide, narrower
+                                than the two-up phone layout. `break-words` then guarantees
+                                containment for any name an admin adds later.
+                              */}
+                              <span className="w-full break-words font-serif text-[13px] font-medium uppercase leading-tight tracking-[0.02em] text-white/70">
                                 {c.name}
                               </span>
                             </button>
@@ -527,13 +602,22 @@ export default function BlushingProductDetail({ product }: { product: Product })
 
                 {/* Summary + CTA */}
                 <section className="flex flex-col gap-4 lg:gap-[16px]">
-                  <div className="rounded-[24px] border" style={{ borderColor: HAIRLINE }}>
-                    <div className="flex items-center justify-between border-b px-5 py-5 lg:px-5 lg:py-6" style={{ borderColor: HAIRLINE }}>
+                  {/*
+                    The golden panel from the reference: a 135deg wash from #3e301f to #6b5031,
+                    both sampled off the Figma render's corners. Its inner rules go to a light
+                    translucent white rather than the gold hairline used elsewhere — on this
+                    lit surface a gold rule disappears completely.
+                  */}
+                  <div
+                    className="overflow-hidden rounded-[24px] border"
+                    style={{ background: PRICE_GRADIENT, borderColor: 'rgba(204,150,90,0.35)' }}
+                  >
+                    <div className="flex items-center justify-between border-b px-5 py-5 lg:px-5 lg:py-6" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
                       <span className="text-[15px] tracking-[0.04em] text-white/70 lg:text-[20px]">Base Price</span>
                       <span className="text-[15px] tracking-[0.04em] text-white/70 lg:text-[20px]">{qar(product.price)}</span>
                     </div>
                     {addOns.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: HAIRLINE }}>
+                      <div key={a.id} className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
                         <span className="text-[14px] tracking-[0.04em] text-white/50 lg:text-[16px]">{a.name}</span>
                         <span className="text-[14px] tracking-[0.04em] text-white/50 lg:text-[16px]">{qar(a.price)}</span>
                       </div>

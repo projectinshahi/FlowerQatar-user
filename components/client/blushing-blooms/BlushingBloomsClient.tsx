@@ -10,7 +10,7 @@ import BlushingNav from './BlushingNav';
 import BlushingFooter from './BlushingFooter';
 import BlushingProductCard from './BlushingProductCard';
 import { blushingFontVars } from './fonts';
-import { BlushingBackButton, GOLD } from './ui';
+import { BlushingBackButton, GOLD, Glow } from './ui';
 import type { BlushingBloomsContent } from '@/lib/blushing-blooms';
 import type { Product } from '@/types';
 
@@ -47,29 +47,6 @@ const PRODUCTS_BEFORE_VIDEO = 6;
 
 const ACCENT = '#e05ba2';
 
-/**
- * Ambient gold pools — the four decorative ellipses the design floats behind the listing.
- *
- * Measured off the Figma render rather than guessed: the peak reads rgb(89,66,41) against the
- * black ground, which is GOLD at ~44% alpha, and the warmth falls to nothing about 850px out —
- * hence the 1700px box, whose closest-side radius is exactly that. The stops trace the measured
- * curve, so this lands as ambient light rather than a coloured block.
- *
- * Reproduced as CSS gradients instead of the exported SVGs: a blurred ellipse *is* a gradient,
- * and this keeps four large decorative assets out of the bundle for an identical result.
- */
-function Glow({ className }: { className: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`pointer-events-none absolute -z-10 h-[1800px] w-[1700px] max-w-none ${className}`}
-      style={{
-        background:
-          'radial-gradient(closest-side, rgba(204,150,90,0.44), rgba(204,150,90,0.30) 32%, rgba(204,150,90,0.10) 58%, rgba(204,150,90,0) 80%)',
-      }}
-    />
-  );
-}
 
 /**
  * Background media for a section. A single url may be an image or a video, so the type is read
@@ -360,7 +337,13 @@ export default function BlushingBloomsClient({
     */
     <div data-bb-page className={`${blushingFontVars} bg-black font-sans text-white [overflow-x:clip]`}>
       {/* ---------------------------------------------------------------- Hero */}
-      <section className="relative flex min-h-[640px] flex-col overflow-hidden lg:min-h-[804px]">
+      {/*
+        `bb-hero` (globals.css) carries the 100dvh height with a 100vh fallback; the two fixed
+        floors it replaces (640px / 804px) were shorter than most laptops and taller than a
+        landscape phone. Everything inside is placed by the flex column below — the copy takes
+        the free space and the strip sits at the end — rather than by hard top offsets.
+      */}
+      <section className="bb-hero relative flex w-full flex-col overflow-hidden">
         <div className="absolute inset-0 z-0">
           {/*
             The hero shows only what an admin uploaded under Category System -> Blushing Blooms.
@@ -393,19 +376,24 @@ export default function BlushingBloomsClient({
         <BlushingNav />
         <BlushingBackButton href="/" label="Back to home" />
 
-        <div className="relative z-10 flex flex-1 items-center justify-center px-5 pb-10 pt-32 sm:pt-40">
+        {/*
+          `flex-1` + centring does the positioning. The top padding only has to clear the fixed
+          nav, so it is expressed against viewport height rather than as the old flat pt-32/40.
+        */}
+        <div className="relative z-10 flex flex-1 items-center justify-center px-[clamp(1rem,4vw,2rem)] pb-[clamp(1.5rem,4vh,2.5rem)] pt-[clamp(6rem,14vh,10rem)]">
           <div className="flex flex-col items-center gap-3 text-center">
-            <h1 className="font-jedira text-[34px] leading-tight tracking-[0.1em] text-white sm:text-[48px] lg:text-[64px]">
+            {/* 32px -> 64px, tracking the viewport instead of jumping at two breakpoints. */}
+            <h1 className="font-jedira text-[clamp(2rem,6vw,4rem)] leading-tight tracking-[0.1em] text-white">
               {content.heroTitle}
             </h1>
-            <p className="max-w-[562px] text-[13px] leading-[1.4] tracking-[0.1em] text-white/50 sm:text-[15px] lg:text-[16px]">
+            <p className="max-w-[min(100%,35.125rem)] text-[clamp(0.8125rem,1.4vw,1rem)] leading-[1.4] tracking-[0.1em] text-white/50">
               {content.heroSubtitle}
             </p>
           </div>
         </div>
 
         {/* Brand pillars — inside the hero on desktop, as the design shows */}
-        <div className="relative z-10 px-4 pb-6 sm:px-6 lg:pb-[42px]">
+        <div className="relative z-10 px-[clamp(1rem,3vw,1.5rem)] pb-[clamp(1.5rem,4vh,2.625rem)]">
           <ul className="mx-auto grid w-full max-w-[1364px] grid-cols-2 gap-x-6 gap-y-6 rounded-[24px] bg-[rgba(224,91,162,0.2)] px-5 py-6 backdrop-blur-sm sm:gap-x-10 lg:grid-cols-4 lg:gap-x-[40px] lg:px-10">
             {PILLARS.map(({ Icon, label, caption }) => (
               <li key={label} className="flex items-center gap-[9px]">
@@ -413,8 +401,8 @@ export default function BlushingBloomsClient({
                   <Icon className="h-5 w-5 lg:h-6 lg:w-6" strokeWidth={1.5} aria-hidden="true" />
                 </span>
                 <span className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[11px] font-medium tracking-[0.1em] text-white/70 lg:text-[14px]">{label}</span>
-                  <span className="text-[11px] tracking-[0.1em] text-white/40 lg:text-[14px]">{caption}</span>
+                  <span className="text-[clamp(0.6875rem,1vw,0.875rem)] font-medium tracking-[0.1em] text-white/70">{label}</span>
+                  <span className="text-[clamp(0.6875rem,1vw,0.875rem)] tracking-[0.1em] text-white/40">{caption}</span>
                 </span>
               </li>
             ))}
