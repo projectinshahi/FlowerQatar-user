@@ -55,9 +55,10 @@ export default function BlushingListingSkeleton() {
 
       <SkeletonRegion label="Loading Blushing Blooms">
         {/* Hero */}
-        <section className="relative flex min-h-[640px] flex-col overflow-hidden lg:min-h-[804px]">
+        {/* Same full-viewport hero as the real listing, so the page does not resize when it loads. */}
+        <section className="bb-hero relative flex w-full flex-col overflow-hidden">
           <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
-          <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-5 pb-10 pt-32 sm:pt-40">
+          <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4 px-[clamp(1rem,4vw,2rem)] pb-[clamp(1.5rem,4vh,2.5rem)] pt-[clamp(6rem,14vh,10rem)]">
             <Skeleton className="h-9 w-[280px] rounded-md sm:h-12 sm:w-[420px] lg:h-16 lg:w-[560px]" />
             <div className="flex w-full max-w-[562px] flex-col items-center gap-2">
               <Skeleton className="h-3.5 w-full rounded-md" />

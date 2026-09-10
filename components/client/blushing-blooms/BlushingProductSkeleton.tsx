@@ -35,19 +35,20 @@ export default function BlushingProductSkeleton() {
 
       <SkeletonRegion
         label="Loading product"
-        className="mx-auto w-full max-w-[1440px] px-0 pb-16 pt-32 md:px-12 lg:pb-24 lg:pt-40"
+        className="mx-auto w-full max-w-[1440px] px-0 pb-16 pt-32 md:px-12 lg:px-10 lg:pb-24 lg:pt-40"
       >
         {/* No back-control placeholder: the real one is fixed and outside this flow, so a
             block here would reserve space the loaded page never uses and shift everything
             below it up by 72px the moment the product arrives. */}
-        {/* Same 62/38 split, padding and viewport-capped frame as the real page, so the
-            product lands exactly where this placeholder sat instead of jumping. */}
-        <div className="flex flex-col gap-0 lg:flex-row lg:items-start lg:gap-16">
-          <div className="w-full px-4 md:px-0 lg:w-[62%] lg:pr-8">
-            <Skeleton className="aspect-[9/10] w-full rounded-[24px] lg:mx-auto lg:w-[min(100%,calc((100vh-8rem)*0.9))]" />
+        {/* The Figma split — 47.8% gallery / 2.1% gap / 50.1% details — and the same
+            viewport-capped 650x713 frame as the real page, so the product lands exactly where
+            this placeholder sat instead of jumping. */}
+        <div className="flex flex-col gap-0 lg:flex-row lg:items-start lg:gap-[2.1%]">
+          <div className="w-full px-4 md:px-0 lg:w-[47.8%] lg:pr-0">
+            <Skeleton className="aspect-[650/713] w-full rounded-[24px] lg:mx-auto lg:w-[min(100%,calc((100vh-8rem)*0.912))]" />
           </div>
 
-          <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[38%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
+          <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[50.1%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
             {/* Title · price · rating · description */}
             <div className="flex flex-col gap-4 border-b pb-8 lg:gap-6 lg:pb-[60px]" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
               <Skeleton className="h-7 w-[70%] rounded-md lg:h-9" />
@@ -101,9 +102,10 @@ export default function BlushingProductSkeleton() {
             {/* Greeting cards */}
             <section className="flex flex-col gap-5 lg:gap-[32px]">
               <Skeleton className="h-4 w-44 rounded-md lg:h-5" />
-              <div className="flex flex-wrap gap-[9px]">
+              {/* Same 4-up grid and 4:3 cards as the real greeting section. */}
+              <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-[76px] min-w-[140px] flex-1 rounded-[24px] sm:flex-none sm:w-[191px] lg:h-[92px]" />
+                  <Skeleton key={i} className="aspect-[4/3] w-full rounded-[24px]" />
                 ))}
               </div>
             </section>
