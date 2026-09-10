@@ -5,6 +5,15 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
+/**
+ * The one toast surface for the whole storefront, mounted in app/(client)/layout.tsx.
+ *
+ * It is deliberately not duplicated for Blushing Blooms: that page already raises toasts
+ * through the same `addToast` (add to cart, wishlist, sign-in prompts), so it needs a skin,
+ * not a second implementation. The `data-toast-*` hooks below are what app/globals.css
+ * re-colours under `body:has([data-bb-page])` — the same body-level scoping the page uses for
+ * the shared header and footer, since this container is mounted outside the page's subtree.
+ */
 export default function ToastContainer() {
   const { toasts, removeToast } = useApp();
 
@@ -29,10 +38,11 @@ export default function ToastContainer() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            data-toast-panel
             className="flex items-center gap-3 p-4 bg-white border border-divider shadow-xl pointer-events-auto w-full relative overflow-hidden"
           >
             {/* Top gold bar */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-secondary" />
+            <div data-toast-bar className="absolute top-0 left-0 right-0 h-[2px] bg-secondary" />
             
             <div className="flex-shrink-0">{getIcon(toast.type)}</div>
             
@@ -43,6 +53,7 @@ export default function ToastContainer() {
             </div>
             
             <button
+              data-toast-close
               onClick={() => removeToast(toast.id)}
               className="text-muted/50 hover:text-primary transition-colors duration-300 ml-2"
               aria-label="Dismiss toast"

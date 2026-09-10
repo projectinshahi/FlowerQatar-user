@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import {
   AlertCircle,
   Cake,
@@ -13,7 +12,6 @@ import {
   Heart,
   HeartHandshake,
   Sparkles,
-  Star,
   type LucideIcon,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
@@ -29,6 +27,7 @@ import {
 import type { Product } from '@/types';
 import BlushingNav from './BlushingNav';
 import { GWENDOLYN_CSS, WISHING_FONTS, blushingFontVars, wishingFontCss, type WishingFontKey } from './fonts';
+import { BlushingBackButton, ColorSwatch, GOLD, GoldButton, StarRating } from './ui';
 
 /**
  * Blushing Blooms product page (Figma "Desktop - 7", node 156:1318).
@@ -48,7 +47,6 @@ import { GWENDOLYN_CSS, WISHING_FONTS, blushingFontVars, wishingFontCss, type Wi
  */
 
 
-const GOLD = '#cc965a';
 const HAIRLINE = 'rgba(204,150,90,0.2)';
 const TILE_BORDER = 'rgba(204,150,90,0.5)';
 const TILE_BG = 'rgba(204,150,90,0.05)';
@@ -95,6 +93,24 @@ export default function BlushingProductDetail({ product }: { product: Product })
   const gifts = useAddOns();
   const cards = useGreetingCards();
   const dates = useDeliveryDates();
+
+  /*
+   * Open at the top of the page.
+   *
+   * The App Router normally does this itself, but every route under app/(client) is wrapped in
+   * template.tsx, which animates `y: 12 -> 0` on each navigation. The transform that puts on the
+   * wrapper is applied around the moment the router measures where to scroll, so the reset was
+   * being computed against a moving element and the previous scroll offset survived the
+   * navigation. Coming from the listing — where you are always scrolled down, because that is
+   * where the product cards are — that dropped you into the middle of the details column.
+   *
+   * Keyed on the slug so it also fires when moving straight from one product to another, which
+   * reuses this component rather than remounting it. 'instant' because a smooth scroll here
+   * would animate the page upward in front of the reader on arrival.
+   */
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [product?.slug]);
 
   // Reset every choice when a different product is opened, so nothing leaks between products.
   useEffect(() => {
@@ -159,6 +175,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
       className={`${blushingFontVars} min-h-screen bg-black font-sans text-white [overflow-x:clip]`}
     >
       <BlushingNav />
+      <BlushingBackButton href="/shop?category=blushing-blooms" label="Back to Blushing Blooms" />
 
           {/*
             Container geometry is copied from components/client/product/ProductDetailClient.tsx
@@ -167,20 +184,58 @@ export default function BlushingProductDetail({ product }: { product: Product })
             Only the surface differs — dark ground, gold accents, Blushing Blooms type.
           */}
           <div className="mx-auto w-full max-w-[1440px] px-0 pb-16 pt-32 md:px-12 lg:pb-24 lg:pt-40">
-            {/* Back control — the design uses a back chevron rather than a close cross. */}
-            <Link
-              href="/shop?category=blushing-blooms"
-              aria-label="Back to Blushing Blooms"
-              className="mb-6 ml-4 flex h-12 w-12 items-center justify-center rounded-full border text-white transition-colors hover:bg-white/5 md:ml-0 lg:mb-8"
-              style={{ borderColor: HAIRLINE }}
-            >
-              <ChevronLeft size={26} strokeWidth={1.5} />
-            </Link>
-
             <div className="flex flex-col gap-0 lg:flex-row lg:items-start lg:gap-16">
               {/* ---------------------------------------------------------- Media */}
-              <div className="w-full px-4 md:px-0 lg:sticky lg:top-40 lg:w-[60%] lg:pr-8">
-                <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[24px] bg-[#0d0b0b]">
+              {/*
+                Pinned from the top, so the gallery holds still and only the details scroll.
+
+                4.5rem (72px) is not arbitrary: the frame below is capped at `100vh - 6rem`, so
+                pinning its top at 72px puts its bottom at `100vh - 24px` — the whole image on
+                screen with the same 24px breathing room it had before. Any larger a top offset
+                would push the bottom off the fold.
+
+                The column still starts at the container's `lg:pt-40` (160px), so there are 88px
+                of scroll before it reaches the pin. That is inherent to sticky — the element
+                cannot pin above where the document places it — and `position: fixed` is not a
+                substitute, as it would drop the column out of flow and collapse the two-column
+                layout.
+
+                Plain CSS sticky, so the hand-off is frame-perfect: no scroll listener, nothing
+                to jank.
+
+                Still `lg:` only. Below that the layout is stacked and full-bleed, where pinning
+                the gallery would eat the screen the details need.
+              */}
+              <div className="w-full px-4 md:px-0 lg:sticky lg:top-[4.5rem] lg:w-[62%] lg:pr-8">
+                {/*
+                  Height-capped so the WHOLE image is on screen when it pins.
+
+                  At its natural size the 4:5 frame is ~970px tall against a ~800px laptop
+                  viewport, so "fully visible, then fixed" is impossible — the top would always
+                  be above the fold. The cap is expressed as a width because that is the axis
+                  `aspect-ratio` derives from: take the shorter of the column's own width and the
+                  width a viewport-tall frame would have (height x 4/5), and the ratio then
+                  yields a height that fits. The 0.9 factor IS the aspect ratio (9/10) — the
+                  two move together, so changing one without the other breaks the cap.
+
+                  `min()` is what keeps this from being a downgrade on large displays — past
+                  roughly 1360px of viewport height the column width wins and the image renders
+                  at exactly its designed size, unchanged.
+
+                  8rem (128px) is the height budget given up to chrome. It is what trades
+                  height for width here: raising it shortens and narrows the frame together,
+                  lowering it grows both.
+
+                  Where the frame SITS is a separate number — the column's `lg:top-[4.5rem]`
+                  (72px). Because the nav ends at 100px, the top ~28px of the image rests behind
+                  it. That is deliberate: the nav is translucent glass over a blur, so the image
+                  reads through rather than being hidden, the same way the hero runs under it on
+                  the listing.
+
+                  The floating back button overlaps the top-left corner by design; it is a
+                  control over the page, not part of this column's flow.
+                */}
+                <div className="relative aspect-[9/10] w-full overflow-hidden rounded-[24px] bg-[#0d0b0b] lg:mx-auto lg:w-[min(100%,calc((100vh-8rem)*0.9))]">
                   {heroImage ? (
                     <LuxuryImage
                       src={heroImage}
@@ -195,7 +250,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
               </div>
 
               {/* ---------------------------------------------------------- Detail */}
-              <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[40%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
+              <div className="flex w-full min-w-0 flex-col gap-8 px-6 pb-12 pt-8 md:px-0 lg:w-[38%] lg:shrink-0 lg:gap-[38px] lg:pt-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 border-b pb-8 lg:gap-6 lg:pb-[60px]" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                   <h1 className="font-serif text-[26px] font-semibold capitalize leading-tight tracking-[0.08em] text-white sm:text-[30px] lg:text-[34px] lg:tracking-[0.1em]">
@@ -206,29 +261,11 @@ export default function BlushingProductDetail({ product }: { product: Product })
                     <p className="text-[18px] font-medium tracking-[0.1em] text-white sm:text-[20px]">
                       {qar(product.price)}
                     </p>
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                      <span className="flex items-center gap-1.5" aria-hidden="true">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            size={20}
-                            strokeWidth={1.5}
-                            className="lg:h-6 lg:w-6"
-                            style={{
-                              color: GOLD,
-                              fill: i < Math.round(product.rating ?? 0) ? GOLD : 'transparent',
-                            }}
-                          />
-                        ))}
-                      </span>
-                      <p className="text-[14px] tracking-[0.02em] text-white/70 sm:text-[16px]">
-                        <span className="sr-only">Rated </span>
-                        {(product.rating ?? 5).toFixed(1)}
-                        <span className="sr-only"> out of 5</span>
-                        {/* Hidden at zero rather than advertising "(0 Reviews)". */}
-                        {product.reviewCount > 0 && ` (${product.reviewCount} Reviews)`}
-                      </p>
-                    </div>
+                    <StarRating
+                      rating={product.rating}
+                      starClassName="lg:h-6 lg:w-6"
+                      textClassName="text-[14px] sm:text-[16px]"
+                    />
                   </div>
 
                   {product.description && (
@@ -243,24 +280,16 @@ export default function BlushingProductDetail({ product }: { product: Product })
                   <section className="flex flex-col gap-5 lg:gap-[26px]">
                     <SectionLabel>CHOOSE COLOR</SectionLabel>
                     <div className="flex flex-wrap items-center gap-[18px]">
-                      {product.colors.map((c) => {
-                        const on = c.name === colorName;
-                        return (
-                          <button
-                            key={c.name}
-                            type="button"
-                            onClick={() => setColorName(c.name)}
-                            aria-pressed={on}
-                            aria-label={c.name}
-                            title={c.name}
-                            suppressHydrationWarning
-                            className={`h-9 w-9 rounded-full transition-shadow lg:h-10 lg:w-10 ${
-                              on ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : 'ring-1 ring-white/15'
-                            }`}
-                            style={{ backgroundColor: c.hex }}
-                          />
-                        );
-                      })}
+                      {product.colors.map((c) => (
+                        <ColorSwatch
+                          key={c.name}
+                          hex={c.hex}
+                          name={c.name}
+                          selected={c.name === colorName}
+                          onSelect={() => setColorName(c.name)}
+                          className="h-9 w-9 ring-offset-black lg:h-10 lg:w-10"
+                        />
+                      ))}
                     </div>
                   </section>
                 )}
@@ -515,15 +544,9 @@ export default function BlushingProductDetail({ product }: { product: Product })
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleAddToCart}
-                    suppressHydrationWarning
-                    className="flex h-12 w-full items-center justify-center rounded-[24px] text-[13px] font-medium uppercase tracking-[0.1em] text-white transition-opacity hover:opacity-90 lg:h-10"
-                    style={{ backgroundColor: GOLD }}
-                  >
+                  <GoldButton onClick={handleAddToCart} className="h-12 w-full rounded-[24px] text-[13px] lg:h-10">
                     Add to Cart
-                  </button>
+                  </GoldButton>
                 </section>
               </div>
             </div>

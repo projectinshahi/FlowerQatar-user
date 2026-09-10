@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormContext, useFieldArray } from "react-hook-form";
-import { Plus, Trash2, ChevronDown, ChevronUp, Globe } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Globe, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Country } from "country-state-city";
 import ProductCareInput from "./ProductCareInput";
@@ -226,6 +226,42 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
             className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm resize-none"
             placeholder="Full product description..."
           />
+        </div>
+
+        {/*
+          Curated rating.
+
+          Blank is a meaningful value here, not a missing one: it means "use the real reviews",
+          which is what the detail page did before these fields existed. The placeholders say so
+          rather than showing 0, and the schema normalises "" to null.
+        */}
+        <div className="pt-4 border-t border-gray-100">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Product Rating</label>
+          <p className="text-xs text-gray-500 mb-3">
+            Shown on the product detail page. Leave blank to use the average of this
+            product&apos;s published reviews instead.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="product-rating" className="flex items-center gap-1.5 text-sm text-gray-600 mb-2">
+                <Star className="h-4 w-4 text-gray-400" />
+                <span>Star Rating (1&ndash;5)</span>
+              </label>
+              <input
+                id="product-rating"
+                type="number"
+                step="0.1"
+                min={1}
+                max={5}
+                {...register("rating")}
+                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm"
+                placeholder="Auto (from reviews)"
+              />
+              {errors?.rating && (
+                <p className="mt-1 text-xs text-red-600">{String(errors.rating.message)}</p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Product flags */}

@@ -18,6 +18,18 @@ const requiredNumber = (label: string) =>
     z.number({ error: `${label} is required` }).min(0, `${label} must be 0 or greater`)
   );
 
+/**
+ * A curated rating/review-count field: blank means "not curated", not zero.
+ *
+ * The admin inputs post strings, and an untouched number input posts "", which `Number("")`
+ * would silently turn into 0 — publishing a 0-star rating for every product saved without
+ * touching the field. Empty therefore normalises to null, which is what the detail page reads
+ * as "fall back to the real reviews".
+ */
+const curatedNumber = (schema: z.ZodNumber) =>
+  z.preprocess((v) => (v === "" || v === null || v === undefined ? null : Number(v)), schema.nullable())
+    .optional();
+
 // Accepts absolute URLs (Cloudinary uploads) OR root-relative paths (local /images or /videos assets).
 const imageUrl = z
   .string()
@@ -91,6 +103,12 @@ export const productSchema = z.object({
   isBestSeller: z.boolean().default(false),
   isTrending: z.boolean().default(false),
   isNewArrival: z.boolean().default(false),
+
+  // Curated rating shown on the product detail page. Half stars are allowed (4.5), which is
+  // why this is not an int; the DB CHECK enforces the same 1-5 range.
+  rating: curatedNumber(
+    z.number().min(1, "Rating must be between 1 and 5").max(5, "Rating must be between 1 and 5")
+  ),
 
   variants: z.array(variantSchema).min(1, "At least one variant is required"),
 })

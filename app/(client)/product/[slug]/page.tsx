@@ -159,8 +159,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
    * listing. Placed here, at the end, so all of the SEO work above (metadata, product and
    * breadcrumb JSON-LD) is shared rather than duplicated — only the rendered surface differs.
    *
-   * `store` carries rating 5 / reviewCount 0 from mapDbProductToStore, which is fine where
-   * nothing renders them; this page shows both, so the real summary is merged in.
+   * `store` carries a placeholder rating of 5 from mapDbProductToStore, which is fine where
+   * nothing renders it (the cards) but not here. Precedence for the stars:
+   *
+   *   1. the curated rating an admin typed on the product, if any
+   *   2. the live average of published reviews
+   *   3. the mapper's placeholder
+   *
+   * `reviewCount` is still passed because the shared Product type requires it; the Blushing
+   * Blooms design no longer prints it beside the stars.
    */
   if (type === "BLUSHING_BLOOMS") {
     return (
@@ -169,7 +176,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <BlushingProductDetail
           product={{
             ...store,
-            rating: reviews.summary.average ?? store.rating,
+            rating: data.rating ?? reviews.summary.average ?? store.rating,
             reviewCount: reviews.summary.count,
           }}
         />

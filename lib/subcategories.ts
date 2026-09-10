@@ -167,12 +167,28 @@ export const getNavMenu = unstable_cache(
       href: shopCategoryHref(key),
       layout: MENU_LAYOUT[key],
       hero: MENU_HERO[key],
-      items: (grouped[key] || []).map((s) => ({
-        name: s.name,
-        href: s.href,
-        image: s.hoverImage,
-        hoverImage: s.hoverImage,
-      })),
+      /*
+       * Blushing Blooms deliberately publishes no menu items.
+       *
+       * Its subcategories belong to the filter panel on its own page, which derives them from
+       * the products actually listed there — not to a hover panel on the main site, where they
+       * would offer the storefront's cream mega menu as the way into a category that owns its
+       * whole dark surface.
+       *
+       * Emptying `items` here rather than special-casing the Navbar is what makes the label
+       * behave everywhere at once: `cat.items.length > 0` is the single condition the desktop
+       * trigger, its click handler and the mobile drawer all read, so all three fall back to a
+       * plain link straight to the category. Every other category is untouched.
+       */
+      items:
+        key === 'BLUSHING_BLOOMS'
+          ? []
+          : (grouped[key] || []).map((s) => ({
+              name: s.name,
+              href: s.href,
+              image: s.hoverImage,
+              hoverImage: s.hoverImage,
+            })),
     }));
   },
   /*
@@ -185,6 +201,6 @@ export const getNavMenu = unstable_cache(
    *
    * Bump this suffix whenever the shape or link logic below changes.
    */
-  ['nav-menu-v2'],
+  ['nav-menu-v3'],
   { tags: [NAV_MENU_TAG], revalidate: 3600 }
 );

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Home, Heart, Search, ShoppingCart } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { BB_ASSETS } from '@/lib/blushing-blooms';
@@ -25,11 +26,33 @@ import { BB_ASSETS } from '@/lib/blushing-blooms';
 
 const ICON = 'h-6 w-6 sm:h-7 sm:w-7';
 const TAP =
-  'flex items-center justify-center rounded-full p-1.5 text-white/90 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70';
+  'flex items-center justify-center rounded-full p-1.5 transition-[color,background-color,transform] duration-150 hover:text-white active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70';
+
+/*
+ * Current state, drawn the same way for both kinds of icon: the route links are "on" when the
+ * page they point at is the one you are on, the drawer buttons while their drawer is open. It
+ * reads as a faint chip of the same glass the pill is made of, so nothing new enters the
+ * palette — the resting icons keep the white/90 they always had.
+ */
+const tap = (on: boolean) => `${TAP} ${on ? 'bg-white/15 text-white' : 'text-white/90'}`;
 
 export default function BlushingNav({ onNavigate }: { onNavigate?: () => void } = {}) {
-  const { setCartOpen, setSearchOpen, getCartCount } = useApp();
+  const { setCartOpen, setSearchOpen, getCartCount, isCartOpen, isSearchOpen } = useApp();
   const cartCount = getCartCount();
+
+  /*
+   * Exact match, not `startsWith`: both destinations are single pages, and a prefix test would
+   * light Home up on every route.
+   *
+   * Note this nav only mounts on /shop (the listing) and /product/[slug] — every other route
+   * gets the shared storefront header instead — so with today's routing neither link is ever
+   * the current page. The check is here so the two links are correct if this nav is ever
+   * mounted on /  or /wishlist; the reachable current-state on this page is the drawer pair
+   * below. Delete these two lines rather than let them rot if that never happens.
+   */
+  const pathname = usePathname();
+  const onHome = pathname === '/';
+  const onWishlist = pathname === '/wishlist';
 
   /*
    * The quick view renders this nav inside a modal. Its drawers live in the storefront layout,
@@ -82,20 +105,28 @@ export default function BlushingNav({ onNavigate }: { onNavigate?: () => void } 
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-3">
-          <Link href="/" onClick={leave} className={TAP} aria-label="Home">
+          <Link href="/" onClick={leave} className={tap(onHome)} aria-label="Home" aria-current={onHome ? 'page' : undefined}>
             <Home className={ICON} strokeWidth={1.5} />
           </Link>
-          <Link href="/wishlist" onClick={leave} className={TAP} aria-label="Wishlist">
+          <Link href="/wishlist" onClick={leave} className={tap(onWishlist)} aria-label="Wishlist" aria-current={onWishlist ? 'page' : undefined}>
             <Heart className={ICON} strokeWidth={1.5} />
           </Link>
-          <button type="button" onClick={act(() => setSearchOpen(true))} className={TAP} aria-label="Search" suppressHydrationWarning>
+          <button
+            type="button"
+            onClick={act(() => setSearchOpen(true))}
+            className={tap(isSearchOpen)}
+            aria-label="Search"
+            aria-expanded={isSearchOpen}
+            suppressHydrationWarning
+          >
             <Search className={ICON} strokeWidth={1.5} />
           </button>
           <button
             type="button"
             onClick={act(() => setCartOpen(true))}
-            className={`${TAP} relative`}
+            className={`${tap(isCartOpen)} relative`}
             aria-label={cartCount > 0 ? `Cart, ${cartCount} items` : 'Cart'}
+            aria-expanded={isCartOpen}
             suppressHydrationWarning
           >
             <ShoppingCart className={ICON} strokeWidth={1.5} />

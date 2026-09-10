@@ -144,6 +144,15 @@ model Product {
   isBestSeller      Boolean                   @default(false)
   isTrending        Boolean                   @default(false)
   isNewArrival      Boolean                   @default(false)
+  /// Curated star rating shown on the product detail page, 1-5 (halves allowed).
+  /// NULL means "not set": the page falls back to the average of the published ProductReview
+  /// rows, which is what it showed before this column existed.
+  rating            Float?
+  /// Retired: the detail page no longer prints a review count beside the stars, and the admin
+  /// form no longer offers the field, so nothing reads or writes this column. Kept rather than
+  /// dropped because it still holds values entered before the change — delete the column and
+  /// this line together if the count is never coming back.
+  reviewCount       Int?
   // All variants (and their nested color variants, specifications, images) are stored as JSON.
   // Shape: Variant[] where each Variant = { id, variantName, sku, description, pros[], cons[],
   //   specifications: { title, value }[], colorVariants: ColorVariant[] }
