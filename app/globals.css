@@ -500,33 +500,8 @@ body:has([data-bb-page]) [data-toast-panel] .text-secondary {
   border: none;
 }
 
-/*
- * Full-viewport hero, Blushing Blooms listing only.
- *
- * Written here rather than as utilities because the fallback has to be a real cascade: a
- * browser without `dvh` must drop the second rule and keep `100vh`, which two Tailwind classes
- * on one element cannot express — whichever compiled later would simply win.
- *
- * `dvh` rather than `vh` on mobile: `vh` is locked to the LARGEST viewport, so with the URL bar
- * showing, a 100vh hero is taller than the screen and pushes the feature strip under the fold.
- * `dvh` tracks the visible height, so the strip stays on screen as the bar shows and hides.
- *
- * `min-height`, never `height`: a landscape phone is shorter than this content, and a fixed
- * height would clip the strip instead of letting the section grow.
- *
- * Gated on [data-bb-page], so no other route can pick it up.
- */
-[data-bb-page] .bb-hero {
-  min-height: 100vh;
-}
-
-@supports (min-height: 100dvh) {
-  [data-bb-page] .bb-hero {
-    min-height: 100dvh;
-  }
-}
-
 [data-bb-page] .bb-range:focus-visible::-moz-range-thumb {
   outline: 2px solid rgba(255, 255, 255, 0.7);
   outline-offset: 2px;
 }
+
