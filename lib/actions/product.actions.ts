@@ -4,10 +4,10 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { productSchema, ProductFormValues } from "@/lib/validations/product";
-import { ProductStatus } from "@prisma/client";
+import { Prisma, ProductStatus } from "@prisma/client";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { requireAdmin } from "@/lib/admin-guard";
-import { logDbError } from "@/lib/prisma-error";
+import { logDbError, uniqueConstraintMessage } from "@/lib/prisma-error";
 import { supportsCountry } from "@/lib/category-config";
 
 /**
@@ -59,6 +59,32 @@ function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
+}
+
+/**
+ * Column -> what the admin form calls it, so a constraint violation names a field they can see.
+ *
+ * `slug` is here for completeness only: both actions already resolve a slug clash by suffixing,
+ * so it should never reach the database as a conflict. `sku` deliberately does NOT auto-resolve
+ * — it is a real business identifier the admin chose, and silently saving
+ * `FLW-CAL-MIN-01-1757570000000` instead would be worse than refusing.
+ */
+const PRODUCT_FIELD_LABELS = { sku: "SKU", slug: "URL slug", name: "name" };
+
+/**
+ * Turn a failed write into something worth showing an admin.
+ *
+ * A unique-constraint violation is the one database error that is the admin's to fix, so it gets
+ * a specific message. Every other Prisma error is a fault on our side — the raw text carries
+ * compiled module ids and absolute `.next/` paths — so it is logged with its code and reported
+ * generically. Validation and other plain Errors keep their own message, which is already
+ * written for a person.
+ */
+function productWriteError(error: unknown, fallback: string): string {
+  const conflict = uniqueConstraintMessage(error, PRODUCT_FIELD_LABELS);
+  if (conflict) return conflict;
+  if (error instanceof Prisma.PrismaClientKnownRequestError) return fallback;
+  return error instanceof Error ? error.message : fallback;
 }
 
 export async function createProduct(data: ProductFormValues) {
@@ -117,9 +143,9 @@ export async function createProduct(data: ProductFormValues) {
     revalidatePath("/products");
     revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
     return { success: true, data: product };
-  } catch (error: any) {
-    console.error("Failed to create product:", error);
-    return { success: false, error: error.message || "Failed to create product" };
+  } catch (error) {
+    logDbError("createProduct", error);
+    return { success: false, error: productWriteError(error, "Failed to create product") };
   }
 }
 
@@ -194,9 +220,9 @@ export async function updateProduct(id: string, data: ProductFormValues) {
     revalidatePath(`/product/${product.slug}`);
     revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
     return { success: true, data: product };
-  } catch (error: any) {
-    console.error("Failed to update product:", error);
-    return { success: false, error: error.message || "Failed to update product" };
+  } catch (error) {
+    logDbError("updateProduct", error);
+    return { success: false, error: productWriteError(error, "Failed to update product") };
   }
 }
 

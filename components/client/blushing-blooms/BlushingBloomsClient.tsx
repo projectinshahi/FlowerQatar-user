@@ -3,8 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronDown, Flower2, Gem, Gift, Heart, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Flower2, Gem, Gift, Heart, SlidersHorizontal, X } from 'lucide-react';
 import { isVideoMedia } from '@/lib/media';
+import { paginateListing } from '@/lib/shop-facets';
 import BlushingQuickView from './BlushingQuickView';
 import BlushingNav from './BlushingNav';
 import BlushingFooter from './BlushingFooter';
@@ -45,8 +46,46 @@ const SORT_OPTIONS = [
 /** How many products precede the video feature. Everything after it follows the video. */
 const PRODUCTS_BEFORE_VIDEO = 6;
 
+/**
+ * One page is two runs of six with the video between them — the Figma layout at both
+ * breakpoints, since 6 is 2 rows of 3 on desktop and 3 rows of 2 on mobile. Anything past the
+ * twelfth product moves to page 2 rather than extending the page indefinitely.
+ */
+const PRODUCTS_PER_PAGE = PRODUCTS_BEFORE_VIDEO * 2;
+
 const ACCENT = '#e05ba2';
 
+
+/**
+ * One end of the pagination control. Split out only because it is used twice and disabling it
+ * correctly is three attributes; it is not a new design — the gold border and uppercase tracking
+ * are the page's existing button language, and the Prev / n-of-total / Next shape is the admin
+ * product table's.
+ */
+function PageButton({
+  onClick,
+  disabled,
+  label,
+  children,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={`${label} page`}
+      suppressHydrationWarning
+      className="flex h-9 items-center gap-1.5 rounded-[24px] border border-[rgba(204,150,90,0.35)] px-4 transition-colors hover:border-[rgba(204,150,90,0.8)] hover:text-white disabled:pointer-events-none disabled:opacity-30"
+    >
+      {children}
+    </button>
+  );
+}
 
 /**
  * Background media for a section. A single url may be an image or a video, so the type is read
@@ -254,6 +293,7 @@ export default function BlushingBloomsClient({
   const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
   const [sortOption, setSortOption] = useState<string>('featured');
   const [quickView, setQuickView] = useState<Product | null>(null);
+  const [page, setPage] = useState(1);
 
   /*
    * Filter options are derived from the products actually on this page, the same rule
@@ -306,18 +346,40 @@ export default function BlushingBloomsClient({
   }, [products, selectedSubcategory, selectedColor, priceRange, sortOption]);
 
   /*
-   * The listing is: first six products, the video feature, then EVERY remaining product.
+   * The listing is: six products, the video feature, six products, then pagination.
    *
-   * `slice(PRODUCTS_BEFORE_VIDEO)` takes no end index on purpose — it previously ended at
-   * `PRODUCTS_BEFORE_VIDEO * 2`, which silently dropped the 13th product onward from the page.
-   * The video is a section between the two runs, never a substitute for the seventh product.
+   * The two runs are one page of twelve rather than the whole catalogue. Before this the page
+   * rendered `slice(PRODUCTS_BEFORE_VIDEO)` with no end index, so a large catalogue produced a
+   * single unbounded column of cards below the video. `paginateListing` also clamps the page
+   * number, which is what keeps a filter narrowing the results from stranding the reader on a
+   * page that no longer exists. It is covered by tests/blushing-listing.test.ts.
    */
-  const beforeVideo = visible.slice(0, PRODUCTS_BEFORE_VIDEO);
-  const afterVideo = visible.slice(PRODUCTS_BEFORE_VIDEO);
+  const { page: currentPage, totalPages, before: beforeVideo, after: afterVideo } =
+    paginateListing(visible, page, PRODUCTS_PER_PAGE, PRODUCTS_BEFORE_VIDEO);
   const hasFilters = Boolean(selectedSubcategory || selectedColor || priceRange);
 
+  /*
+   * Back to page 1 whenever the result set itself changes. Without this, changing a filter while
+   * on page 2 leaves the reader on page 2 of a different set of products — the clamp in
+   * `paginateListing` saves them from an empty grid, but page 1 is what they actually expect.
+   */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1);
+  }, [selectedSubcategory, selectedColor, priceRange, sortOption]);
+
+  /*
+   * Paging from the control at the foot of the list would otherwise leave the viewport at the
+   * bottom of the page, looking at the LAST row of the new page. The listing section already
+   * carries the id the nav links to, so there is nothing new to hold a ref to.
+   */
+  const goToPage = (next: number) => {
+    setPage(next);
+    document.getElementById('blushing-blooms-products')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const grid = (items: Product[], priorityCount = 0) => (
-    <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-2 gap-x-[10px] gap-y-[18px] sm:gap-x-[18px] sm:gap-y-[30px] lg:grid-cols-3">
       {items.map((p, i) => (
         <BlushingProductCard
           key={p.id || p.slug || p.name}
@@ -693,6 +755,45 @@ export default function BlushingBloomsClient({
             )}
 
             {afterVideo.length > 0 && grid(afterVideo)}
+
+            {/* ------------------------------------------------ Pagination */}
+            {/*
+              The admin product table's control, in this page's own skin: PREV, the current page
+              over the total, NEXT, with both ends disabled rather than hidden so the row does not
+              change width as you move through it. Same semantics too — `aria-current="page"` on
+              the counter, a labelled `nav` around it.
+
+              Client state, not `?page=` in the URL. The admin table is a server component whose
+              page really does live in the URL; here the subcategory, colour, price and sort
+              filters are all React state, so a URL page number would desync from them the first
+              time a filter changed. It is hidden entirely at one page, where it would be inert.
+            */}
+            {totalPages > 1 && (
+              <nav
+                aria-label="Product pages"
+                className="flex items-center justify-center gap-2 pt-6 text-[12px] tracking-[0.1em] text-white/70 lg:pt-10"
+              >
+                <PageButton
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  label="Prev"
+                >
+                  <ChevronLeft size={16} strokeWidth={1.5} />
+                  PREV
+                </PageButton>
+                <span className="px-3 tabular-nums text-white" aria-current="page">
+                  {currentPage} / {totalPages}
+                </span>
+                <PageButton
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  label="Next"
+                >
+                  NEXT
+                  <ChevronRight size={16} strokeWidth={1.5} />
+                </PageButton>
+              </nav>
+            )}
           </div>
         )}
       </section>

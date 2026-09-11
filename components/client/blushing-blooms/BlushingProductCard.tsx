@@ -94,8 +94,8 @@ export default function BlushingProductCard({
           )}
 
           {/* Badge + wishlist (left), rating (right) */}
-          <div className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-between px-4 sm:top-5 sm:px-5">
-            <div className="pointer-events-auto flex items-center gap-[11px]">
+          <div className="pointer-events-none absolute inset-x-0 top-3 flex items-center justify-between gap-1 px-2.5 sm:top-5 sm:px-5">
+            <div className="pointer-events-auto flex min-w-0 items-center gap-1.5 sm:gap-[11px]">
               {badge && (
                 <BlushingBadge>{badge}</BlushingBadge>
               )}
@@ -116,8 +116,8 @@ export default function BlushingProductCard({
               )}
             </div>
 
-            <div className="pointer-events-auto flex items-center gap-[11px] text-[10px] tracking-[0.1em] text-white sm:text-[11.5px]">
-              <Star size={19} strokeWidth={1.5} aria-hidden="true" />
+            <div className="pointer-events-auto flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] tracking-[0.1em] text-white sm:gap-[11px] sm:text-[11.5px]">
+              <Star size={16} strokeWidth={1.5} aria-hidden="true" className="sm:h-[19px] sm:w-[19px]" />
               <span>
                 <span className="sr-only">Rated </span>
                 {(product.rating ?? 5).toFixed(1)}
@@ -136,9 +136,13 @@ export default function BlushingProductCard({
             are the whole point of the card, so gating them behind hover would put them out of
             reach on a phone entirely. Below md they are simply always visible; from md up the
             designed hover reveal applies unchanged.
+
+            They stack below sm because the listing is 2-up there: the card is ~170px wide on a
+            390px screen, and two labelled buttons side by side in that would overflow their own
+            frame. Stacked, each gets the full card width and both keep their label.
           */}
           {isLinked && (
-            <div className="absolute inset-x-3 bottom-2 flex gap-[5px] transition-all duration-300 ease-out md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:motion-safe:translate-y-2">
+            <div className="absolute inset-x-3 bottom-2 flex flex-col gap-[5px] transition-all duration-300 ease-out sm:flex-row md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:motion-safe:translate-y-2">
               {onQuickView && (
                 <GoldButton
                   variant="outline"
@@ -146,13 +150,13 @@ export default function BlushingProductCard({
                     e.preventDefault();
                     onQuickView(product);
                   }}
-                  className="h-10 flex-1 rounded-[24px]"
+                  className="h-9 flex-1 rounded-[24px] sm:h-10"
                 >
                   <PlusCircle size={20} strokeWidth={1.5} />
                   Quick View
                 </GoldButton>
               )}
-              <GoldButton onClick={handleQuickAdd} className="h-10 flex-1 rounded-[24px]">
+              <GoldButton onClick={handleQuickAdd} className="h-9 flex-1 rounded-[24px] sm:h-10">
                 <Eye size={20} strokeWidth={1.5} />
                 Quick Add
               </GoldButton>

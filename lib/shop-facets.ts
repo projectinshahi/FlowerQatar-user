@@ -266,3 +266,27 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
     sort: SORT_OPTIONS.includes(rawSort as SortOption) ? (rawSort as SortOption) : DEFAULT_SORT,
   };
 }
+
+/**
+ * One page of a listing, split into the two runs that sit either side of a feature section.
+ *
+ * Pure, and deliberately not inlined in the component: this slicing has been wrong before. The
+ * Blushing Blooms page used to render `slice(0, 6)` and `slice(6, 12)`, which silently dropped
+ * every product from the 13th on — a bug invisible until a catalogue grew past twelve, which is
+ * exactly the case a test can hold and an eyeball cannot.
+ *
+ * `page` is clamped rather than trusted, so a stale page number — the one left behind when a
+ * filter narrows the result set under the reader's feet — lands on the last real page instead of
+ * rendering an empty grid.
+ */
+export function paginateListing<T>(items: T[], page: number, perPage: number, splitAt: number) {
+  const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+  const current = Math.min(Math.max(1, Math.trunc(page) || 1), totalPages);
+  const slice = items.slice((current - 1) * perPage, current * perPage);
+  return {
+    page: current,
+    totalPages,
+    before: slice.slice(0, splitAt),
+    after: slice.slice(splitAt),
+  };
+}

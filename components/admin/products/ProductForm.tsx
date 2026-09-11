@@ -94,7 +94,7 @@ export default function ProductForm({ subcategories, initialData }: { subcategor
         router.push("/admin/products");
         router.refresh();
       } else {
-        setError(result.error);
+        setError(result.error || "Failed to save product");
       }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred");
