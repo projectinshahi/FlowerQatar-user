@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Heart, Star, PlusCircle, Eye } from 'lucide-react';
+import { Heart, Star, Plus, Eye } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import LuxuryImage from '@/components/LuxuryImage';
 import { BlushingBadge, ColorSwatch, GoldButton } from './ui';
@@ -81,10 +81,17 @@ export default function BlushingProductCard({
   );
 
   return (
-    <article className="group flex flex-col items-center gap-[clamp(0.75rem,1.2vw,1.125rem)] rounded-[clamp(1.25rem,2.2vw,2rem)] border border-[rgba(43,43,43,0.8)] bg-[#1e1918] px-3 pb-[clamp(1rem,1.6vw,1.5rem)] pt-[clamp(0.75rem,1.3vw,1.1875rem)]">
-      {/* Media + overlays. aspect-[42/41] is the design's 420x410 frame. */}
+    <article className="group flex flex-col items-center gap-2 rounded-[clamp(1.25rem,2.2vw,2rem)] border border-[rgba(43,43,43,0.8)] bg-[#1e1918] px-3 pb-2.5 pt-2 sm:gap-[clamp(0.75rem,1.2vw,1.125rem)] sm:pb-[clamp(1rem,1.6vw,1.5rem)] sm:pt-[clamp(0.75rem,1.3vw,1.1875rem)]">
+      {/*
+        Media + overlays. aspect-[42/41] is the design's 420x410 frame, kept from sm up.
+
+        Below sm the frame is 4/5 instead. The listing is 2-up on a phone, so a near-square
+        frame on a ~148px column left the arrangement smaller than the card's own chrome — the
+        photograph read as a thumbnail above a block of text rather than as the product. A ratio
+        rather than a height is what keeps that proportion identical on every phone width.
+      */}
       <div className="relative w-full overflow-hidden rounded-t-[20px] lg:rounded-t-[28px]">
-        <div className="relative aspect-[42/41] w-full">
+        <div className="relative aspect-[4/5] w-full sm:aspect-[42/41]">
           {isLinked ? (
             <Link href={href} className="absolute inset-0 block" aria-label={product.name}>
               {media}
@@ -94,8 +101,8 @@ export default function BlushingProductCard({
           )}
 
           {/* Badge + wishlist (left), rating (right) */}
-          <div className="pointer-events-none absolute inset-x-0 top-3 flex items-center justify-between gap-1 px-2.5 sm:top-5 sm:px-5">
-            <div className="pointer-events-auto flex min-w-0 items-center gap-1.5 sm:gap-[11px]">
+          <div className="pointer-events-none absolute inset-x-0 top-3 flex items-center justify-between gap-1 px-2 sm:top-5 sm:px-5">
+            <div className="pointer-events-auto flex min-w-0 items-center gap-1 sm:gap-[11px]">
               {badge && (
                 <BlushingBadge>{badge}</BlushingBadge>
               )}
@@ -137,12 +144,25 @@ export default function BlushingProductCard({
             reach on a phone entirely. Below md they are simply always visible; from md up the
             designed hover reveal applies unchanged.
 
-            They stack below sm because the listing is 2-up there: the card is ~170px wide on a
-            390px screen, and two labelled buttons side by side in that would overflow their own
-            frame. Stacked, each gets the full card width and both keep their label.
+            Below sm they are small icon-only circles in the bottom corners of the frame — plus
+            on the left, eye on the right. The listing is 2-up on a phone, so the card is ~174px
+            wide: pills there — labelled or not — ran the full width of the frame and buried the
+            arrangement, which is the one thing the card exists to sell. Split to opposite ends,
+            the pair costs two corners and leaves the middle of the photograph clear.
+
+            The circle is 36px but the TOUCH TARGET is 44px: `after:-inset-1` extends the hit
+            area 4px past the ink on every side. Drawing a 44px circle would put 94px of chrome
+            across a 174px card, and shrinking the target to match the ink would drop it under
+            the 44px minimum a thumb needs — splitting the two keeps the photograph clear and
+            the control honestly tappable. The pseudo-element is dropped at sm, where the pill
+            is its own target.
+
+            They are pinned to the frame, not to the content: the media box is a fixed 42/41
+            ratio, so `bottom-2 right-2` lands on precisely the same spot on every card whatever
+            the photograph is. From sm up the designed labelled pills return, unchanged.
           */}
           {isLinked && (
-            <div className="absolute inset-x-3 bottom-2 flex flex-col gap-[5px] transition-all duration-300 ease-out sm:flex-row md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:motion-safe:translate-y-2">
+            <div className="absolute inset-x-2 bottom-2 flex items-center justify-between transition-all duration-300 ease-out sm:inset-x-3 sm:justify-start sm:gap-[5px] md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:motion-safe:translate-y-2">
               {onQuickView && (
                 <GoldButton
                   variant="outline"
@@ -150,15 +170,34 @@ export default function BlushingProductCard({
                     e.preventDefault();
                     onQuickView(product);
                   }}
-                  className="h-9 flex-1 rounded-[24px] sm:h-10"
+                  /* The label carries the name on desktop; icon-only, the button needs its own. */
+                  aria-label={`Quick view ${product.name}`}
+                  className="relative h-9 w-9 shrink-0 rounded-full p-0 after:absolute after:-inset-1 after:content-[''] sm:h-10 sm:w-auto sm:flex-1 sm:rounded-[24px] sm:after:hidden"
                 >
-                  <PlusCircle size={20} strokeWidth={1.5} />
-                  Quick View
+                  {/*
+                    One glyph per action now, at both breakpoints: an eye for viewing, a plus for
+                    adding. The pills used to carry the opposite pair — a plus-circle on view and
+                    an eye on add — so each button needed a second, hidden icon to read correctly
+                    once the mobile labels came off. Sizing is a class rather than lucide's `size`
+                    prop so the one element can be 17px beside a bare circle and the designed 20px
+                    beside its label; CSS width/height wins over the SVG's own attributes.
+                  */}
+                  <Eye strokeWidth={1.5} className="h-[17px] w-[17px] sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">Quick View</span>
                 </GoldButton>
               )}
-              <GoldButton onClick={handleQuickAdd} className="h-9 flex-1 rounded-[24px] sm:h-10">
-                <Eye size={20} strokeWidth={1.5} />
-                Quick Add
+              <GoldButton
+                onClick={handleQuickAdd}
+                aria-label={`Quick add ${product.name} to cart`}
+                /*
+                  `order-first` only — the markup keeps Quick View first so the sm+ pill row and
+                  the tab order both stay as they were; on mobile the plus is simply painted at
+                  the other end. Reordering the JSX instead would have moved the desktop pills.
+                */
+                className="relative order-first h-9 w-9 shrink-0 rounded-full p-0 after:absolute after:-inset-1 after:content-[''] sm:order-none sm:h-10 sm:w-auto sm:flex-1 sm:rounded-[24px] sm:after:hidden"
+              >
+                <Plus strokeWidth={2} className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline">Quick Add</span>
               </GoldButton>
             </div>
           )}
@@ -166,18 +205,18 @@ export default function BlushingProductCard({
       </div>
 
       {/* Title / price / swatches */}
-      <div className="flex w-full flex-col gap-[10px] px-1">
+      <div className="flex w-full flex-col gap-1.5 px-1 sm:gap-[10px]">
         <div>
-          <h3 className="truncate text-[clamp(0.875rem,0.8113rem_+_0.2614vw,1.125rem)] font-medium capitalize tracking-[0.1em] text-[#7f7f7f]">
+          <h3 className="truncate text-[12px] font-medium capitalize tracking-[0.1em] text-[#7f7f7f] sm:text-[clamp(0.875rem,0.8113rem_+_0.2614vw,1.125rem)]">
             {isLinked ? <Link href={href}>{product.name}</Link> : product.name}
           </h3>
-          <p className="mt-2 text-[clamp(1.0625rem,0.9988rem_+_0.2614vw,1.3125rem)] font-medium tracking-[0.1em] text-white">
+          <p className="mt-1 text-[15px] font-medium tracking-[0.1em] text-white sm:mt-2 sm:text-[clamp(1.0625rem,0.9988rem_+_0.2614vw,1.3125rem)]">
             QAR {product.price}
           </p>
         </div>
 
         {product.colors?.length > 0 && (
-          <ul className="flex items-center gap-2" aria-label="Available colours">
+          <ul className="flex items-center gap-1.5 sm:gap-2" aria-label="Available colours">
             {product.colors.slice(0, MAX_SWATCHES).map((color) => (
               <li key={color.name} className="flex">
                 <ColorSwatch
