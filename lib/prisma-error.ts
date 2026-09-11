@@ -84,3 +84,30 @@ export async function retryOnUnreachable<T>(
   }
   throw lastError;
 }
+
+/**
+ * The readable half of a P2002 unique-constraint violation, or null when the error is something
+ * else.
+ *
+ * Prisma's own `error.message` for a constraint violation begins with the compiled call site —
+ * in dev that is the Turbopack module id and an absolute path into `.next/` — and only mentions
+ * the offending field in its last line. Returning it straight to a form, as the product actions
+ * did, puts a stack trace where a field name belongs: the admin sees a wall of internal paths
+ * instead of "that SKU is taken", and the paths themselves have no business in a browser.
+ *
+ * `labels` maps column names to what the form calls them, so the message names the field the
+ * admin can actually see.
+ */
+export function uniqueConstraintMessage(
+  error: unknown,
+  labels: Record<string, string> = {}
+): string | null {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+    return null;
+  }
+  const target = error.meta?.target;
+  const fields = Array.isArray(target) ? target.map(String) : typeof target === 'string' ? [target] : [];
+  if (fields.length === 0) return 'Another record already uses one of these values.';
+  const named = fields.map((f) => labels[f] ?? f).join(' and ');
+  return `That ${named} is already used by another product. Enter a different one and save again.`;
+}

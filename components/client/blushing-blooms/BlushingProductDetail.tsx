@@ -32,7 +32,6 @@ import {
   CARD_BORDER,
   ColorSwatch,
   GOLD,
-  Glow,
   GoldButton,
   PRICE_GRADIENT,
   StarRating,
@@ -58,6 +57,45 @@ import {
  * globals.css, exactly as the listing does.
  */
 
+
+/**
+ * The three ambient gold pools of the Figma frame (156:1318): top-right, middle-left,
+ * bottom-right.
+ *
+ * These are the page root's own `background-image`, NOT positioned children. They used to be
+ * three absolutely-positioned <Glow> spans at `-z-10`, and they were invisible — nothing
+ * between them and the root establishes a stacking context, so a negative z-index put them
+ * behind the root's own `bg-black` AND behind `body:has([data-bb-page]){background:#000}` in
+ * globals.css. Sampled at the edges the page came back rgb(0,0,0) at every scroll position, at
+ * any opacity. Painting them as the background instead removes the layering question entirely:
+ * a background cannot be occluded by the box it belongs to, and content still stacks above it.
+ *
+ * Percentage centres, so the pools track the page rather than a fixed pixel offset — Blushing
+ * pages vary in height with the number of gifts and greeting cards. Radii are vw-clamped so the
+ * pools stay in proportion from a 390px phone to a wide desktop instead of flooding the former.
+ *
+ * Peak alpha 0.34 over black is rgb(69,51,31) — a warm bloom that reads clearly at normal
+ * display brightness while leaving white body text at a contrast ratio well above AA. Each pool
+ * is centred ON its edge, so what crosses into the content area is the falloff, and the four
+ * stops take it to fully transparent by 80% of the radius — no visible disc, no hard edge.
+ *
+ * The middle-left pool is the strongest and the tallest of the three, and that is a consequence
+ * of the layout rather than a taste call: at `lg` the left column is the sticky product frame,
+ * which is opaque, so the only ground that can show this pool is the 40px gutter beside it plus
+ * whatever opens up below it. Spread over a taller band at a higher alpha, it reads as light
+ * spilling around the frame across the whole middle of the page instead of a sliver that only
+ * resolves at one scroll position. Below `lg` the column is full-bleed and it reads in full.
+ */
+const GOLD_POOLS = [
+  ['clamp(26rem,46vw,50rem) clamp(22rem,34vw,40rem) at 100% 7%', 0.34],
+  ['clamp(28rem,52vw,56rem) clamp(30rem,50vw,58rem) at 0% 50%', 0.44],
+  ['clamp(26rem,46vw,50rem) clamp(22rem,34vw,40rem) at 100% 92%', 0.34],
+]
+  .map(
+    ([shape, a]) =>
+      `radial-gradient(${shape}, rgba(204,150,90,${a}), rgba(204,150,90,${(a as number * 0.48).toFixed(3)}) 38%, rgba(204,150,90,${(a as number * 0.16).toFixed(3)}) 62%, rgba(204,150,90,0) 80%)`,
+  )
+  .join(',');
 
 /** Section rules between blocks — the one value still derived from the gold. */
 const HAIRLINE = 'rgba(204,150,90,0.2)';
@@ -89,6 +127,22 @@ function LoadError({ message, onRetry }: { message: string; onRetry: () => void 
     </p>
   );
 }
+
+/**
+ * Figma's ADD A GIFT tiles ship artwork per gift; the catalogue rows don't carry one yet, so the
+ * six designed gifts are matched by a distinctive token in their name (covers the "Teddy Beer" /
+ * "Baloon" spellings in the mock). Anything else still falls back to the row's own image.
+ */
+const GIFT_ART: [RegExp, string][] = [
+  [/chocolate/, '/images/image 50.png'],
+  [/teddy/, '/images/image 61.png'],
+  [/loon/, '/images/image 62.png'],
+  [/crystal/, '/images/image 53.png'],
+  [/ribbon/, '/images/image 55.png'],
+  [/wrap/, '/images/image 54.png'],
+];
+const giftArt = (name: string, fallback: string | null) =>
+  GIFT_ART.find(([re]) => re.test(name.toLowerCase()))?.[1] ?? fallback;
 
 export default function BlushingProductDetail({ product }: { product: Product }) {
   const { addToCart } = useApp();
@@ -185,6 +239,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
     <div
       data-bb-page
       className={`${blushingFontVars} min-h-screen bg-black font-sans text-white [overflow-x:clip]`}
+      style={{ backgroundImage: GOLD_POOLS }}
     >
       <BlushingNav />
       <BlushingBackButton href="/shop?category=blushing-blooms" label="Back to Blushing Blooms" />
@@ -196,33 +251,6 @@ export default function BlushingProductDetail({ product }: { product: Product })
             Only the surface differs — dark ground, gold accents, Blushing Blooms type.
           */}
           <div className="relative mx-auto w-full max-w-[1440px] px-0 pb-16 pt-32 md:px-[clamp(1.5rem,4vw,3rem)] lg:px-10 lg:pb-24 lg:pt-40">
-            {/*
-              Ambient gold pools, the three ellipses the Figma frame floats behind this page —
-              the listing already had them, the product page never did, which is what made it
-              read as flat black beside the reference. Positions are the Figma centres.
-
-              Clipped on the vertical axis only (`overflow: visible clip`), exactly as the
-              listing does it: the pools still bleed sideways to the viewport edge, but a pool
-              sitting past the last section can no longer drag the document's scroll height
-              with it and leave an empty tail below the footer.
-            */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 -z-10 [overflow:visible_clip]"
-            >
-              {/*
-                Two pools only, both anchored off the right edge so what reaches the page is the
-                faint outer falloff rather than the hot centre — the gradient is meant to be
-                felt, not seen as a shape. `opacity` dials the shared Glow down for this page
-                without touching the listing, which wants it stronger.
-
-                The lower one is anchored to `bottom`, not a fixed `top`: product pages vary in
-                height with the number of gifts and greeting cards, and a hard offset would put
-                it off the end of a short page and halfway up a long one.
-              */}
-              <Glow className="right-[-220px] top-[80px] translate-x-1/2 -translate-y-1/2 opacity-70" />
-              <Glow className="right-[-200px] bottom-[120px] translate-x-1/2 translate-y-1/2 opacity-60" />
-            </span>
 
             {/*
               Proportions taken from the Figma frame, not estimated: within its 1360px content
@@ -355,6 +383,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {gifts.data.map((g) => {
                         const on = addOns.some((a) => a.id === g.id);
+                        const art = giftArt(g.name, g.image);
                         return (
                           <button
                             key={g.id}
@@ -363,7 +392,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
                             aria-checked={on}
                             onClick={() => toggleGift(g)}
                             suppressHydrationWarning
-                            className="flex items-start gap-2 rounded-[24px] border px-2 py-3 text-left transition-colors"
+                            className="flex items-center gap-2 rounded-[24px] border px-2 py-3 text-left transition-colors"
                             style={{
                               borderColor: on ? GOLD : CARD_BORDER,
                               backgroundColor: on ? TILE_BG_ON : 'transparent',
@@ -376,9 +405,9 @@ export default function BlushingProductDetail({ product }: { product: Product })
                                 {qar(g.price)}
                               </span>
                             </span>
-                            <span className="relative h-[clamp(3rem,2.681rem_+_1.307vw,4.25rem)] w-[clamp(3rem,2.681rem_+_1.307vw,4.25rem)] shrink-0">
-                              {g.image ? (
-                                <LuxuryImage src={g.image} alt="" fill sizes="80px" className="object-contain" />
+                            <span className="relative h-[clamp(3.5rem,3.02rem_+_1.96vw,5rem)] w-[clamp(3.5rem,3.02rem_+_1.96vw,5rem)] shrink-0">
+                              {art ? (
+                                <LuxuryImage src={art} alt="" fill sizes="80px" className="object-contain" />
                               ) : (
                                 <span className="flex h-full w-full items-center justify-center text-white/25">
                                   <Gift size={26} strokeWidth={1.5} />
