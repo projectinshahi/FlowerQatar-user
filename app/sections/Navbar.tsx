@@ -460,7 +460,7 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden absolute top-4 left-4 z-10"
+            className="md:hidden absolute top-4 left-4 z-30"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMobileMenuOpen}
@@ -472,7 +472,7 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
 
           {/* Mobile Cart Icon — same live count as the desktop trigger. */}
           <button
-            className="md:hidden absolute top-4 right-4 z-10 p-1"
+            className="md:hidden absolute top-4 right-4 z-30 p-1"
             onClick={() => setCartOpen(true)}
             aria-label={cartCount > 0 ? `Open cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Open cart'}
             suppressHydrationWarning
@@ -489,7 +489,12 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
 
           {/* Top row — left links · logo · right links.
               Flex (not absolute) so the groups can never overlap the logo at any width;
-              the equal flex-1 sides keep the logo optically centred on every screen. */}
+              the equal flex-1 sides keep the logo optically centred on every screen.
+
+              z-20 puts this row above the two mobile corner buttons, and on a phone its
+              flex-1 columns are empty but still full-width — so they covered the menu and
+              cart buttons and swallowed every tap. Those two are z-30 for that reason; keep
+              them above this row. */}
           <div className="relative z-20 flex items-center gap-3 mb-3 md:mb-4">
 
           {/* Top Left Links (Desktop) */}
