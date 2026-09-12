@@ -372,15 +372,15 @@ export default function BlushingProductDetail({ product }: { product: Product })
                 <section className="flex flex-col gap-5 lg:gap-[26px]">
                   <SectionLabel>ADD A GIFT</SectionLabel>
                   {gifts.loading ? (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[106px] rounded-[24px]" />)}
+                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+                      {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[88px] rounded-[24px] sm:h-[106px]" />)}
                     </div>
                   ) : gifts.error ? (
                     <LoadError message={gifts.error} onRetry={gifts.reload} />
                   ) : !gifts.data?.length ? (
                     <p className="text-[13px] text-white/40">No gifts available.</p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                       {gifts.data.map((g) => {
                         const on = addOns.some((a) => a.id === g.id);
                         const art = giftArt(g.name, g.image);
@@ -392,20 +392,20 @@ export default function BlushingProductDetail({ product }: { product: Product })
                             aria-checked={on}
                             onClick={() => toggleGift(g)}
                             suppressHydrationWarning
-                            className="flex items-center gap-2 rounded-[24px] border px-2 py-3 text-left transition-colors"
+                            className="flex items-center gap-1.5 rounded-[24px] border px-2 py-2.5 text-left transition-colors sm:gap-2 sm:py-3"
                             style={{
                               borderColor: on ? GOLD : CARD_BORDER,
                               backgroundColor: on ? TILE_BG_ON : 'transparent',
                             }}
                           >
                             <span className="flex min-w-0 flex-1 flex-col gap-1 pl-1">
-                              <span className="text-[clamp(0.8125rem,0.7647rem_+_0.1961vw,1rem)] leading-tight tracking-[0.04em] text-white/70">{g.name}</span>
+                              <span className="text-[12px] leading-tight tracking-[0.04em] text-white/70 sm:text-[clamp(0.8125rem,0.7647rem_+_0.1961vw,1rem)]">{g.name}</span>
                               {/* QAR strings are longer than the mock's "₹ 45" and would wrap. */}
-                              <span className="whitespace-nowrap text-[clamp(0.9375rem,0.8897rem_+_0.1961vw,1.125rem)] font-medium tracking-[0.04em] text-white/30">
+                              <span className="whitespace-nowrap text-[13px] font-medium tracking-[0.04em] text-white/30 sm:text-[clamp(0.9375rem,0.8897rem_+_0.1961vw,1.125rem)]">
                                 {qar(g.price)}
                               </span>
                             </span>
-                            <span className="relative h-[clamp(3.5rem,3.02rem_+_1.96vw,5rem)] w-[clamp(3.5rem,3.02rem_+_1.96vw,5rem)] shrink-0">
+                            <span className="relative h-11 w-11 shrink-0 sm:h-[clamp(3.5rem,3.02rem_+_1.96vw,5rem)] sm:w-[clamp(3.5rem,3.02rem_+_1.96vw,5rem)]">
                               {art ? (
                                 <LuxuryImage src={art} alt="" fill sizes="80px" className="object-contain" />
                               ) : (
@@ -486,9 +486,9 @@ export default function BlushingProductDetail({ product }: { product: Product })
                 <section className="flex flex-col gap-5 lg:gap-[32px]">
                   <SectionLabel>GREETING CARD</SectionLabel>
                   {cards.loading ? (
-                    // Same 4-up grid and 4:3 tiles the loaded cards use, so the section does
+                    // Same grid and 4:3 tiles the loaded cards use, so the section does
                     // not reflow when they arrive.
-                    <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-x-[18px] gap-y-3 sm:grid-cols-3 sm:gap-[18px] lg:grid-cols-4">
                       {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] w-full rounded-[24px]" />)}
                     </div>
                   ) : cards.error ? (
@@ -507,8 +507,20 @@ export default function BlushingProductDetail({ product }: { product: Product })
 
                         2 -> 3 -> 4 columns, because four landscape cards across a phone would
                         leave each one too narrow to hold its label.
+
+                        The phone grid spans the full details column, the same as the gift grid
+                        above it and the delivery rail below — it was briefly capped at 310px
+                        and centred to shrink the tiles, which did make them smaller but left
+                        this one section visibly inset from every other block on the page. Width
+                        comes from the column; the 18px gutter is the design's own value, so
+                        the tile lands on its drawn proportion rather than a derived one.
+
+                        The row gap stays tighter than the gutter on a phone (12px against
+                        18px). Four rows of cards is the tallest thing in this column, and the
+                        cards read as a grid either way, so the vertical rhythm is where the
+                        height can be taken back without touching the card itself.
                       */}
-                      <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-x-[18px] gap-y-3 sm:grid-cols-3 sm:gap-[18px] lg:grid-cols-4">
                         <button
                           type="button"
                           onClick={() => setTemplateId(null)}
@@ -551,6 +563,11 @@ export default function BlushingProductDetail({ product }: { product: Product })
                                 lg one: four columns in a 682px column is 157px wide, narrower
                                 than the two-up phone layout. `break-words` then guarantees
                                 containment for any name an admin adds later.
+
+                                On a 390px phone the tile is 162px wide, giving 146px of text
+                                against the 130px that label measures — one line, with room.
+                                Below about 360px it wraps to two, which is what `break-words`
+                                is there to contain.
                               */}
                               <span className="w-full break-words font-serif text-[13px] font-medium uppercase leading-tight tracking-[0.02em] text-white/70">
                                 {c.name}

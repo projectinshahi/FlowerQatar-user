@@ -110,7 +110,20 @@ export function GoldButton({
 
 /* ---------------------------------------------------------------- Badge chip */
 
-/** Gold pill for a short product tag ("Best Seller", "New"). */
+/**
+ * Gold pill for a short product tag ("Best Seller", "New").
+ *
+ * The phone type is 8px/0.02em against the design's 10px/0.1em, and that is a measurement, not
+ * a preference. The listing is 2-up on a phone, so the card's media frame is 148px and the
+ * overlay row it sits in has 128px of inner width to spend on the badge, the wishlist heart and
+ * the rating. "BEST SELLER" at the designed size needs 98px on one line and the row can spare
+ * 62px, so at 10px it wrapped to two lines and at 8px/0em/5px it still measured 64.2px.
+ *
+ * `whitespace-nowrap` is what actually guarantees the single line — the type size only makes
+ * that line fit. Without it, a longer tag an admin adds later would silently wrap again.
+ *
+ * From sm up the frame is wide enough for the drawn values, and they are restored unchanged.
+ */
 export function BlushingBadge({
   className,
   children,
@@ -121,7 +134,7 @@ export function BlushingBadge({
   return (
     <span
       className={cn(
-        'rounded-full bg-[#cc965a] px-[9.5px] py-[2px] text-[10px] font-medium uppercase tracking-[0.1em] text-white sm:text-[11.5px]',
+        'whitespace-nowrap rounded-full bg-[#cc965a] px-[5px] py-[2px] text-[8px] font-medium uppercase tracking-[0.02em] text-white sm:px-[9.5px] sm:text-[11.5px] sm:tracking-[0.1em]',
         className
       )}
     >

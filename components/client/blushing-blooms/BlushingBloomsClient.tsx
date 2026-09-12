@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronDown, ChevronLeft, ChevronRight, Flower2, Gem, Gift, Heart, SlidersHorizontal, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Flower2, Gem, Gift, Heart, SlidersHorizontal, X } from 'lucide-react';
 import { isVideoMedia } from '@/lib/media';
 import { paginateListing } from '@/lib/shop-facets';
 import BlushingQuickView from './BlushingQuickView';
@@ -188,6 +188,163 @@ function FilterSelect({
           className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white"
           aria-hidden="true"
         />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The SORTED BY control: a custom listbox, not a native `<select>`.
+ *
+ * The filter dropdowns beside it are still native, deliberately — on a phone they open the OS
+ * picker, which is the most usable thing a filter row can do on a small screen, and a native
+ * option list costs nothing to make accessible. This one is custom because a native option list
+ * cannot be styled: it paints with the OS chrome, so it could not carry the page's translucent
+ * gold-on-dark surface or mark the current choice with a tick.
+ *
+ * Everything the native element gave away for free is therefore rebuilt here, and the list is
+ * not merely decorative markup:
+ *
+ *  - `role="listbox"` / `role="option"` with `aria-selected`, so it is announced as a choice,
+ *  - full keyboard control — Up/Down/Home/End move, Enter/Space choose, Escape closes,
+ *  - `aria-activedescendant`, so a screen reader follows the highlight without focus moving,
+ *  - focus returns to the trigger on close, so Tab order is never lost inside a closed popup,
+ *  - outside click and Escape both dismiss.
+ *
+ * The panel stays mounted and animates on opacity/translate rather than being conditionally
+ * rendered, because an element removed from the tree cannot animate out — only in. It is
+ * `aria-hidden` and `pointer-events-none` while closed, so it is neither clickable nor
+ * announced.
+ */
+function SortMenu({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const selectedIndex = Math.max(0, SORT_OPTIONS.findIndex((o) => o.value === value));
+  const current = SORT_OPTIONS[selectedIndex];
+
+  const close = useCallback((returnFocus = true) => {
+    setOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }, []);
+
+  // Dismiss on a click anywhere outside the control. `mousedown`, not `click`, so the menu is
+  // gone before the click lands on whatever was underneath.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  // Move real focus into the list so the arrow keys reach it.
+  useEffect(() => {
+    if (open) listRef.current?.focus();
+  }, [open]);
+
+  const openAt = (index: number) => {
+    setActiveIndex(index);
+    setOpen(true);
+  };
+
+  const choose = (index: number) => {
+    onChange(SORT_OPTIONS[index].value);
+    close();
+  };
+
+  const onListKeyDown = (e: React.KeyboardEvent) => {
+    const last = SORT_OPTIONS.length - 1;
+    const keys: Record<string, () => void> = {
+      ArrowDown: () => setActiveIndex((i) => Math.min(last, i + 1)),
+      ArrowUp: () => setActiveIndex((i) => Math.max(0, i - 1)),
+      Home: () => setActiveIndex(0),
+      End: () => setActiveIndex(last),
+      Enter: () => choose(activeIndex),
+      ' ': () => choose(activeIndex),
+      Escape: () => close(),
+      Tab: () => close(false),
+    };
+    const run = keys[e.key];
+    if (!run) return;
+    // Tab must still move focus onward; every other key here is ours to swallow.
+    if (e.key !== 'Tab') e.preventDefault();
+    run();
+  };
+
+  return (
+    <div ref={wrapRef} className="relative min-w-0 flex-1 sm:flex-none">
+      <button
+        ref={triggerRef}
+        type="button"
+        id="bb-sort"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-labelledby="bb-sort-label bb-sort"
+        onClick={() => (open ? close(false) : openAt(selectedIndex))}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            openAt(selectedIndex);
+          }
+        }}
+        suppressHydrationWarning
+        className="flex w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[24px] border border-[rgba(204,150,90,0.22)] bg-[#1e1918] py-2 pl-4 pr-3 text-left text-[13px] tracking-[0.04em] text-white transition-colors hover:border-[rgba(204,150,90,0.5)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(204,150,90,0.7)] sm:w-[200px] sm:py-1.5 sm:text-[16px]"
+      >
+        <span className="truncate">{current.label}</span>
+        <ChevronDown
+          size={16}
+          aria-hidden="true"
+          className={`shrink-0 text-white transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {/*
+        Anchored to the trigger's right edge, and 244px wide rather than matched to the trigger:
+        the longest label, "PRICE: LOW TO HIGH", measures 161px and the row's own chrome (panel
+        padding, option padding, tick slot and its gap) costs 62px, so a panel tied to the 200px
+        trigger clipped it by three pixels. Right-aligned with a viewport-relative cap, so it
+        still cannot run off a phone — at 390px it reaches x130, well inside the gutter. The
+        listing section is `overflow-x: clip` with the vertical axis left visible — chosen for
+        the ambient pools — so a panel hanging below the row is not clipped.
+      */}
+      <div
+        ref={listRef}
+        role="listbox"
+        tabIndex={-1}
+        aria-hidden={!open}
+        aria-activedescendant={open ? `bb-sort-opt-${activeIndex}` : undefined}
+        onKeyDown={onListKeyDown}
+        className={`absolute right-0 top-[calc(100%+8px)] z-30 w-[244px] max-w-[calc(100vw-2rem)] origin-top rounded-[20px] border border-[rgba(204,150,90,0.25)] bg-[rgba(20,17,13,0.82)] p-1.5 shadow-[0_18px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all duration-200 ease-out focus:outline-none ${
+          open ? 'pointer-events-auto translate-y-0 scale-100 opacity-100' : 'pointer-events-none -translate-y-1 scale-[0.98] opacity-0'
+        }`}
+      >
+        {SORT_OPTIONS.map((o, i) => {
+          const isSelected = o.value === current.value;
+          return (
+            <div
+              key={o.value}
+              id={`bb-sort-opt-${i}`}
+              role="option"
+              aria-selected={isSelected}
+              onClick={() => choose(i)}
+              onMouseEnter={() => setActiveIndex(i)}
+              className={`flex cursor-pointer items-center gap-2 rounded-[14px] px-3 py-2 text-[13px] tracking-[0.04em] transition-colors sm:text-[14px] ${
+                isSelected ? 'text-white' : 'text-white/65'
+              } ${activeIndex === i ? 'bg-[rgba(204,150,90,0.14)] text-white' : ''}`}
+            >
+              {/* Fixed slot, so every label starts on the same x whether or not it is ticked. */}
+              <span className="flex w-4 shrink-0 justify-center">
+                {isSelected && <Check size={14} strokeWidth={2.5} style={{ color: GOLD }} aria-hidden="true" />}
+              </span>
+              <span className="truncate">{o.label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -576,16 +733,27 @@ export default function BlushingBloomsClient({
           <Glow className="right-[-150px] top-[2980px] translate-x-1/2 -translate-y-1/2" />
         </span>
         {/* Filter / sort row */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5 pb-6 sm:justify-between sm:gap-4">
           {/*
-            Three columns, not two groups: the count is its own child between them, and both
-            side groups are `flex-1` from a zero basis so they claim equal width whatever their
-            contents measure — "SHOW FILTERS" on the left is nothing like "SORTED BY :" plus a
-            200px select on the right. That equality is what puts the count on the section's
-            true midpoint; sitting it between two auto-width groups would only ever centre it
-            between them, which is visibly off.
+            From sm up: three columns, not two groups. The count is its own child between them,
+            and both side groups are `flex-1` from a zero basis so they claim equal width
+            whatever their contents measure — "SHOW FILTERS" on the left is nothing like
+            "SORTED BY :" plus a 200px select on the right. That equality is what puts the count
+            on the section's true midpoint; sitting it between two auto-width groups would only
+            ever centre it between them, which is visibly off.
+
+            Below sm the same three children reflow into two rows — the two CONTROLS together,
+            then the count as a quiet result line under them:
+
+              SHOW FILTERS ⇄ [ FEATURED ▾ ]
+              13 PRODUCTS
+
+            `order` does the rearranging, not a second copy of the markup, so there is one
+            filter button and one select at every width. The count takes `w-full`, which is what
+            forces the wrap at a predictable place instead of letting the row break wherever the
+            text happens to run out — the unstructured look this replaces.
           */}
-          <div className="flex flex-1 items-center">
+          <div className="order-1 flex shrink-0 items-center sm:flex-1">
             <button
               type="button"
               onClick={() => setShowFilters((v) => !v)}
@@ -599,34 +767,26 @@ export default function BlushingBloomsClient({
             </button>
           </div>
 
-          <p className="text-[13px] tracking-[0.04em] text-white sm:text-[16px]">
+          <p className="order-3 w-full text-[13px] tracking-[0.04em] text-white sm:order-2 sm:w-auto sm:text-[16px]">
             {visible.length} {visible.length === 1 ? 'PRODUCT' : 'PRODUCTS'}
           </p>
 
-          <div className="flex flex-1 items-center justify-end gap-2">
-            <label htmlFor="bb-sort" className="text-[13px] tracking-[0.04em] text-white/70 sm:text-[16px]">
+          <div className="order-2 flex flex-1 items-center justify-end gap-2 sm:order-3">
+            {/*
+              `sr-only` below sm, not removed: row one has ~223px left beside SHOW FILTERS, and
+              spending 86px of it on the words leaves too little for "PRICE: LOW TO HIGH" to
+              render without truncating. Hiding it visually while keeping the element preserves
+              the `htmlFor` association, so the select is still announced as the sort control.
+            */}
+            {/*
+              A <span>, not a <label>: the control it names is a button, and `htmlFor` only
+              binds to a form element. The button carries `aria-labelledby` pointing here plus
+              at itself, so it is announced as "SORTED BY : FEATURED" rather than either half.
+            */}
+            <span id="bb-sort-label" className="sr-only text-[13px] tracking-[0.04em] text-white/70 sm:not-sr-only sm:text-[16px]">
               SORTED BY :
-            </label>
-            <div className="relative">
-              <select
-                id="bb-sort"
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
-                suppressHydrationWarning
-                className="w-[180px] cursor-pointer appearance-none rounded-[24px] bg-[#1e1918] py-1.5 pl-4 pr-9 text-[13px] tracking-[0.04em] text-white focus:outline-none sm:w-[200px] sm:text-[16px]"
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={16}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white"
-                aria-hidden="true"
-              />
-            </div>
+            </span>
+            <SortMenu value={sortOption} onChange={setSortOption} />
           </div>
         </div>
 
