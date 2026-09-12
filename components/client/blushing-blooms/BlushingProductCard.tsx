@@ -100,30 +100,48 @@ export default function BlushingProductCard({
             media
           )}
 
-          {/* Badge + wishlist (left), rating (right) */}
-          <div className="pointer-events-none absolute inset-x-0 top-3 flex items-center justify-between gap-1 px-2 sm:top-5 sm:px-5">
-            <div className="pointer-events-auto flex min-w-0 items-center gap-1 sm:gap-[11px]">
-              {badge && (
-                <BlushingBadge>{badge}</BlushingBadge>
-              )}
-              {isLinked && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleWishlist(product.slug);
-                  }}
-                  suppressHydrationWarning
-                  aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-                  aria-pressed={isWishlisted}
-                  className="text-white/80 transition-colors hover:text-white"
-                >
-                  <Heart size={19} strokeWidth={1.5} className={isWishlisted ? 'fill-[#e05ba2] text-[#e05ba2]' : ''} />
-                </button>
-              )}
-            </div>
+          {/*
+            Badge (left) · wishlist + rating (right).
 
-            <div className="pointer-events-auto flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] tracking-[0.1em] text-white sm:gap-[11px] sm:text-[11.5px]">
+            Below lg the heart is pushed to the right edge by `ml-auto` and sits directly beside
+            the rating, so its position is fixed by the RIGHT edge and by the width of the two
+            controls — never by the flag. The flag is the only flexible item in the row
+            (`min-w-0 truncate` against two `shrink-0` siblings), so a longer label spends its
+            own width and then ellipsises rather than pushing anything sideways. The badge is
+            `whitespace-nowrap` by design, so in the old row it pushed the heart along; this is
+            the coupling that removes. Flow also means the two clusters can never overlap, which
+            absolute-positioning the flag would have allowed on a 174px card.
+
+            The row's own `gap` sets the heart-to-star distance, and it is the same value the
+            rating uses between its star and its number, so the three read as one cluster.
+
+            `sm:min-h-[21.25px]` is the badge's own height there — from sm the chip is taller
+            than the 19px heart, so a card with no flag made the row shorter and lifted the pair
+            a pixel above where the flagged cards put it. Holding the row to the chip's height
+            lands them on the same line whether or not the product carries a flag.
+
+            From lg the desktop arrangement is unchanged: `lg:ml-0` returns the heart to the
+            flag's side and `lg:ml-auto` on the rating pushes that to the right instead.
+          */}
+          <div className="pointer-events-none absolute inset-x-0 top-3 flex items-center gap-1 px-2 sm:top-5 sm:min-h-[21.25px] sm:gap-[11px] sm:px-5 lg:min-h-0">
+            {badge && <BlushingBadge className="min-w-0 truncate">{badge}</BlushingBadge>}
+            {isLinked && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleWishlist(product.slug);
+                }}
+                suppressHydrationWarning
+                aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+                aria-pressed={isWishlisted}
+                className="pointer-events-auto ml-auto shrink-0 text-white/80 transition-colors hover:text-white lg:ml-0"
+              >
+                <Heart size={19} strokeWidth={1.5} className={isWishlisted ? 'fill-[#e05ba2] text-[#e05ba2]' : ''} />
+              </button>
+            )}
+
+            <div className="pointer-events-auto flex shrink-0 items-center gap-1 whitespace-nowrap text-[10px] tracking-[0.1em] text-white sm:gap-[11px] sm:text-[11.5px] lg:ml-auto">
               <Star size={16} strokeWidth={1.5} aria-hidden="true" className="sm:h-[19px] sm:w-[19px]" />
               <span>
                 <span className="sr-only">Rated </span>
