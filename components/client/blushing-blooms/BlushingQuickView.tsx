@@ -147,11 +147,11 @@ export default function BlushingQuickView({
               50/50 split at `md`, and a 500px-tall media panel with a scrolling detail column.
               Only the surface is different — dark ground, gold accents, rounded corners.
             */}
-            <div className="fixed inset-0 z-[91] flex items-center justify-center overflow-y-auto p-[clamp(0.75rem,2.5vw,1.5rem)]">
+            <div className="fixed inset-0 z-[91] flex items-center justify-center overflow-y-auto p-[clamp(0.75rem,2.5vw,1.5rem)] pb-[max(env(safe-area-inset-bottom),clamp(0.75rem,2.5vw,1.5rem))] pt-[max(env(safe-area-inset-top),clamp(0.75rem,2.5vw,1.5rem))]">
           <Dialog.Content asChild forceMount aria-describedby={undefined}>
             <motion.div
             data-bb-page
-            className={`${blushingFontVars} relative flex w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border bg-[#0b0a09] font-sans text-white focus:outline-none md:flex-row`}
+            className={`${blushingFontVars} relative flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border bg-[#0b0a09] font-sans text-white focus:outline-none md:flex-row`}
             style={{ borderColor: 'rgba(255,255,255,0.16)' }}
             initial={panelFrames.initial}
             animate={panelFrames.animate}
@@ -160,7 +160,7 @@ export default function BlushingQuickView({
           >
           <Dialog.Close
             aria-label="Close"
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white md:right-5 md:top-5"
+            className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white md:right-5 md:top-5 md:bg-transparent md:backdrop-blur-none"
           >
             <X size={20} strokeWidth={1.5} />
           </Dialog.Close>
@@ -171,7 +171,7 @@ export default function BlushingQuickView({
             dialog outgrew the screen. Tied to viewport height it keeps the designed size where
             there is room and shrinks instead of overflowing where there is not.
           */}
-          <div className="relative aspect-square w-full shrink-0 bg-[#151211] md:aspect-auto md:h-[clamp(20rem,52vh,31.25rem)] md:w-1/2">
+          <div className="relative aspect-square max-h-[45svh] w-full shrink-0 bg-[#151211] md:aspect-auto md:h-[clamp(16rem,52svh,31.25rem)] md:max-h-full md:w-1/2">
             {image ? (
               <LuxuryImage
                 key={image}
@@ -186,7 +186,7 @@ export default function BlushingQuickView({
           </div>
 
           {/* Detail */}
-          <div className="no-scrollbar relative flex w-full min-w-0 flex-col justify-between gap-8 overflow-y-auto p-6 md:max-h-[500px] md:w-1/2 md:p-8">
+          <div className="no-scrollbar relative flex w-full min-h-0 min-w-0 flex-col justify-between gap-6 overflow-y-auto overscroll-contain px-5 pt-5 md:max-h-[500px] md:w-1/2 md:gap-8 md:p-8">
             {/* Warm glow behind the copy, matching the design's rotated ellipse. */}
             <div
               aria-hidden="true"
@@ -242,10 +242,10 @@ export default function BlushingQuickView({
               )}
             </div>
 
-            {/* Quantity · add · wishlist */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            {/* Quantity · add · wishlist — one row on a phone, the heart never drops below. */}
+            <div className="sticky bottom-0 -mx-5 flex items-center gap-2 bg-[#0b0a09] px-5 pb-5 pt-3 md:static md:mx-0 md:flex-wrap md:gap-2.5 md:bg-transparent md:p-0">
               <div
-                className="flex h-11 shrink-0 items-center gap-3 rounded-[62px] px-4"
+                className="flex h-11 shrink-0 items-center gap-2.5 rounded-[62px] px-3 md:gap-3 md:px-4"
                 style={{ backgroundColor: SOFT_GOLD }}
               >
                 <button
@@ -273,9 +273,10 @@ export default function BlushingQuickView({
                 </button>
               </div>
 
-              <GoldButton onClick={handleAddToCart} className="h-11 min-w-[150px] flex-1 rounded-[62px]">
-                <ShoppingCart size={18} strokeWidth={1.5} />
-                Add to Cart
+              <GoldButton onClick={handleAddToCart} className="h-11 min-w-0 flex-1 rounded-[62px] md:min-w-[150px]">
+                <ShoppingCart size={18} strokeWidth={1.5} className="shrink-0" />
+                {/* truncate, not wrap: a 320px phone shortens the label rather than growing the row. */}
+                <span className="truncate">Add to Cart</span>
               </GoldButton>
 
               <button

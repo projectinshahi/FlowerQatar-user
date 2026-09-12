@@ -141,8 +141,12 @@ export default function BlushingProductCard({
 
             The design reveals these on hover, which a touch device can never trigger — and both
             are the whole point of the card, so gating them behind hover would put them out of
-            reach on a phone entirely. Below md they are simply always visible; from md up the
-            designed hover reveal applies unchanged.
+            reach entirely. The reveal is therefore keyed on the POINTER, not only on the
+            breakpoint: `@media (hover: hover)` is what actually distinguishes a mouse from a
+            finger, and a tablet or touch laptop is wider than md while having neither hover nor
+            a way to produce one. Hiding on width alone left the pair permanently at opacity 0
+            on every iPad and touch laptop. So they are always visible below md and on any
+            touch pointer; a mouse from md up keeps the designed hover reveal, unchanged.
 
             Below sm they are small icon-only circles in the bottom corners of the frame — plus
             on the left, eye on the right. The listing is 2-up on a phone, so the card is ~174px
@@ -162,7 +166,7 @@ export default function BlushingProductCard({
             the photograph is. From sm up the designed labelled pills return, unchanged.
           */}
           {isLinked && (
-            <div className="absolute inset-x-2 bottom-2 flex items-center justify-between transition-all duration-300 ease-out sm:inset-x-3 sm:justify-start sm:gap-[5px] md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:motion-safe:translate-y-2">
+            <div className="absolute inset-x-2 bottom-2 flex items-center justify-between transition-all duration-300 ease-out sm:inset-x-3 sm:justify-start sm:gap-[5px] md:group-hover:translate-y-0 md:group-hover:opacity-100 md:[@media(hover:hover)]:opacity-0 md:motion-safe:[@media(hover:hover)]:translate-y-2">
               {onQuickView && (
                 <GoldButton
                   variant="outline"
