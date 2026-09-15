@@ -4,7 +4,7 @@ import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
 import type { CategoryType } from "@prisma/client";
 import type { ProductFlag } from "@/lib/category-config";
-import { imagesOnly } from "@/lib/media";
+import { galleryMedia, imagesOnly } from "@/lib/media";
 
 /**
  * Maps a DB product (single-table with nested `variants` JSON) into the storefront
@@ -38,8 +38,12 @@ export function mapDbProductToStore(db: any): Product {
       seen.add(c.colorName);
       // Cards render in <img>, so stills only — a clip would show as a broken thumbnail.
       const cGallery: string[] = imagesOnly(c.galleryImages).map((g) => g.url!);
-      const cImage = cGallery[0] || c.swatchImage || c.hoverImage || PLACEHOLDER;
-      const cHover = cGallery[1] || c.hoverImage || cImage;
+      // Main media is the Color Swatch upload (image or video). Gallery Media is additional; its
+      // first still only stands in for a colour with no swatch, so older products keep a photo.
+      const cImage = c.swatchImage || cGallery[0] || c.hoverImage || PLACEHOLDER;
+      // Hover media is the Hover Image upload (image or video). Without one, the first gallery still
+      // that differs from the main media is the swap; with nothing different, no swap at all.
+      const cHover = c.hoverImage || cGallery.find((u) => u !== cImage) || cImage;
       // Per-colour pricing, mirroring the default-variant maths above so a colour on sale
       // reports its sale price rather than its list price.
       const cPrice = Number(c.price ?? 0);
@@ -50,6 +54,7 @@ export function mapDbProductToStore(db: any): Product {
         hex: c.colorCode || "#000000",
         image: cImage,
         hoverImage: cHover,
+        gallery: galleryMedia(c.galleryImages),
         price: cOnSale ? cSale! : cPrice,
         originalPrice: cOnSale ? cPrice : undefined,
       });
@@ -65,8 +70,8 @@ export function mapDbProductToStore(db: any): Product {
   }
 
   const gallery: string[] = imagesOnly(defColor?.galleryImages).map((g) => g.url!);
-  const image = gallery[0] || defColor?.swatchImage || defColor?.hoverImage || PLACEHOLDER;
-  const hoverImage = gallery[1] || defColor?.hoverImage || image;
+  const image = defColor?.swatchImage || gallery[0] || defColor?.hoverImage || PLACEHOLDER;
+  const hoverImage = defColor?.hoverImage || gallery.find((u) => u !== image) || image;
 
   const badge = db.isNewArrival
     ? "New"
@@ -89,6 +94,7 @@ export function mapDbProductToStore(db: any): Product {
     colors,
     image,
     hoverImage,
+    gallery: galleryMedia(defColor?.galleryImages),
     images: gallery.length ? gallery : [image],
     badge,
     rating: 5,

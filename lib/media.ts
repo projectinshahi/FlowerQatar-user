@@ -31,6 +31,38 @@ export const imagesOnly = <T extends GalleryMedia>(media: T[] | null | undefined
   (media ?? []).filter((m) => m?.url && !isVideoMedia(m));
 
 /**
+ * A colour's Gallery Media in admin order, each tagged image or video — what a thumbnail strip
+ * renders. Rows with no url are dropped: there is nothing to show for them.
+ */
+export const galleryMedia = (media: GalleryMedia[] | null | undefined): { url: string; type: 'image' | 'video' }[] =>
+  (media ?? [])
+    .filter((m): m is GalleryMedia & { url: string } => typeof m?.url === 'string' && m.url !== '')
+    .map((m) => ({ url: m.url, type: isVideoMedia(m) ? ('video' as const) : ('image' as const) }));
+
+/**
+ * A still frame for a video, where one can be derived: Cloudinary renders frame 0 as a JPEG when
+ * `so_0,f_jpg` is added to the delivery path. Undefined for anything else — a local .mp4 has no
+ * server to render a frame from.
+ */
+export function videoPoster(url: string | null | undefined): string | undefined {
+  if (!url || !url.includes(CLOUDINARY_VIDEO_PATH)) return undefined;
+  return url
+    .replace(CLOUDINARY_VIDEO_PATH, `${CLOUDINARY_VIDEO_PATH}so_0,f_jpg/`)
+    .replace(/\.[a-z0-9]+(\?.*)?$/i, '.jpg$1');
+}
+
+/**
+ * A URL for surfaces that can only show a still — invoices, social previews, stored and admin
+ * thumbnails. Colour swatch and hover media may be a video; an image passes straight through, a
+ * video becomes its poster frame, or undefined when none can be derived so the caller falls
+ * through to its next candidate.
+ */
+export function stillOf(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  return isVideoMedia({ url }) ? videoPoster(url) : url;
+}
+
+/**
  * Whether a newly added item should become the primary one.
  *
  * Primary must always be a still image: it is what the cart, product cards and order lines

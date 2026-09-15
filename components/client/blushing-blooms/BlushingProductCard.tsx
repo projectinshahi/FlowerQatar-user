@@ -69,15 +69,35 @@ export default function BlushingProductCard({
     });
   };
 
+  /*
+   * Hover media — image or video, whatever the admin uploaded as the colour's Hover Image. The
+   * mapper falls back to `image` when there is none, so an equal pair means nothing to swap to.
+   * Both layers go through LuxuryImage, so a video in either slot plays muted and inline.
+   * `group-hover` only applies where hover exists; a tap on a phone goes straight to the page.
+   */
+  const hoverMedia = product.hoverImage && product.hoverImage !== product.image ? product.hoverImage : null;
+  const sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 460px';
+
   const media = (
-    <LuxuryImage
-      src={product.image}
-      alt={product.name}
-      fill
-      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 460px"
-      priority={priority}
-      className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-    />
+    <>
+      <LuxuryImage
+        src={product.image}
+        alt={product.name}
+        fill
+        sizes={sizes}
+        priority={priority}
+        className={`object-cover duration-700 ease-out group-hover:scale-[1.04] ${hoverMedia ? 'transition-[transform,opacity] group-hover:opacity-0' : 'transition-transform'}`}
+      />
+      {hoverMedia && (
+        <LuxuryImage
+          src={hoverMedia}
+          alt=""
+          fill
+          sizes={sizes}
+          className="object-cover opacity-0 transition-opacity duration-700 ease-out group-hover:opacity-100"
+        />
+      )}
+    </>
   );
 
   return (

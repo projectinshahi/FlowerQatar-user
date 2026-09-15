@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react'
 import Image from 'next/image'
+import LuxuryImage from '@/components/LuxuryImage'
 import Link from 'next/link'
 import { Star, Minus, Plus, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -101,21 +102,25 @@ export default function ProductDetailClient({
   const galleryMedia = (selectedColor?.galleryImages ?? []).filter(
     (m: GalleryMedia): m is GalleryMedia & { url: string } => typeof m?.url === 'string' && m.url !== ''
   )
-  const allImages = galleryMedia.length > 0
-    ? galleryMedia.map((img) => ({
-        url: img.url,
-        type: isVideoMedia(img) ? ('video' as const) : ('image' as const),
-      }))
-    : (selectedColor?.hoverImage ? [{ url: selectedColor.hoverImage, type: 'image' as const }] : [{ url: '/images/category_bouquets_1782290106325.png', type: 'image' as const }])
+  // Main media is the Color Swatch upload (image or video), first; Gallery Media follows as the
+  // additional items. Only a colour with neither falls back to its hover media or the placeholder.
+  const swatchMedia: string = selectedColor?.swatchImage || ''
+  const mediaItem = (m: GalleryMedia & { url: string }) => ({ url: m.url, type: isVideoMedia(m) ? ('video' as const) : ('image' as const) })
+  const allImages = (swatchMedia || galleryMedia.length > 0)
+    ? [
+        ...(swatchMedia ? [mediaItem({ url: swatchMedia })] : []),
+        ...galleryMedia.filter((m) => m.url !== swatchMedia).map(mediaItem),
+      ]
+    : [mediaItem({ url: selectedColor?.hoverImage || '/images/category_bouquets_1782290106325.png' })]
 
   /**
-   * Thumbnail for the cart/order line. Must skip video: a Blushing Blooms variant can have a
-   * clip first in the gallery, and the cart renders this URL in an <img>, which would show a
-   * broken thumbnail. Falls back to the swatch/hover art when a colour is video-only.
+   * Thumbnail for the cart line: the colour's main media, its Color Swatch upload. Every cart
+   * surface renders through LuxuryImage, so a swatch video plays there too. Without a swatch it
+   * falls back to the first gallery still, then the hover media.
    */
   const thumbnail =
-    allImages.find((m: { type: string }) => m.type !== 'video')?.url ||
     selectedColor?.swatchImage ||
+    allImages.find((m: { type: string }) => m.type !== 'video')?.url ||
     selectedColor?.hoverImage ||
     '/images/category_bouquets_1782290106325.png'
 
@@ -257,7 +262,7 @@ export default function ProductDetailClient({
         {/* LEFT COLUMN: IMAGES */}
         <div className="w-full lg:w-[60%] flex flex-col gap-4 relative px-4 md:px-0 lg:pr-8">
           {/* M05: enhanced gallery (thumbnail strip, keyboard, swipe, hover-zoom, fullscreen lightbox) */}
-          <ProductGallery key={selectedColorId} images={allImages} productName={product.name} />
+          <ProductGallery key={selectedColorId} images={allImages} productName={product.name} showThumbnails={galleryMedia.length > 0} />
         </div>
 
         {/* RIGHT COLUMN: DETAILS */}
@@ -444,7 +449,7 @@ export default function ProductDetailClient({
                           className="relative w-[60px] h-[60px] rounded-full overflow-hidden border border-gray-200"
                           style={{ backgroundColor: displayColor }}
                         >
-                          {imageUrl && <Image src={imageUrl} alt={cv.colorName || 'Color swatch'} fill className="object-cover" />}
+                          {imageUrl && <LuxuryImage src={imageUrl} alt={cv.colorName || 'Color swatch'} fill className="object-cover" />}
                         </div>
                       </div>
 
@@ -774,7 +779,7 @@ export default function ProductDetailClient({
                   className="group flex shrink-0 snap-start flex-col basis-[calc(100%-1rem)] sm:basis-[calc(50%-0.5rem)] md:basis-[calc(33.333%-1.334rem)]"
                 >
                   <div className="relative aspect-[4/5] bg-[#F5F5F5] mb-4 overflow-hidden">
-                    <Image
+                    <LuxuryImage
                       src={item.image}
                       alt={item.name}
                       fill
@@ -786,7 +791,7 @@ export default function ProductDetailClient({
                       }
                     />
                     {hoverImage && (
-                      <Image
+                      <LuxuryImage
                         src={hoverImage}
                         alt={`${item.name} alternate view`}
                         fill

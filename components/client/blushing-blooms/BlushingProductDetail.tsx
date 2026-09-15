@@ -11,11 +11,13 @@ import {
   Gift,
   Heart,
   HeartHandshake,
+  Play,
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import LuxuryImage from '@/components/LuxuryImage';
+import { isVideoMedia, videoPoster } from '@/lib/media';
 import { Skeleton } from '@/components/ui/Skeleton';
 import {
   useAddOns,
@@ -153,6 +155,7 @@ export default function BlushingProductDetail({ product }: { product: Product })
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [font, setFont] = useState<WishingFontKey | null>(null);
+  const [shownUrl, setShownUrl] = useState<string | null>(null);
 
   const gifts = useAddOns();
   const cards = useGreetingCards();
@@ -188,7 +191,26 @@ export default function BlushingProductDetail({ product }: { product: Product })
   }, [product?.id, product?.slug, product?.colors]);
 
   const selectedColor = product?.colors?.find((c) => c.name === colorName) ?? product?.colors?.[0] ?? null;
+  // The colour's Color Swatch upload, image or video — the mapper puts it in `image`.
   const heroImage = selectedColor?.image || product?.image || '';
+
+  /*
+   * Gallery Media thumbnails: the selected colour's uploads in admin order. The resting hero is
+   * put first when it is not already one of them (a swatch-only hero), so a shopper can always get
+   * back to it. The choice is kept as a URL, not an index — after a colour change a URL from the
+   * old colour simply is not in the new strip, and the frame falls back to the hero with no reset.
+   */
+  const galleryItems = (selectedColor ? selectedColor.gallery : product?.gallery) ?? [];
+  const thumbs = galleryItems.length
+    ? [
+        ...(heroImage && !galleryItems.some((m) => m.url === heroImage)
+          ? [{ url: heroImage, type: isVideoMedia({ url: heroImage }) ? ('video' as const) : ('image' as const) }]
+          : []),
+        ...galleryItems,
+      ]
+    : [];
+  const shown = shownUrl && shownUrl !== heroImage ? thumbs.find((m) => m.url === shownUrl) ?? null : null;
+  const frameSrc = shown?.url ?? heroImage;
   const pricing = usePriceCalculator(product?.price ?? 0, 1, addOns);
   const selectedCard = cards.data?.find((c) => c.id === templateId) ?? null;
 
@@ -309,10 +331,16 @@ export default function BlushingProductDetail({ product }: { product: Product })
                   The floating back button overlaps the top-left corner by design; it is a
                   control over the page, not part of this column's flow.
                 */}
-                <div className="relative aspect-[650/713] w-full overflow-hidden rounded-[24px] bg-[#0d0b0b] lg:mx-auto lg:w-[min(100%,calc((100vh-8rem)*0.912))]">
-                  {heroImage ? (
+                {/*
+                  With a thumbnail strip the height budget grows by the strip (72px + 12px gap, ~5.5rem
+                  with its scroll gutter), so frame + strip still fit on screen when the column pins.
+                  Without one the class is the original, byte for byte.
+                */}
+                <div className={`relative aspect-[650/713] w-full overflow-hidden rounded-[24px] bg-[#0d0b0b] lg:mx-auto ${thumbs.length ? 'lg:w-[min(100%,calc((100vh-13.5rem)*0.912))]' : 'lg:w-[min(100%,calc((100vh-8rem)*0.912))]'}`}>
+                  {frameSrc ? (
                     <LuxuryImage
-                      src={heroImage}
+                      key={frameSrc}
+                      src={frameSrc}
                       alt={product.name}
                       fill
                       priority
@@ -321,6 +349,38 @@ export default function BlushingProductDetail({ product }: { product: Product })
                     />
                   ) : null}
                 </div>
+
+                {thumbs.length > 0 && (
+                  <div className="no-scrollbar mt-3 flex gap-2.5 overflow-x-auto pb-1 lg:mx-auto lg:w-[min(100%,calc((100vh-13.5rem)*0.912))]">
+                    {thumbs.map((m, i) => {
+                      const on = m.url === frameSrc;
+                      const video = m.type === 'video';
+                      return (
+                        <button
+                          key={m.url}
+                          type="button"
+                          data-gallery-thumb
+                          onClick={() => setShownUrl(m.url)}
+                          aria-label={`Show ${video ? 'video' : 'image'} ${i + 1} of ${thumbs.length}`}
+                          aria-pressed={on}
+                          className="relative aspect-square w-16 shrink-0 overflow-hidden rounded-[12px] border transition-colors sm:w-[72px]"
+                          style={{ borderColor: on ? GOLD : TILE_BORDER, backgroundColor: TILE_BG }}
+                        >
+                          {video ? (
+                            <>
+                              <video src={m.url} poster={videoPoster(m.url)} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true" className="pointer-events-none h-full w-full object-cover" />
+                              <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-black/35">
+                                <Play size={16} className="fill-white text-white" />
+                              </span>
+                            </>
+                          ) : (
+                            <LuxuryImage src={m.url} alt="" fill sizes="72px" className="object-cover" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* ---------------------------------------------------------- Detail */}

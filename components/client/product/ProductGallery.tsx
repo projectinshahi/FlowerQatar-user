@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, Maximize2, ImageOff, ArrowUp, ArrowDown, Film, Play } from "lucide-react";
-import { isVideoMedia } from "@/lib/media";
+import { isVideoMedia, videoPoster } from "@/lib/media";
 
 export interface GalleryImage {
   url: string;
@@ -25,7 +25,16 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(ma
 /** Shared with the admin uploader and the store mapper so the rules can't drift apart. */
 const isVideoItem = isVideoMedia;
 
-export default function ProductGallery({ images, productName }: { images: GalleryImage[]; productName: string }) {
+export default function ProductGallery({
+  images,
+  productName,
+  showThumbnails = false,
+}: {
+  images: GalleryImage[];
+  productName: string;
+  /** True when `images` is the colour's uploaded Gallery Media (not the hover/placeholder fallback). */
+  showThumbnails?: boolean;
+}) {
   const pics = (images || []).filter((i) => i?.url);
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
@@ -67,6 +76,17 @@ export default function ProductGallery({ images, productName }: { images: Galler
       document.body.style.overflow = prev;
     };
   }, [lightbox, go]);
+
+  // Video that is the displayed media plays on its own — muted and inline, which every browser
+  // allows without a gesture. Controls stay, so a shopper can still unmute or pause. Set in an
+  // effect because React omits `muted` from server HTML and mobile Safari then refuses to start.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!currentIsVideo || !v) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    v.muted = true;
+    v.play().catch(() => {});
+  }, [current, currentIsVideo]);
 
   const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -128,7 +148,10 @@ export default function ProductGallery({ images, productName }: { images: Galler
               ref={videoRef}
               key={current}
               src={current}
+              poster={videoPoster(current)}
               controls
+              muted
+              loop
               playsInline
               preload="metadata"
               className="w-full h-full object-contain"
@@ -223,6 +246,41 @@ export default function ProductGallery({ images, productName }: { images: Galler
           </div>
         )}
       </div>
+
+      {/* Gallery Media thumbnails — each uploaded image or video under the main frame. Selecting one
+          drives the same `active` index as the arrows, dots, swipe and keyboard, so they all agree,
+          and a video selected here autoplays through the effect above. */}
+      {showThumbnails && (
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1 lg:mt-4 lg:gap-3">
+          {pics.map((item, idx) => {
+            const video = isVideoItem(item);
+            const on = idx === active;
+            return (
+              <button
+                key={`${item.url}-${idx}`}
+                type="button"
+                data-gallery-thumb
+                onClick={() => setActive(idx)}
+                aria-label={`Show ${video ? "video" : "image"} ${idx + 1} of ${count}`}
+                aria-pressed={on}
+                className={`relative aspect-[4/5] w-14 shrink-0 overflow-hidden rounded-sm border bg-[#FAFAFA] transition-opacity sm:w-16 lg:w-[72px] ${on ? "" : "opacity-60 hover:opacity-100"}`}
+                style={{ borderColor: on ? ACTIVE_DOT : "#EBEBEB" }}
+              >
+                {video ? (
+                  <>
+                    <video src={item.url} poster={videoPoster(item.url)} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true" className="pointer-events-none h-full w-full object-cover" />
+                    <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-black/25">
+                      <Play size={14} className="fill-white text-white" />
+                    </span>
+                  </>
+                ) : (
+                  <Image src={item.url} alt="" fill sizes="72px" className="object-cover" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Side zoom panel (desktop only, images only) — appears to the right while hovering */}
       {zoom && !currentIsVideo && (
