@@ -1,7 +1,7 @@
 import { Star } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { logDbError } from '@/lib/prisma-error';
-import { imagesOnly } from '@/lib/media';
+import { imagesOnly, stillOf } from '@/lib/media';
 import ProductReviewsManager, {
   type ProductRow,
 } from '@/components/admin/reviews/ProductReviewsManager';
@@ -17,10 +17,12 @@ type VariantLike = { colorVariants?: ColorVariantLike[] };
 function thumbnailOf(variants: unknown): string | null {
   const list: VariantLike[] = Array.isArray(variants) ? variants : [];
   for (const colour of list.flatMap((v) => v?.colorVariants ?? [])) {
+    // The Color Swatch upload is the main media; a video contributes its poster frame.
+    const swatch = stillOf(colour?.swatchImage);
+    if (swatch) return swatch;
     // imagesOnly skips videos — a clip URL in an <img> renders as a broken thumbnail.
     const still = imagesOnly(colour?.galleryImages as never)[0]?.url;
     if (still) return still;
-    if (colour?.swatchImage) return colour.swatchImage;
   }
   return null;
 }

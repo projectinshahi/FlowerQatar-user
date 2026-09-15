@@ -1,3 +1,4 @@
+import { stillOf } from "@/lib/media";
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -45,7 +46,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     colors: store.colors.map((c) => c.name),
   });
   const url = `/product/${product.slug}`;
-  const image = store.image ? absoluteUrl(store.image) : undefined;
+  // Social previews need a still; a colour whose media is a video contributes its poster frame.
+  const still = stillOf(store.image);
+  const image = still ? absoluteUrl(still) : undefined;
   // The layout applies the "%s | Lebami" title template; OG/Twitter need the full title.
   const ogTitle = `${product.name} | ${SITE_NAME}`;
 
@@ -89,6 +92,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const data = result.data;
   const store = mapDbProductToStore(data);
+  const storeStill = stillOf(store.image);
   const product = JSON.parse(JSON.stringify(data));
 
   const type = data.categoryType as CategoryType | null;
@@ -111,7 +115,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     "@type": "Product",
     name: data.name,
     description: stripHtml(data.description || data.shortDescription || "", 500),
-    image: store.image ? [absoluteUrl(store.image)] : undefined,
+    image: storeStill ? [absoluteUrl(storeStill)] : undefined,
     sku: data.sku || undefined,
     brand: { "@type": "Brand", name: SITE_NAME },
     category: data.subcategory?.name || categoryLabel || undefined,

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import Link from 'next/link';
-import Image from 'next/image';
+import LuxuryImage from '@/components/LuxuryImage';
 import { Product } from '../types';
 import { SearchResultSkeleton } from '@/components/skeletons/ProductSkeletons';
 
@@ -200,7 +200,7 @@ export default function SearchDrawer() {
                               className="flex items-center group"
                             >
                               <div className="w-[60px] h-[60px] md:w-[70px] md:h-[70px] bg-[#F8F8F8] flex-shrink-0 relative overflow-hidden">
-                                <Image 
+                                <LuxuryImage 
                                   src={product.image} 
                                   alt={product.name} 
                                   fill 

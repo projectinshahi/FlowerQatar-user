@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, Heart, Star } from 'lucide-react'
-import Image from 'next/image'
+import LuxuryImage from '@/components/LuxuryImage'
 import Link from 'next/link'
 import { AnimatedSection } from '../../components/AnimatedSection'
 
@@ -40,14 +40,14 @@ function NewArrivalCard({ product }: { product: Product }) {
     <div className="luxury-card flex flex-col h-full bg-white relative hover:shadow-lg transition-shadow cursor-pointer">
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-cream/20 group">
         <Link href={`/product/${product.slug}`} className="block absolute inset-0 z-10" aria-label={`View ${product.name}`}>
-          <Image
+          <LuxuryImage
             src={mainImage}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover transition-opacity duration-500 group-hover:opacity-0"
           />
-          <Image
+          <LuxuryImage
             src={hoverImage}
             alt={`${product.name} alternate view`}
             fill

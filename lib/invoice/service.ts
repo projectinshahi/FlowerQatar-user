@@ -1,3 +1,4 @@
+import { stillOf } from '@/lib/media';
 import { prisma } from '@/lib/prisma';
 import { SITE_URL } from '@/lib/site';
 import {
@@ -73,9 +74,12 @@ function resolveProductImage(product: any): string | undefined {
     for (const v of product.variants) {
       if (Array.isArray(v.colorVariants)) {
         for (const cv of v.colorVariants) {
-          if (cv.swatchImage) return cv.swatchImage;
+          // An invoice can only print a still: a video swatch contributes its poster frame.
+          const swatch = stillOf(cv.swatchImage);
+          if (swatch) return swatch;
           if (Array.isArray(cv.galleryImages) && cv.galleryImages.length > 0) {
-            return cv.galleryImages[0].url;
+            const first = stillOf(cv.galleryImages[0].url);
+            if (first) return first;
           }
         }
       }

@@ -1,3 +1,4 @@
+import { stillOf } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api";
@@ -44,7 +45,8 @@ export function resolveProduct(product: { name: string; variants: unknown }, var
   const color = (colorId && colors.find((c) => c?.id === colorId)) || colors[0];
   const price = Number(color?.salePrice ?? color?.price ?? 0);
   const gallery = (color?.galleryImages || []).map((g) => g?.url).filter(Boolean) as string[];
-  const image = gallery[0] || color?.swatchImage || color?.hoverImage || null;
+  // Stored and shown as a thumbnail, so a still: video swatch/hover media contributes its poster.
+  const image = [color?.swatchImage, ...gallery, color?.hoverImage].map(stillOf).find(Boolean) || null;
   const label = [variant?.variantName, color?.colorName].filter(Boolean).join(" · ") || null;
   return { unitPrice: price, productName: product.name, productImage: image, variantLabel: label };
 }

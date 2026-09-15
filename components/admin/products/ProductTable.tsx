@@ -1,5 +1,6 @@
 "use client";
 
+import { stillOf } from "@/lib/media";
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -133,10 +134,11 @@ export default function ProductTable({ products, pagination }: { products: any[]
               const allColors = variants.flatMap((v: any) => v?.colorVariants || []);
               const firstColor = allColors[0];
               const galleryImages = (firstColor?.galleryImages || []).filter((img: any) => img?.type !== "video");
+              // Main media first — the Color Swatch upload — as a still: a video shows its poster frame.
               const primaryImage =
+                stillOf(firstColor?.swatchImage) ||
                 (galleryImages.find((img: any) => img.isPrimary) || galleryImages[0])?.url ||
-                firstColor?.swatchImage ||
-                firstColor?.hoverImage;
+                stillOf(firstColor?.hoverImage);
 
               // Price range across all color variants (effective = salePrice ?? price)
               const effectivePrices = allColors

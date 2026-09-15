@@ -100,9 +100,10 @@ function pickColor(variant: any, item: { colorId?: string | null; selection?: Ca
 }
 
 function colorImage(color: any): string | null {
+  // The colour's main media is its Color Swatch upload; gallery and hover media are fallbacks.
   const gallery: any[] = color?.galleryImages || [];
   const primary = gallery.find((g) => g?.isPrimary) || gallery[0];
-  return primary?.url || color?.swatchImage || color?.hoverImage || null;
+  return color?.swatchImage || primary?.url || color?.hoverImage || null;
 }
 
 /** Resolves the DB price for a catalog selection (salePrice preferred). */

@@ -1,8 +1,10 @@
 export interface ProductColor {
   name: string;
   hex: string;
-  image?: string; // this color variant's primary image
-  hoverImage?: string; // this color variant's secondary/hover image
+  image?: string; // this color variant's main media: its Color Swatch upload (image or video)
+  hoverImage?: string; // this color variant's hover media: its Hover Image upload (image or video)
+  /** This colour's Gallery Media in admin order, images and videos — the product page thumbnails. */
+  gallery?: { url: string; type: 'image' | 'video' }[];
   /**
    * This colour's own price, which the database stores per colour variant.
    * Optional and additive: the listing's top-level `price` remains the default colour's, so
@@ -31,6 +33,8 @@ export interface Product {
   sizes?: string[]; // Legacy/alternative sizes
   image: string;
   hoverImage: string;
+  /** The default colour's Gallery Media, images and videos in admin order. */
+  gallery?: { url: string; type: 'image' | 'video' }[];
   images?: string[]; // Gallery images fallback
   badge?: string; // e.g. "Best Seller", "New"
   rating: number;

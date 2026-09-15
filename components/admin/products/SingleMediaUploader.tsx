@@ -171,10 +171,14 @@ export default function SingleMediaUploader({
           {/* Shared rule, not a local regex: this one missed .mov, and `includes('video')`
               would also match any path that merely contains the word. */}
           {isVideoMedia({ url: mediaUrl }) ? (
-            <video src={mediaUrl} className="max-w-full max-h-full object-contain" autoPlay muted loop />
+            <video src={mediaUrl} className="max-w-full max-h-full object-contain" autoPlay muted loop playsInline />
           ) : (
             <img src={mediaUrl} alt="Preview" className="max-w-full max-h-full object-contain" />
           )}
+          {/* Says which kind was saved, so a video swatch is never mistaken for a still. */}
+          <span className="absolute left-2 top-2 z-10 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+            {isVideoMedia({ url: mediaUrl }) ? "Video" : "Image"}
+          </span>
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <button 
               type="button" 
@@ -205,6 +209,7 @@ export default function SingleMediaUploader({
             <div className="flex flex-col items-center">
               <Upload size={20} className="text-gray-400 mb-2" />
               <span className="text-xs font-medium text-gray-500">Click to upload</span>
+              {accept.includes("video") && <span className="mt-0.5 text-[11px] text-gray-400">Image or video</span>}
             </div>
           )}
         </label>

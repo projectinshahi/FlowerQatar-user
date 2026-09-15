@@ -151,12 +151,10 @@ export default function ColorVariantsFieldArray({ variantIndex }: { variantIndex
                     <SingleMediaUploader
                       fieldName={`variants.${variantIndex}.colorVariants.${index}.swatchImage`}
                       label="Color Swatch"
-                      accept="image/*"
                     />
                     <SingleMediaUploader
                       fieldName={`variants.${variantIndex}.colorVariants.${index}.hoverImage`}
                       label="Hover Image"
-                      accept="image/*"
                     />
                   </div>
 
