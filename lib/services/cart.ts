@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/admin-guard";
 import type { AddItemInput, CartSelection } from "@/lib/validations/cart";
 import { NO_SHIPPING, calculateShipping, type ShippingConfig } from "@/lib/shipping";
 import { logDbError } from "@/lib/prisma-error";
+import { resolveExtraPrices } from "@/lib/gifts";
 
 /* ───────────────────────── Config ───────────────────────── */
 
@@ -51,6 +52,13 @@ export interface CartVariant {
   boxShape: string | null;
 }
 
+/** An optional gift / add-on attached to a line, priced from the database. */
+export interface CartExtra {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface CartLine {
   id: string;
   productId: string | null;
@@ -60,6 +68,8 @@ export interface CartLine {
   subtotal: number;
   product: CartProduct;
   variant: CartVariant;
+  /** Optional gifts on this line, with DB prices. Already included in unitPrice. */
+  addOns: CartExtra[];
 }
 
 export interface CartSummary {
@@ -166,6 +176,35 @@ function normalize(raw: unknown): StoredItem[] {
     });
 }
 
+/* ───────────────────── Optional gifts / add-ons ───────────────────── */
+
+/** Sorted extra ids on a line — the identity of a gift selection. */
+export function extraIds(selection: CartSelection | null | undefined): string[] {
+  return (selection?.addOns || [])
+    .map((a) => a?.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0)
+    .sort();
+}
+
+/**
+ * Prices a line's extras from the database.
+ *
+ * The client sends { id, name, price } for display, but the price it sends is never used:
+ * only ids are looked up, so a tampered payload cannot discount a gift. Ids that no longer
+ * exist (or were deactivated) drop out and are charged nothing.
+ */
+export function priceExtras(
+  selection: CartSelection | null | undefined,
+  prices: Map<string, { name: string; price: number }>
+): { list: CartExtra[]; total: number } {
+  const list: CartExtra[] = [];
+  for (const id of extraIds(selection)) {
+    const row = prices.get(id);
+    if (row) list.push({ id, name: row.name, price: row.price });
+  }
+  return { list, total: round2(list.reduce((sum, a) => sum + a.price, 0)) };
+}
+
 /* ───────────────────── Resolve (JOIN) + serialize ───────────────────── */
 
 /**
@@ -204,11 +243,17 @@ function computeSummary(lines: CartLine[], shippingConfig: ShippingConfig): Cart
   return { subtotal, discount, shipping, tax, total, itemCount };
 }
 
-function resolveLine(item: StoredItem, product: any | undefined): CartLine {
+function resolveLine(
+  item: StoredItem,
+  product: any | undefined,
+  prices: Map<string, { name: string; price: number }>
+): CartLine {
+  const extras = priceExtras(item.selection, prices);
   if (item.productId && product) {
     const variant = pickVariant(product.variants || [], item);
     const color = pickColor(variant, item);
-    const price = resolvePrice(product, item) ?? item.unitPrice; // always latest DB price
+    // Latest DB price for the product, plus the DB price of every gift on this line.
+    const price = round2((resolvePrice(product, item) ?? item.unitPrice) + extras.total);
     return {
       id: item.id,
       productId: product.id,
@@ -216,6 +261,7 @@ function resolveLine(item: StoredItem, product: any | undefined): CartLine {
       quantity: item.quantity,
       unitPrice: price,
       subtotal: round2(price * item.quantity),
+      addOns: extras.list,
       product: { id: product.id, name: product.name, slug: product.slug, image: colorImage(color) },
       variant: {
         id: color?.id ?? null,
@@ -228,27 +274,56 @@ function resolveLine(item: StoredItem, product: any | undefined): CartLine {
 
   // Custom arrangement or a product that no longer exists — fall back to the stored selection.
   const sel = item.selection || {};
+  const fallbackPrice = round2(item.unitPrice + extras.total);
   return {
     id: item.id,
     productId: item.productId ?? null,
     variantId: item.variantId ?? null,
     quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    subtotal: round2(item.unitPrice * item.quantity),
+    unitPrice: fallbackPrice,
+    subtotal: round2(fallbackPrice * item.quantity),
+    addOns: extras.list,
     product: { id: item.productId ?? null, name: sel.name || "Custom Arrangement", slug: sel.slug || "", image: sel.image || null },
     variant: { id: null, roseColor: sel.roseColor ?? null, boxColor: sel.boxColor ?? null, boxShape: sel.boxShape ?? null },
   };
 }
 
-async function resolveCart(userId: string): Promise<CartPayload> {
-  const items = await readCart(userId);
+/*
+ * Prices a known set of stored items into the payload the storefront renders.
+ *
+ * Separate from reading the cart so a write can price the items it already holds instead of
+ * reading them back: every mutation used to write the cart and then call resolveCart(), which
+ * re-read the same row and the same products it had just loaded. The three lookups here don't
+ * depend on each other, so they run together — each is a round trip to a remote database.
+ */
+async function buildPayload(items: StoredItem[]): Promise<CartPayload> {
   const productIds = [...new Set(items.map((i) => i.productId).filter(Boolean) as string[])];
-  const products = productIds.length
-    ? await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, slug: true, variants: true } })
-    : [];
+  const [shippingConfig, products, prices] = await Promise.all([
+    loadShippingConfig(),
+    productIds.length
+      ? prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true, slug: true, variants: true } })
+      : [],
+    // One lookup for every gift/add-on in the cart, rather than one per line.
+    resolveExtraPrices(items.flatMap((i) => extraIds(i.selection))),
+  ]);
+
   const map = new Map(products.map((p) => [p.id, p]));
-  const lines = items.map((i) => resolveLine(i, i.productId ? map.get(i.productId) : undefined));
-  return { items: lines, summary: computeSummary(lines, await loadShippingConfig()) };
+  const lines = items.map((i) => resolveLine(i, i.productId ? map.get(i.productId) : undefined, prices));
+  return { items: lines, summary: computeSummary(lines, shippingConfig) };
+}
+
+async function resolveCart(userId: string): Promise<CartPayload> {
+  return buildPayload(await readCart(userId));
+}
+
+/**
+ * Persists the cart and returns its priced payload in the same breath. The payload is built
+ * from the very items being written, so nothing needs to be read back afterwards; if the write
+ * fails, Promise.all rejects and the caller gets the error exactly as before.
+ */
+async function saveAndPrice(userId: string, items: StoredItem[]): Promise<CartPayload> {
+  const [, payload] = await Promise.all([writeCart(userId, items), buildPayload(items)]);
+  return payload;
 }
 
 /* ───────────────────── Auth ───────────────────── */
@@ -275,25 +350,40 @@ export function emptyCart(): CartPayload {
 const dedupKey = (i: { productId: string | null; variantId: string | null; colorId: string | null; selection: CartSelection | null }) =>
   `${i.productId || "custom"}|${i.variantId || ""}|${i.colorId || ""}|${
     i.selection ? [i.selection.roseColor, i.selection.boxColor, i.selection.boxShape, i.selection.size, i.selection.lid, i.selection.card].map((v) => v || "").join("~") : ""
-  }`;
+  }|${extraIds(i.selection).join(",")}`;
 
 export async function getCartPayload(userId: string): Promise<CartPayload> {
   return resolveCart(userId);
 }
 
 export async function addItem(userId: string, dto: AddItemInput): Promise<CartPayload> {
-  let unitPrice = dto.unitPrice;
+  /*
+   * Three independent reads, issued together: the gift prices, the product being added, and
+   * the user's current cart. None depends on the others, and each was previously awaited in
+   * turn — three round trips before a single byte was written.
+   */
+  const [prices, product, items] = await Promise.all([
+    resolveExtraPrices(extraIds(dto.selection)),
+    dto.productId
+      ? prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true, variants: true } })
+      : null,
+    readCart(userId),
+  ]);
+
+  const extras = priceExtras(dto.selection, prices);
+
+  // The client sends base + gifts as one unitPrice; store the base alone so that reading the
+  // cart (which adds the DB gift prices) can never count a gift twice.
+  let unitPrice = Math.max(0, round2(dto.unitPrice - extras.total));
 
   // Validate the product and re-derive the authoritative price from the DB (never trust the client price).
   if (dto.productId) {
-    const product = await prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true, variants: true } });
     if (!product) throw new CartError("Product not found", 404);
     const dbPrice = resolvePrice(product, dto);
     if (dbPrice != null) unitPrice = dbPrice;
     // Note: no stock validation — the single-table Product model has no stock field.
   }
 
-  const items = await readCart(userId);
   const incoming: StoredItem = {
     id: randomUUID(),
     productId: dto.productId ?? null,
@@ -301,14 +391,16 @@ export async function addItem(userId: string, dto: AddItemInput): Promise<CartPa
     colorId: dto.colorId ?? null,
     quantity: Math.min(MAX_QTY, dto.quantity),
     unitPrice,
-    selection: dto.selection ?? null,
+    // Store the gifts with DB names/prices, so the saved cart never holds client figures.
+    selection: dto.selection
+      ? { ...dto.selection, addOns: extras.list.length ? extras.list : undefined }
+      : null,
   };
   const idx = items.findIndex((i) => dedupKey(i) === dedupKey(incoming));
   if (idx > -1) items[idx].quantity = Math.min(MAX_QTY, items[idx].quantity + dto.quantity);
   else items.push(incoming);
 
-  await writeCart(userId, items);
-  return resolveCart(userId);
+  return saveAndPrice(userId, items);
 }
 
 export async function updateItemQuantity(userId: string, itemId: string, quantity: number): Promise<CartPayload> {
@@ -317,18 +409,15 @@ export async function updateItemQuantity(userId: string, itemId: string, quantit
   if (!item) throw new CartError("Cart item not found", 404);
   if (quantity <= 0) items = items.filter((i) => i.id !== itemId);
   else item.quantity = Math.min(MAX_QTY, quantity);
-  await writeCart(userId, items);
-  return resolveCart(userId);
+  return saveAndPrice(userId, items);
 }
 
 export async function removeItem(userId: string, itemId: string): Promise<CartPayload> {
   const items = await readCart(userId);
   if (!items.some((i) => i.id === itemId)) throw new CartError("Cart item not found", 404);
-  await writeCart(userId, items.filter((i) => i.id !== itemId));
-  return resolveCart(userId);
+  return saveAndPrice(userId, items.filter((i) => i.id !== itemId));
 }
 
 export async function clearCart(userId: string): Promise<CartPayload> {
-  await writeCart(userId, []);
-  return resolveCart(userId);
+  return saveAndPrice(userId, []);
 }

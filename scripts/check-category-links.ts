@@ -12,6 +12,7 @@ import {
   categoryFromSlug,
   categorySlug,
   shopCategoryHref,
+  subcategoryHref,
 } from '../lib/category-config';
 
 for (const type of CATEGORY_ORDER) {
@@ -29,6 +30,12 @@ for (const type of CATEGORY_ORDER) {
 
   const param = new URL(href, 'https://x.test').searchParams.get('category');
   assert.equal(categoryFromSlug(param ?? ''), type, `href param for ${type} does not resolve back`);
+
+  // A subcategory link must stay scoped to its parent, or the shop derives filters from the
+  // whole catalogue and shows other categories' subcategories.
+  const sub = new URL(subcategoryHref(type, 'abc'), 'https://x.test').searchParams;
+  assert.equal(categoryFromSlug(sub.get('category') ?? ''), type, `subcategory href for ${type} lost its category`);
+  assert.equal(sub.get('subcategory'), 'abc');
 }
 
 // Slugs must be unique, or one category would resolve to another.

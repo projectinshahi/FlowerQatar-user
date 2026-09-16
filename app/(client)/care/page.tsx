@@ -1,4 +1,3 @@
-'use client';
 
 import React from 'react';
 import { Sparkles, SunDim, Droplets, Smile, Ban, Scissors } from 'lucide-react';

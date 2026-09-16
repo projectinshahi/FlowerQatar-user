@@ -12,10 +12,12 @@ interface ProductCardProps {
   onQuickView?: (product: Product) => void;
   priority?: boolean;
   className?: string;
+  /** Wishlist page: a quick add moves the product to the cart, so drop the heart too. */
+  moveToCart?: boolean;
 }
 
-export default function ProductCard({ product, onQuickView, priority = false, className = '' }: ProductCardProps) {
-  const { wishlist, toggleWishlist, addToCart } = useApp();
+export default function ProductCard({ product, onQuickView, priority = false, className = '', moveToCart = false }: ProductCardProps) {
+  const { wishlist, toggleWishlist, addToCart, user } = useApp();
   const [hovered, setHovered] = useState(false);
 
   const isWishlisted = wishlist.includes(product.slug);
@@ -41,6 +43,9 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
       size: defaultSize,
       price: product.price,
     });
+
+    // Guests only get the sign-in prompt from addToCart — nothing was added, so keep the heart.
+    if (moveToCart && user && isWishlisted) toggleWishlist(product.slug);
   };
 
   const mainImage = product.image || (product.images && product.images[0]) || '';
@@ -95,19 +100,21 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
               </span>
             )}
             <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleWishlist(product.slug);
               }}
               suppressHydrationWarning
-              className="text-secondary/60 hover:text-secondary transition-colors"
+              className="text-secondary/60 hover:text-secondary transition-transform duration-200 ease-out hover:scale-110 active:scale-90"
               aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              aria-pressed={isWishlisted}
             >
               <Heart
                 size={16}
                 strokeWidth={1.5}
-                className={`transition-colors duration-300 ${isWishlisted ? 'fill-secondary text-secondary' : ''}`}
+                className={`transition-all duration-300 ease-out ${isWishlisted ? 'fill-secondary text-secondary scale-110' : 'scale-100'}`}
               />
             </button>
           </div>

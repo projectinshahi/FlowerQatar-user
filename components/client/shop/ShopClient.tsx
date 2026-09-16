@@ -312,7 +312,11 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
         <div className="flex-grow transition-all duration-700 ease-in-out">
           {products.length === 0 ? (
             <div className="py-24 text-center border border-dashed border-divider bg-cream rounded-none space-y-4">
-              <p className="text-sm text-muted italic">No items found matching the selected criteria.</p>
+              <p className="text-sm text-muted italic">
+                {filters.subcategory
+                  ? 'No products found in this category.'
+                  : 'No items found matching the selected criteria.'}
+              </p>
               {hasActiveFilters && (
                 <button onClick={clearFilters} className="px-6 py-2.5 bg-secondary hover:bg-secondary-hover text-white text-xs uppercase tracking-widest transition-colors">
                   Clear Filters

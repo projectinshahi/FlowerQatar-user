@@ -25,10 +25,16 @@ export default function AdminLogin() {
         body: JSON.stringify({ email, password, isAdminLogin: true }),
       });
 
-      const data = await res.json();
+      // Next answers with an HTML 404 page while an API route compiles for the first time.
+      // Parsing that as JSON surfaced as "Unexpected token '<'", which tells the admin nothing,
+      // so a non-JSON reply becomes a message they can act on instead.
+      const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data?.error || `Login failed (HTTP ${res.status}). Please try again.`);
+      }
+      if (!data) {
+        throw new Error('Unexpected response from the server. Please try again.');
       }
 
       if (data.user?.role !== 'ADMIN' && data.user?.role !== 'SUPER_ADMIN') {

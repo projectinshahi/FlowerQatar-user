@@ -201,6 +201,6 @@ export const getNavMenu = unstable_cache(
    *
    * Bump this suffix whenever the shape or link logic below changes.
    */
-  ['nav-menu-v3'],
+  ['nav-menu-v4'],
   { tags: [NAV_MENU_TAG], revalidate: 3600 }
 );

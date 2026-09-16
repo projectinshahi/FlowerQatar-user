@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { AnimatedSection } from '../../components/AnimatedSection'
 
 const columns = [
-  { text: "ETERNITY FLOWERS", link: "#" },
   { text: "OUR STORY", link: "#" },
   { text: "FAQS", link: "#" }
 ]
@@ -28,14 +27,14 @@ export default function ArtTriptych() {
       </div>
 
       {/* Grid Overlay */}
-      <div className="relative h-full w-full grid grid-cols-1 md:grid-cols-3">
+      <div className="relative h-full w-full grid grid-cols-1 grid-rows-2 md:grid-cols-2 md:grid-rows-1">
         {columns.map((col, index) => (
           <Link
             key={index}
             href={col.link}
             onMouseEnter={() => setHoveredCol(index)}
             onMouseLeave={() => setHoveredCol(null)}
-            className="relative flex items-center justify-center cursor-pointer group h-[200px] md:h-full overflow-hidden"
+            className="relative flex items-center justify-center cursor-pointer group h-full overflow-hidden"
           >
             {/* Hover State Background Overlay (local to column) */}
             <div

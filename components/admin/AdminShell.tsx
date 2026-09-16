@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, Truck, BarChart3, Film, CalendarHeart, Plus, LayoutGrid, Wallet, Sparkles, FolderTree, Mail, Star } from 'lucide-react';
+import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, Truck, BarChart3, Film, CalendarHeart, Plus, LayoutGrid, Wallet, Sparkles, FolderTree, Mail, Star, Gift } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -42,6 +42,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       heading: 'Content Management',
       items: [
         { name: 'Occasion Collections', href: '/admin/occasions', icon: CalendarHeart, exact: true },
+        { name: 'Gift Groups', href: '/admin/gift-groups', icon: Gift, exact: true },
         // { name: 'Add Collection', href: '/admin/occasions/new', icon: Plus },
         { name: 'Subscription Plans', href: '/admin/subscription-plans', icon: LayoutGrid, exact: true },
       ],

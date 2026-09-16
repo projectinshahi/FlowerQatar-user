@@ -47,7 +47,19 @@ export interface PlacedOrder {
  * points, and clears the cart. The order then appears in the admin panel.
  */
 export async function placeOrder(userId: string, input: PlaceOrderInput): Promise<PlacedOrder> {
-  const cart = await getCartPayload(userId);
+  const pointsRequested = Math.max(0, Math.floor(input.pointsRedeemed ?? 0));
+
+  /*
+   * Independent reads, issued together: the priced cart, the admin's shipping configuration,
+   * and — only when points are being redeemed — the membership. Each used to be awaited in
+   * turn, on the path where a customer is waiting to see their order confirmed. The checks
+   * below still run in their original order, so the error a customer sees is unchanged.
+   */
+  const [cart, shippingConfig, membership] = await Promise.all([
+    getCartPayload(userId),
+    loadShippingConfig(),
+    pointsRequested > 0 ? getActiveMembership(userId) : null,
+  ]);
   if (cart.items.length === 0) throw new OrderError("Your cart is empty");
 
   const subtotal = round2(cart.summary.subtotal);
@@ -76,22 +88,19 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
    * switching delivery off in the admin changed the displayed cart but the customer was still
    * billed QAR 15 on the order that was actually created.
    */
-  const shippingConfig = await loadShippingConfig();
   const shippingFee = calculateShippingForMethod(subtotal, shippingConfig, input.shippingMethod);
   const effectiveShipping = freeDelivery ? 0 : shippingFee;
   const tax = Math.round(subtotal * 0.08);
   const total = Math.max(0, round2(subtotal + effectiveShipping + tax - couponDiscount));
 
-  const pointsRequested = Math.max(0, Math.floor(input.pointsRedeemed ?? 0));
   const grandTotal = Math.max(0, round2(total - pointsRequested));
 
   // How the customer paid.
   const paymentMethod = pointsRequested <= 0 ? "CARD" : pointsRequested >= total ? "POINTS" : "MIXED";
 
   // Redeeming requires an active membership (checked before the transaction).
-  if (pointsRequested > 0) {
-    const membership = await getActiveMembership(userId);
-    if (!membership) throw new OrderError("An active membership is required to redeem points");
+  if (pointsRequested > 0 && !membership) {
+    throw new OrderError("An active membership is required to redeem points");
   }
 
   const order = await prisma.$transaction(async (tx) => {

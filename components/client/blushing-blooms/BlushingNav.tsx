@@ -38,8 +38,9 @@ const TAP =
 const tap = (on: boolean) => `${TAP} ${on ? 'bg-white/15 text-white' : 'text-white/90'}`;
 
 export default function BlushingNav({ onNavigate }: { onNavigate?: () => void } = {}) {
-  const { setCartOpen, setSearchOpen, getCartCount, isCartOpen, isSearchOpen } = useApp();
+  const { setCartOpen, setSearchOpen, getCartCount, isCartOpen, isSearchOpen, wishlist } = useApp();
   const cartCount = getCartCount();
+  const wishlistCount = wishlist.length;
 
   /*
    * Exact match, not `startsWith`: both destinations are single pages, and a prefix test would
@@ -110,8 +111,13 @@ export default function BlushingNav({ onNavigate }: { onNavigate?: () => void } 
           <Link href="/" onClick={leave} className={tap(onHome)} aria-label="Home" aria-current={onHome ? 'page' : undefined}>
             <Home className={ICON} strokeWidth={1.5} />
           </Link>
-          <Link href="/wishlist" onClick={leave} className={tap(onWishlist)} aria-label="Wishlist" aria-current={onWishlist ? 'page' : undefined}>
+          <Link href="/wishlist" onClick={leave} className={`${tap(onWishlist)} relative`} aria-label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} items` : 'Wishlist'} aria-current={onWishlist ? 'page' : undefined}>
             <Heart className={ICON} strokeWidth={1.5} />
+            {wishlistCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#cc965a] px-1 text-[10px] font-medium leading-none text-white">
+                {wishlistCount}
+              </span>
+            )}
           </Link>
           <button
             type="button"

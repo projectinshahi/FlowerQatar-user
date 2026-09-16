@@ -17,6 +17,17 @@ export interface FacetValue {
   count: number;
 }
 
+/**
+ * A subcategory the admin has published under the scope's category.
+ *
+ * Passed in because the products alone cannot describe one that holds nothing yet, and a
+ * shopper looking for it should still find it in the panel rather than wonder where it went.
+ */
+export interface SubcategoryOption {
+  value: string;
+  label: string;
+}
+
 export interface ShopFacets {
   subcategories: FacetValue[];
   /**
@@ -112,12 +123,20 @@ export const applyFilters = (products: Product[], f: ChildFilters) => filterProd
  * The returned subcategory counts always sum to `total`, because anything without a subcategory
  * lands in the Other bucket rather than vanishing from the breakdown.
  */
-export function deriveFacets(scoped: Product[], f: ChildFilters = EMPTY_FILTERS): ShopFacets {
+export function deriveFacets(
+  scoped: Product[],
+  f: ChildFilters = EMPTY_FILTERS,
+  /** Published subcategories for this category; each appears even with a count of 0. */
+  catalogue: SubcategoryOption[] = []
+): ShopFacets {
   const forSubcategories = filterProducts(scoped, f, 'subcategory');
   const forCountries = filterProducts(scoped, f, 'country');
   const forPrice = filterProducts(scoped, f, 'maxPrice');
 
   const subMap = new Map<string, FacetValue>();
+  // Seed the panel with every published subcategory, so one with nothing in it yet is still
+  // listed (reading 0) instead of silently vanishing from the filters.
+  for (const s of catalogue) subMap.set(s.value, { value: s.value, label: s.label, count: 0 });
   let unassigned = 0;
   for (const p of forSubcategories) {
     if (isUnassigned(p)) {
@@ -176,9 +195,11 @@ export function deriveFacets(scoped: Product[], f: ChildFilters = EMPTY_FILTERS)
  */
 export function reconcileFilters(
   requested: ChildFilters,
-  scoped: Product[]
+  scoped: Product[],
+  /** Same list `deriveFacets` is given, so an empty-but-real subcategory survives the sweep. */
+  catalogue: SubcategoryOption[] = []
 ): { filters: ChildFilters; dropped: string[] } {
-  const open = deriveFacets(scoped, EMPTY_FILTERS);
+  const open = deriveFacets(scoped, EMPTY_FILTERS, catalogue);
   const dropped: string[] = [];
   const filters: ChildFilters = { ...requested };
 

@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '@/context/AppContext'
 import ProductGallery from './ProductGallery'
 import AddOnsSelector from './AddOnsSelector'
+import GiftSection from './GiftSection'
 import DeliveryScheduler from './DeliveryScheduler'
 import GreetingCardSelector, { DEFAULT_GREETING_STYLE, type GreetingStyle } from './GreetingCardSelector'
 import PriceSummary from './PriceSummary'
@@ -23,6 +24,7 @@ import type {
 } from '@/types/product-detail'
 import type { GalleryMedia } from '@/lib/media'
 import type { ProductReviews } from '@/lib/services/reviews'
+import type { StoreGiftGroup } from '@/lib/gifts'
 import { filledStars, MAX_RATING, REVIEW_SORTS, sortReviews, type ReviewSort } from '@/lib/reviews'
 
 // Define the colors from the user prompt
@@ -57,12 +59,15 @@ export default function ProductDetailClient({
   product,
   related = [],
   reviews,
+  giftGroups = [],
 }: {
   product: ProductDetail;
   /** Same-category products resolved on the server; empty hides the section entirely. */
   related?: StoreProduct[];
   /** Published reviews + summary, resolved on the server. */
   reviews?: ProductReviews;
+  /** Optional gifts for this product's category, resolved on the server. Empty = no section. */
+  giftGroups?: StoreGiftGroup[];
 }) {
   const { addToCart, setCartOpen } = useApp()
 
@@ -468,11 +473,14 @@ export default function ProductDetailClient({
           {/* M05: Gift Add-ons */}
           <div className="mb-8">
             <span className="font-sans text-[11px] font-semibold uppercase tracking-widest mb-4 block" style={{ color: PALETTE.textPrimary }}>
-              <span style={{ color: PALETTE.textSecondary }}>ADD A GIFT</span>
+              <span style={{ color: PALETTE.textSecondary }}>ADD  GIFTS</span>
             </span>
-            <AddOnsSelector selected={selectedAddOns} onChange={setSelectedAddOns} />
+            <GiftSection groups={giftGroups} selected={selectedAddOns} onChange={setSelectedAddOns} />
+
           </div>
 
+          {/* Category gifts: hidden entirely when this product's category has no active group. */}
+          
           {/* M05: Delivery schedule */}
           <div className="mb-8">
             <DeliveryScheduler

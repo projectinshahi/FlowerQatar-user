@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
 import type { CategoryType } from "@prisma/client";
-import type { ProductFlag } from "@/lib/category-config";
+import { subcategoryHref, type ProductFlag } from "@/lib/category-config";
 import { galleryMedia, imagesOnly } from "@/lib/media";
 
 /**
@@ -112,13 +112,36 @@ export function mapDbProductToStore(db: any): Product {
   };
 }
 
+/**
+ * The columns the storefront view-model needs. Keep in step with mapDbProductToStore: adding a
+ * `db.x` read there without adding `x` here silently yields undefined.
+ */
+const STORE_PRODUCT_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  shortDescription: true,
+  description: true,
+  country: true,
+  categoryType: true,
+  isNewArrival: true,
+  isBestSeller: true,
+  isTrending: true,
+  isFeatured: true,
+  variants: true,
+  subcategory: { select: { id: true, name: true } },
+} as const;
+
 /** All published products mapped for the storefront. cache() dedupes within a request. */
 export const getStoreProducts = cache(async (): Promise<Product[]> => {
   try {
     const rows = await prisma.product.findMany({
       where: { status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
-      include: { subcategory: true },
+      // Exactly the columns mapDbProductToStore reads — nothing else. The unused scalars are
+      // cheap, but `variants` is a JSON blob per row and this query feeds the shop, search and
+      // the Blushing listing, so the wire cost is paid on every one of them.
+      select: STORE_PRODUCT_SELECT,
     });
     return rows.map(mapDbProductToStore);
   } catch (e) {
@@ -135,15 +158,19 @@ export const getStoreProducts = cache(async (): Promise<Product[]> => {
  * back to the default hero.
  */
 export const getSubcategoryBanner = cache(
-  async (id: string): Promise<{ name: string; image: string | null } | null> => {
+  async (id: string): Promise<{ name: string; image: string | null; categoryType: CategoryType } | null> => {
     try {
       const row = await prisma.subcategory.findFirst({
         where: { id, isActive: true, category: { isActive: true } },
-        select: { name: true, bannerImage: true, hoverImage: true },
+        select: { name: true, bannerImage: true, hoverImage: true, category: { select: { name: true } } },
       });
       // Dedicated banner first; hoverImage is the fallback so a subcategory without a banner
       // still gets its own art rather than the generic marketing shot.
-      return row ? { name: row.name, image: row.bannerImage || row.hoverImage } : null;
+      // `categoryType` is the admin-owned parent, which the shop uses to scope a bare
+      // ?subcategory= link to its own category.
+      return row
+        ? { name: row.name, image: row.bannerImage || row.hoverImage, categoryType: row.category.name as CategoryType }
+        : null;
     } catch (e) {
       logDbError(`getSubcategoryBanner(${id})`, e);
       return null;
@@ -320,7 +347,7 @@ export const getExploreGardenItems = cache(async (): Promise<ExploreGardenItem[]
       image: c.hoverImage || PLACEHOLDER,
       hoverColor: toOverlayColor(c.hoverColor || "#61000B"),
       textColor: contrastText(c.hoverColor || "#61000B"),
-      href: `/shop?subcategory=${c.id}`,
+      href: subcategoryHref("FLOWER", c.id),
     }));
   } catch (e) {
     logDbError("getExploreGardenItems", e);
@@ -349,11 +376,25 @@ export interface NewArrivalItem {
 
 /** Products shaped for the home New Arrivals carousel (prefers new arrivals). */
 export async function getNewArrivalItems(limit = 8): Promise<NewArrivalItem[]> {
-  const products = await getStoreProducts();
   // Admin controls the homepage: show ONLY products flagged "New Arrival" in the product
   // editor. If none are flagged, this returns an empty list and the section renders nothing.
-  const arrivals = products.filter((p) => p.isNew);
-  return arrivals.slice(0, limit).map((p) => ({
+  //
+  // Asked of the database rather than by fetching the whole catalogue and filtering in JS —
+  // the home page needs 8 rows, not all of them.
+  let arrivals: Product[] = [];
+  try {
+    const rows = await prisma.product.findMany({
+      where: { status: "PUBLISHED", isNewArrival: true },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: STORE_PRODUCT_SELECT,
+    });
+    arrivals = rows.map(mapDbProductToStore);
+  } catch (e) {
+    logDbError("getNewArrivalItems", e);
+    return [];
+  }
+  return arrivals.map((p) => ({
     id: p.id,
     slug: p.slug,
     badge: p.badge || "New",

@@ -311,10 +311,12 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
   const panelRef = useRef<HTMLDivElement>(null)
   const navItemRefs = useRef<(HTMLDivElement | null)[]>([])
 
-  const { setCartOpen, setAccountOpen, setSearchOpen, user, setUser, addToast, getCartCount } = useApp()
+  const { setCartOpen, setAccountOpen, setSearchOpen, user, setUser, addToast, getCartCount, wishlist } = useApp()
   // Reads the shared cart state, so the header count updates the moment an item is added —
   // no refresh, and no extra request.
   const cartCount = getCartCount()
+  // Unique wishlisted products — independent of the cart.
+  const wishlistCount = wishlist.length
   const pathname = usePathname()
 
   const isHomePage = pathname === '/'
@@ -541,7 +543,22 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
                   anyone middle-clicking it, so they are real buttons now.
                 */}
                 {link === 'WISHLIST' ? (
-                  <NavLink href="/wishlist">{link}</NavLink>
+                  <NavLink href="/wishlist">
+                    {link}
+                    {/* Live wishlist count — same badge as the cart's below. */}
+                    {wishlistCount > 0 && (
+                      <motion.span
+                        key={wishlistCount}
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+                        className="absolute -right-3.5 -top-2 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 font-sans text-[9px] font-semibold leading-[18px] text-white tabular-nums shadow-sm ring-1 ring-white/40"
+                      >
+                        {wishlistCount > 9 ? '9+' : wishlistCount}
+                        <span className="sr-only"> items in wishlist</span>
+                      </motion.span>
+                    )}
+                  </NavLink>
                 ) : (
                   <NavTrigger
                     isOpen={link === 'MY ACCOUNT' ? isAccountDropdownOpen : false}

@@ -133,11 +133,26 @@ assert.ok(
   'widget must stay limited to English and Arabic'
 );
 
-const sync = readFileSync(new URL('../components/TranslateSync.tsx', import.meta.url), 'utf8');
-assert.ok(
-  sync.includes('TranslateElement?.InlineLayout'),
-  'readiness probe must dereference the same path the init callback uses'
+/*
+ * TranslateSync must never rebuild the widget. Wiping #google_translate_element and calling the
+ * init again does not re-read googtrans — it tears the widget down, and doing it on every DOM
+ * change kept Arabic pages dropping back to English. Google translates late content by itself.
+ */
+const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+const syncCode = stripComments(
+  readFileSync(new URL('../components/TranslateSync.tsx', import.meta.url), 'utf8')
 );
+assert.ok(!syncCode.includes('googleTranslateElementInit'), 'TranslateSync must not re-initialise the widget');
+assert.ok(!/innerHTML\s*=/.test(syncCode), 'TranslateSync must not wipe the widget container');
+
+/*
+ * Rotating bars must keep every slide mounted. A slide re-keyed on a timer is a brand-new English
+ * node each tick, replacing the translated one before Google can translate it again.
+ */
+for (const file of ['PromotionBar', 'TopAnnouncementBar']) {
+  const src = stripComments(readFileSync(new URL(`../components/${file}.tsx`, import.meta.url), 'utf8'));
+  assert.ok(!/key=\{(safeIndex|currentIndex)\}/.test(src), `${file} must not re-key its slide on every tick`);
+}
 
 /*
  * The toggle must never skip purely on the cookie. A failed pass leaves googtrans=/en/ar on a
@@ -177,4 +192,4 @@ assert.ok(
   'switching back to English must restore the original attribute text'
 );
 
-console.log('cookie + boot guard + loop guard + attribute filter + widget guard + in-place OK');
+console.log('cookie + boot guard + loop guard + attribute filter + widget guard + no-rebuild + in-place OK');

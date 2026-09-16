@@ -505,3 +505,25 @@ body:has([data-bb-page]) [data-toast-panel] .text-secondary {
   outline-offset: 2px;
 }
 
+
+/*
+ * Floating WhatsApp button — footer clearance.
+ *
+ * The button is fixed to the bottom-right of the viewport, so once a visitor scrolls to the end
+ * of the page it sits on top of the footer's last row: the copyright line on phones, the Contact
+ * Us link on desktop. Gated on [data-whatsapp-fab], which only the home page renders, so every
+ * other page keeps its original footer spacing.
+ */
+body:has([data-whatsapp-fab]) footer {
+  padding-bottom: 6rem;
+}
+
+@media (min-width: 768px) {
+  body:has([data-whatsapp-fab]) footer {
+    padding-bottom: 2rem;
+  }
+  body:has([data-whatsapp-fab]) [data-footer-bar] {
+    padding-right: 6rem;
+  }
+}
+
