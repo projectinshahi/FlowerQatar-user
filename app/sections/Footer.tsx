@@ -92,9 +92,16 @@ export default function Footer() {
         </div>
 
         {/* Link Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-10 max-w-4xl mx-auto mt-8 md:mt-16 text-left md:text-center">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-8 md:gap-10 mt-8 md:mt-16 text-left md:text-center">
           {linkColumns.map((col, idx) => (
-            <div key={idx} className="flex flex-col items-start md:items-center">
+            <div
+              key={idx}
+              className={`flex flex-col items-start md:items-center${
+                idx === linkColumns.length - 1 && linkColumns.length % 2 === 1
+                  ? ' col-span-2 md:col-span-1'
+                  : ''
+              }`}
+            >
               <div className="text-left md:text-center inline-block">
                 <h4 className="font-sans text-[10px] md:text-[11px] uppercase tracking-[0.15em] font-semibold mb-3 md:mb-4 text-secondary">
                   {col.title}
@@ -137,7 +144,10 @@ export default function Footer() {
 
         {/* Bottom Bar — the Terms and Accessibility links were removed: neither page exists,
             and a legal link that goes nowhere is worse than no link at all. */}
-        <div className="border-t border-secondary/10 mt-8 md:mt-14 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 text-[9px] md:text-[10px] text-secondary/80 font-sans uppercase tracking-widest">
+        <div
+          data-footer-bar=""
+          className="border-t border-secondary/10 mt-8 md:mt-14 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 text-[9px] md:text-[10px] text-secondary/80 font-sans uppercase tracking-widest"
+        >
           <p>© 2026 Lebami | All rights reserved</p>
           <Link href="/contact" className="hover:text-secondary transition-colors">
             Contact Us

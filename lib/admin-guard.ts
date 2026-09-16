@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -25,7 +26,15 @@ export interface AuthUser {
  * Reads the `session` cookie, verifies the JWT and loads the user.
  * Returns null when there is no valid, active session.
  */
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export const getCurrentUser = cache(loadCurrentUser);
+
+/**
+ * The uncached read. Every call site goes through the cache() wrapper above, which dedupes
+ * within a single request — a layout, its page, and a server action asking "who is signed in?"
+ * now cost one query between them rather than one each. On a remote database that was seconds
+ * per authenticated page.
+ */
+async function loadCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;

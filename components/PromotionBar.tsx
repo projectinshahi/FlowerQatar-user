@@ -35,7 +35,6 @@ export default function PromotionBar({
   if (slides.length === 0) return null;
 
   const safeIndex = index % slides.length;
-  const title = slides[safeIndex];
   const next = () => setIndex((p) => (p + 1) % slides.length);
   const prev = () => setIndex((p) => (p - 1 + slides.length) % slides.length);
   const hasControls = slides.length > 1;
@@ -59,23 +58,35 @@ export default function PromotionBar({
         <span className="w-4 shrink-0 sm:w-6" aria-hidden />
       )}
 
-      <div className="flex flex-1 items-center justify-center">
-        <motion.div
-          key={safeIndex}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-center font-sans text-[10px] uppercase leading-tight tracking-[0.1em] sm:tracking-[0.15em] md:text-[11px]"
-        >
-          <span className="font-medium">{title}</span>
-          <span className="hidden h-1 w-1 rounded-full bg-current opacity-50 sm:inline" aria-hidden />
-          <Link
-            href="/shop"
-            className="hidden underline underline-offset-4 transition-opacity duration-300 hover:opacity-70 sm:inline"
-          >
-            Shop Now
-          </Link>
-        </motion.div>
+      {/*
+        Every slide stays mounted and only the active one is shown. Re-keying a fresh node each
+        tick replaced Google Translate's Arabic with new English before it could translate it.
+        The active slide keeps the flowing layout; inactive ones overlay it, invisible and inert.
+      */}
+      <div className="relative flex flex-1 items-center justify-center">
+        {slides.map((slide, i) => {
+          const active = i === safeIndex;
+          return (
+            <motion.div
+              key={i}
+              aria-hidden={!active}
+              inert={!active}
+              initial={{ opacity: 0, y: 4 }}
+              animate={active ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+              transition={{ duration: active ? 0.35 : 0 }}
+              className={`${active ? '' : 'pointer-events-none absolute inset-0 '}flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-center font-sans text-[10px] uppercase leading-tight tracking-[0.1em] sm:tracking-[0.15em] md:text-[11px]`}
+            >
+              <span className="font-medium">{slide}</span>
+              <span className="hidden h-1 w-1 rounded-full bg-current opacity-50 sm:inline" aria-hidden />
+              <Link
+                href="/shop"
+                className="hidden underline underline-offset-4 transition-opacity duration-300 hover:opacity-70 sm:inline"
+              >
+                Shop Now
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
 
       {hasControls ? (

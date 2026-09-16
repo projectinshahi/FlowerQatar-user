@@ -262,3 +262,58 @@ test('country facet', async (t) => {
     assert.equal(parseFilters({}).country, null);
   });
 });
+
+/*
+ * Published subcategories with nothing in them.
+ *
+ * Derivation from products alone cannot see a subcategory the admin created but has not filled,
+ * so it was missing from the panel — the shopper had no way to tell it exists. Passing the
+ * published list in keeps it listed, reading 0, and selectable.
+ */
+test('published subcategories that hold no products', async (t) => {
+  const PUBLISHED = [
+    { value: 'sub-a', label: 'Lilies' },
+    { value: 'sub-b', label: 'Tulip' },
+    { value: 'sub-empty', label: 'Orchids' },
+  ];
+
+  await t.test('an empty one is still offered, with a count of 0', () => {
+    const f = deriveFacets(CATALOGUE, EMPTY_FILTERS, PUBLISHED);
+    // Alphabetical by label: Lilies, Orchids, Tulip.
+    assert.deepEqual(f.subcategories.map((s) => s.value), ['sub-a', 'sub-empty', 'sub-b']);
+    assert.equal(f.subcategories.find((s) => s.value === 'sub-empty')!.count, 0);
+  });
+
+  await t.test('counts and labels still come from the products', () => {
+    const f = deriveFacets(CATALOGUE, EMPTY_FILTERS, PUBLISHED);
+    assert.equal(f.subcategories.find((s) => s.value === 'sub-a')!.count, 2);
+    assert.equal(f.subcategories.find((s) => s.value === 'sub-b')!.label, 'Tulip');
+    assert.equal(f.total, 3);
+  });
+
+  await t.test('selecting the empty one survives reconciliation and returns nothing', () => {
+    const { filters: out, dropped } = reconcileFilters(
+      filters({ subcategory: 'sub-empty' }),
+      CATALOGUE,
+      PUBLISHED
+    );
+    assert.equal(out.subcategory, 'sub-empty', 'a real but empty subcategory must not be dropped');
+    assert.deepEqual(dropped, []);
+    assert.deepEqual(applyFilters(CATALOGUE, out), []);
+  });
+
+  await t.test('a subcategory of another category is still dropped', () => {
+    const { filters: out, dropped } = reconcileFilters(
+      filters({ subcategory: 'sub-from-elsewhere' }),
+      CATALOGUE,
+      PUBLISHED
+    );
+    assert.equal(out.subcategory, null);
+    assert.deepEqual(dropped, ['subcategory']);
+  });
+
+  await t.test('without the published list, behaviour is unchanged', () => {
+    const f = deriveFacets(CATALOGUE);
+    assert.deepEqual(f.subcategories.map((s) => s.value), ['sub-a', 'sub-b']);
+  });
+});

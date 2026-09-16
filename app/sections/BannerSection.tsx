@@ -1,4 +1,5 @@
 import PromotionBar from "../../components/PromotionBar"
+import { videoPoster } from "@/lib/media"
 import { PROMOTION_BAR_DEFAULTS, type PromotionBarTheme } from "@/lib/promotions"
 
 /** What each text element falls back to when the admin has not chosen a colour. */
@@ -36,14 +37,23 @@ export default function BannerSection({
           aria-label={banner.title || "Featured banner"}
           className="relative w-full h-[75vh] md:h-[95vh] lg:h-screen min-h-[600px] overflow-hidden bg-secondary"
         >
-          {/* Background video (fixed height => no layout shift; muted+playsInline => reliable autoplay) */}
+          {/*
+            Background video (fixed height => no layout shift; muted+playsInline => reliable autoplay).
+
+            `preload="auto"` told the browser to fetch the ENTIRE file before anything else could
+            use the connection — measured at 5.8MB for the current banner, on the critical path of
+            the home page's largest element. "metadata" fetches only enough to start playing, and
+            the Cloudinary poster frame (a still, tens of KB) paints immediately instead of a black
+            box, so the hero has something on screen while the video streams in behind it.
+          */}
           <video
             src={banner.videoUrl}
+            poster={videoPoster(banner.videoUrl)}
             autoPlay
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
             className="absolute inset-0 w-full h-full object-cover"
             aria-hidden="true"
           />

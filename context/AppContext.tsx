@@ -2,10 +2,11 @@
 
 import { fetchJson } from '@/lib/fetch-json';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { Product } from '../types';
 import { ROSE_COLORS, BOX_COLORS } from '../data/products';
 import { track } from '../lib/analytics';
+import { syncToggle } from '../lib/wishlist';
 import type { GreetingFont } from '../lib/validations/cart';
 
 export interface CartItem {
@@ -50,7 +51,9 @@ export interface CustomArrangementState {
 interface AppContextType {
   cart: CartItem[];
   cartLoading: boolean;
-  wishlist: string[];
+  wishlist: string[]; // wishlisted product slugs — use for heart state and the count
+  wishlistItems: Product[]; // full products from the server — use for the wishlist page
+  wishlistLoading: boolean;
   isCartOpen: boolean;
   isWishlistOpen: boolean;
   isAccountOpen: boolean;
@@ -72,6 +75,7 @@ interface AppContextType {
   getCartCount: () => number;
 
   toggleWishlist: (productSlug: string) => void;
+  refreshWishlist: () => Promise<void>;
   setWishlistOpen: (open: boolean) => void;
 
   setAccountOpen: (open: boolean) => void;
@@ -136,6 +140,8 @@ function mapServerCart(payload: any): CartItem[] {
     price: i.unitPrice,
     variantId: i.variantId || undefined,
     colorId: i.variant?.id || undefined,
+    // Gifts/add-ons priced by the server, so the cart UI can show what is on the line.
+    addOns: Array.isArray(i.addOns) ? i.addOns : undefined,
   }));
 }
 
@@ -143,6 +149,8 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState(true);
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
   const [isCartOpen, setCartOpen] = useState(false);
   const [isWishlistOpen, setWishlistOpen] = useState(false);
   const [isAccountOpen, setAccountOpen] = useState(false);
@@ -301,32 +309,104 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const getCartTotal = () => cart.reduce((total, item) => total + item.price * item.quantity, 0);
   const getCartCount = () => cart.reduce((count, item) => count + item.quantity, 0);
 
-  /* ─────────────── Wishlist (localStorage) ─────────────── */
-  useEffect(() => {
-    const stored = localStorage.getItem('v_wishlist');
-    if (stored) {
-      try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setWishlist(JSON.parse(stored));
-      } catch (e) {
-        console.error(e);
-      }
-    }
+  /* ─────────────── Wishlist: server-backed ─────────────── */
+  // `wishlist` (slugs) drives every heart and the badge; `wishlistItems` (products) drives the
+  // wishlist page. Both come from /api/wishlist; `wishlist` additionally carries optimistic
+  // clicks that are still in flight, tracked in `pendingWishlist` (slug → desired state).
+  const pendingWishlist = useRef(new Map<string, boolean>());
+
+  const applyServerWishlist = useCallback((items: Product[]) => {
+    /*
+     * Keep the previous arrays when the server confirms what the optimistic click already
+     * rendered — the common case. Setting equal-but-new arrays re-renders every consumer of this
+     * context (each product card, both drawers, the navbar) for no visible change, which is pure
+     * main-thread work on the click the shopper is waiting on.
+     *
+     * Compared by id/slug only. That cannot serve a stale product: the wishlist page — the one
+     * surface reading `wishlistItems` fields — refetches on every open.
+     */
+    setWishlistItems((prev) =>
+      prev.length === items.length && prev.every((p, i) => p.id === items[i].id) ? prev : items
+    );
+    setWishlist((prev) => {
+      const slugs = new Set(items.map((p) => p.slug));
+      pendingWishlist.current.forEach((want, slug) => (want ? slugs.add(slug) : slugs.delete(slug)));
+      const next = [...slugs];
+      return prev.length === next.length && prev.every((s, i) => s === next[i]) ? prev : next;
+    });
   }, []);
 
+  const refreshWishlist = useCallback(async () => {
+    try {
+      const data = await fetchJson<{ success?: boolean; data?: { items?: Product[] } }>('/api/wishlist');
+      if (data?.success) applyServerWishlist(data.data?.items ?? []);
+    } catch (err) {
+      console.error('Failed to load wishlist', err);
+    } finally {
+      setWishlistLoading(false);
+    }
+  }, [applyServerWishlist]);
+
+  // Hydrate on mount and whenever the signed-in user changes (login/logout), like the cart.
   useEffect(() => {
-    localStorage.setItem('v_wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
+    // State is only set after the fetch resolves, not synchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshWishlist();
+  }, [refreshWishlist, user?.id]);
+
+  /** Slugs with a request in flight; a click on one only updates `pendingWishlist`. */
+  const inflightWishlist = useRef(new Set<string>());
 
   const toggleWishlist = (slug: string) => {
-    setWishlist((prev) => {
-      if (prev.includes(slug)) {
-        addToast('Removed from wishlist.', 'info');
-        return prev.filter((s) => s !== slug);
+    if (!user) {
+      addToast('Please sign in to save items to your wishlist.', 'info');
+      setAccountOpen(true);
+      return;
+    }
+
+    const add = !wishlist.includes(slug);
+    // Record the intent and move the heart NOW — every click counts, including one that lands
+    // while the previous request is still out. Dropping those made the heart look stuck.
+    pendingWishlist.current.set(slug, add);
+    setWishlist((prev) =>
+      add ? (prev.includes(slug) ? prev : [...prev, slug]) : prev.filter((s) => s !== slug)
+    );
+
+    // A loop is already running for this product; it will pick the new intent up.
+    if (inflightWishlist.current.has(slug)) return;
+    inflightWishlist.current.add(slug);
+
+    (async () => {
+      let unauthorized = false;
+      const { ok, result } = await syncToggle(slug, pendingWishlist.current, async (s, wishlisted) => {
+        try {
+          const res = await fetch('/api/wishlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: s, wishlisted }),
+          });
+          const data = await res.json().catch(() => null);
+          if (res.status === 401) unauthorized = true;
+          return res.ok && data?.success ? { items: (data.data?.items ?? []) as Product[], wishlisted } : null;
+        } catch {
+          return null;
+        }
+      });
+      inflightWishlist.current.delete(slug);
+
+      if (ok && result) {
+        applyServerWishlist(result.items);
+        addToast(result.wishlisted ? 'Saved to wishlist.' : 'Removed from wishlist.', result.wishlisted ? 'success' : 'info');
+        return;
       }
-      addToast('Saved to wishlist.', 'success');
-      return [...prev, slug];
-    });
+      if (!ok) {
+        // Failed: drop the optimistic overlay and show what the server actually holds.
+        pendingWishlist.current.delete(slug);
+        await refreshWishlist();
+        addToast('Could not update your wishlist.', 'error');
+        if (unauthorized) setAccountOpen(true);
+      }
+    })();
   };
 
   /* ─────────────── Auth session ─────────────── */
@@ -353,6 +433,8 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         cart,
         cartLoading,
         wishlist,
+        wishlistItems,
+        wishlistLoading,
         isCartOpen,
         isWishlistOpen,
         isAccountOpen,
@@ -370,6 +452,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         getCartTotal,
         getCartCount,
         toggleWishlist,
+        refreshWishlist,
         setWishlistOpen,
         setAccountOpen,
         setSearchOpen,

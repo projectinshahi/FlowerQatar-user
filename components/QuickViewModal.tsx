@@ -206,13 +206,15 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => toggleWishlist(product.slug)}
                   className={`p-3 border border-divider hover:border-primary transition-colors rounded-none ${
                     isWishlisted ? 'text-secondary border-secondary' : 'text-muted'
                   }`}
-                  aria-label="Wishlist"
+                  aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  aria-pressed={isWishlisted}
                 >
-                  <Heart size={18} className={isWishlisted ? 'fill-gold' : ''} />
+                  <Heart size={18} className={isWishlisted ? 'fill-secondary' : ''} />
                 </button>
               </div>
 

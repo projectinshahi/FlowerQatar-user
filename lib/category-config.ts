@@ -91,9 +91,12 @@ export function shopCategoryHref(categoryType: CategoryType): string {
 
 /**
  * Where a subcategory links: everything funnels to the single /shop listing, filtered.
+ *
+ * The parent category is always in the URL. Without it the listing scoped to the whole
+ * catalogue, so the filter panel offered every category's subcategories and origins.
  */
-export function subcategoryHref(_categoryType: CategoryType, id: string): string {
-  return `/shop?subcategory=${id}`;
+export function subcategoryHref(categoryType: CategoryType, id: string): string {
+  return `/shop?category=${categorySlug(categoryType)}&subcategory=${id}`;
 }
 
 /** A subcategory shaped for the storefront (with its resolved SEO href). */

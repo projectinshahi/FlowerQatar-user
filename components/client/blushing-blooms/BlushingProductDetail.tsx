@@ -27,6 +27,8 @@ import {
   type AddOn,
 } from '@/hooks/useProductOptions';
 import type { Product } from '@/types';
+import type { StoreGiftGroup } from '@/lib/gifts';
+import GiftSection from '@/components/client/product/GiftSection';
 import BlushingNav from './BlushingNav';
 import { GWENDOLYN_CSS, WISHING_FONTS, blushingFontVars, wishingFontCss, type WishingFontKey } from './fonts';
 import {
@@ -146,7 +148,14 @@ const GIFT_ART: [RegExp, string][] = [
 const giftArt = (name: string, fallback: string | null) =>
   GIFT_ART.find(([re]) => re.test(name.toLowerCase()))?.[1] ?? fallback;
 
-export default function BlushingProductDetail({ product }: { product: Product }) {
+export default function BlushingProductDetail({
+  product,
+  giftGroups = [],
+}: {
+  product: Product;
+  /** Gifts the admin configured for this product's category; empty renders nothing. */
+  giftGroups?: StoreGiftGroup[];
+}) {
   const { addToCart } = useApp();
 
   const [colorName, setColorName] = useState<string | null>(null);
@@ -431,7 +440,17 @@ export default function BlushingProductDetail({ product }: { product: Product })
                 {/* Gifts */}
                 <section className="flex flex-col gap-5 lg:gap-[26px]">
                   <SectionLabel>ADD A GIFT</SectionLabel>
-                  {gifts.loading ? (
+                  {/*
+                    When the admin has assigned a gift group to this product's category, that
+                    group IS this section — it is the only thing shown, so what the customer
+                    picks from is exactly what was configured in the admin panel.
+
+                    The catalogue tiles below remain as the fallback for a category with no
+                    gift group yet, so products that were never given one keep working.
+                  */}
+                  {giftGroups.length ? (
+                    <GiftSection groups={giftGroups} selected={addOns} onChange={setAddOns} theme="blushing" />
+                  ) : gifts.loading ? (
                     <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                       {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[88px] rounded-[24px] sm:h-[106px]" />)}
                     </div>

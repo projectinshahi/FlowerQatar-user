@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Heart, Star } from 'lucide-react'
 import LuxuryImage from '@/components/LuxuryImage'
 import Link from 'next/link'
 import { AnimatedSection } from '../../components/AnimatedSection'
+import { useApp } from '@/context/AppContext'
 
 interface Swatch {
   name: string;
@@ -31,6 +32,8 @@ interface Product {
 function NewArrivalCard({ product }: { product: Product }) {
   const swatches = product.swatches ?? []
   const [active, setActive] = useState(0)
+  const { wishlist, toggleWishlist } = useApp()
+  const isWishlisted = wishlist.includes(product.slug)
 
   const selected = swatches[active]
   const mainImage = selected?.image || product.image
@@ -60,8 +63,14 @@ function NewArrivalCard({ product }: { product: Product }) {
             {product.badge}
           </div>
         )}
-        <button className="absolute top-4 right-4 text-primary hover:text-accent transition-colors z-20 cursor-pointer" aria-label="Add to wishlist" suppressHydrationWarning>
-          <Heart size={20} />
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(product.slug); }}
+          className="absolute top-4 right-4 text-primary hover:text-accent transition-colors z-20 cursor-pointer"
+          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-pressed={isWishlisted}
+          suppressHydrationWarning
+        >
+          <Heart size={20} className={isWishlisted ? 'fill-secondary text-secondary' : ''} />
         </button>
       </div>
 

@@ -1,11 +1,13 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import ShopClient from '../../../components/client/shop/ShopClient';
 import BlushingBloomsClient from '../../../components/client/blushing-blooms/BlushingBloomsClient';
 import BlushingListingSkeleton from '../../../components/client/blushing-blooms/BlushingListingSkeleton';
 import { getStoreProducts, getSubcategoryBanner } from '../../../lib/store-products';
+import { getSubcategories } from '../../../lib/subcategories';
 import { getBlushingBloomsContent } from '../../../lib/blushing-blooms';
 import { getRatingSummaries } from '../../../lib/services/reviews';
-import { categoryFromSlug, CATEGORY_META, PRODUCT_TABS } from '../../../lib/category-config';
+import { categoryFromSlug, categorySlug, CATEGORY_META, PRODUCT_TABS } from '../../../lib/category-config';
 import { PRODUCTS } from '../../../data/products';
 import {
   parseFilters,
@@ -13,6 +15,7 @@ import {
   deriveFacets,
   applyFilters,
   sortProducts,
+  UNASSIGNED_SUBCATEGORY,
 } from '../../../lib/shop-facets';
 import { BLUSHING_BLOOMS_FALLBACK } from '../../../data/blushing-blooms';
 import type { Product } from '../../../types';
@@ -59,6 +62,25 @@ export default async function ShopPage({
   const activeType = str('category') ? categoryFromSlug(str('category')!) : null;
 
   /*
+   * A bare ?subcategory= link (old bookmark, /collections, any external link) carries no
+   * category, which scoped the listing to the whole catalogue: the panel then offered every
+   * category's subcategories and origins, and "All Subcategories" dropped the shopper into an
+   * unscoped listing. The parent comes from the admin's Subcategory → Category relation, and
+   * the redirect puts it in the URL so refresh, Back/Forward and the panel's own links all
+   * stay inside that category.
+   */
+  const requestedSub = parseFilters(sp).subcategory;
+  if (!activeType && requestedSub && requestedSub !== UNASSIGNED_SUBCATEGORY) {
+    const parent = await getSubcategoryBanner(requestedSub);
+    if (parent) {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(sp)) if (typeof v === 'string') qs.set(k, v);
+      qs.set('category', categorySlug(parent.categoryType));
+      redirect(`/shop?${qs.toString()}`);
+    }
+  }
+
+  /*
    * Blushing Blooms is the one category with its own page design, so it returns its own tree
    * instead of the shared shop listing. Handled here rather than on a dedicated route because
    * ?category=blushing-blooms is the URL the navbar and every existing link already point at.
@@ -75,7 +97,17 @@ export default async function ShopPage({
     );
   }
 
-  const dbProducts = await getStoreProducts();
+  /*
+   * Two independent reads, issued together rather than one after the other: the subcategory
+   * catalogue does not depend on the products. Awaited in sequence these were two separate
+   * round trips to a remote database on the most trafficked listing page.
+   */
+  const [dbProducts, subcategoryRows] = await Promise.all([
+    getStoreProducts(),
+    activeType
+      ? getSubcategories(activeType)
+      : ([] as Awaited<ReturnType<typeof getSubcategories>>),
+  ]);
   // Fall back to the curated mock catalog only if the DB has no published products yet.
   const all = dbProducts.length > 0 ? dbProducts : PRODUCTS;
 
@@ -86,11 +118,24 @@ export default async function ShopPage({
   if (activeType) scoped = scoped.filter((p) => p.categoryType === activeType);
   if (tabField) scoped = scoped.filter((p) => !!p[tabField]);
 
+  /*
+   * Every published subcategory of this category, so the panel lists them all — including one
+   * that holds nothing yet, which the products alone can't describe. Choosing it is a valid
+   * (empty) listing rather than a filter the panel silently drops.
+   *
+   * A catch-all entry ("All Flowers") links to the whole category and owns no products, so it
+   * would be a duplicate of the "All" row; its href carries no ?subcategory=, which is what
+   * distinguishes it.
+   */
+  const catalogue = subcategoryRows
+    .filter((s) => s.href.includes('subcategory='))
+    .map((s) => ({ value: s.id, label: s.name }));
+
   /* 2. RECONCILE — a stale link or a category switch cannot leave a filter applied. */
-  const { filters, dropped } = reconcileFilters(parseFilters(sp), scoped);
+  const { filters, dropped } = reconcileFilters(parseFilters(sp), scoped, catalogue);
 
   /* 3. DERIVE — options and counts for the panel. */
-  const facets = deriveFacets(scoped, filters);
+  const facets = deriveFacets(scoped, filters, catalogue);
 
   /* 4. APPLY — the grid. */
   const products = sortProducts(applyFilters(scoped, filters), filters.sort);

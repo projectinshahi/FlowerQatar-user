@@ -44,6 +44,7 @@ model User {
   subNotifications    SubscriptionNotification[]
   memberships         Membership[]
   pointsWallet        PointsWallet?
+  wishlistItems       WishlistItem[]
   // Shopping cart stored as a JSON array on the user (login-only cart).
   // Shape: { id, productId, variant, quantity, unitPrice, meta }[]
   cart                Json                       @default("[]")
@@ -173,6 +174,7 @@ model Product {
   subcategory       Subcategory?              @relation(fields: [subcategoryId], references: [id])
   stockLevels       StockLevel[]
   reviews           ProductReview[]
+  wishlistItems     WishlistItem[]
 
   @@index([slug])
   @@index([status])
@@ -794,6 +796,19 @@ model ProductReview {
   @@index([isPublished])
 }
 
+/// A product saved to a user's wishlist. The composite key makes duplicates impossible.
+model WishlistItem {
+  userId    String   @db.Uuid
+  productId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@index([productId])
+}
+
 /// On-hand inventory for ONE sellable unit: a colour variant inside a product.
 ///
 /// This is NOT a re-normalisation of variants — those stay in `Product.variants` JSON, and
@@ -869,6 +884,7 @@ model Category {
   createdAt     DateTime      @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
   subcategories Subcategory[]
+  giftGroups    GiftGroupCategory[]
 }
 
 /// A child of one Category. Keep this model deliberately narrow so every consumer uses
@@ -949,4 +965,60 @@ model BlushingBloomsPage {
   singleton            Boolean  @unique @default(true)
   createdAt            DateTime @default(now()) @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @db.Timestamptz(6)
+}
+
+/// An admin-managed set of optional gifts offered for one or more subcategories.
+/// Which gifts a product offers is resolved through GiftGroupCategory on the product's
+/// subcategoryId — no category name or gift is ever hardcoded in application code.
+model GiftGroup {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(120)
+  description  String?
+  isActive     Boolean  @default(true)
+  /// Lowest value wins when a subcategory is covered by more than one group.
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+
+  categories GiftGroupCategory[]
+  gifts      Gift[]
+
+  @@index([isActive, displayOrder])
+}
+
+/// Join table: one GiftGroup <-> many Categories (a Category may be covered by many groups).
+/// Assigning a category offers the group's gifts on every product under it, across all of
+/// that category's subcategories. Cascades delete the mapping rows only.
+model GiftGroupCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  giftGroupId String   @db.Uuid
+  categoryId  String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  giftGroup GiftGroup @relation(fields: [giftGroupId], references: [id], onDelete: Cascade)
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  // DB-level guarantee against assigning the same category to a group twice.
+  @@unique([giftGroupId, categoryId])
+  @@index([giftGroupId])
+  @@index([categoryId])
+}
+
+/// One optional gift inside a GiftGroup. The price here is authoritative: the storefront
+/// never decides what a gift costs — it is re-read from this row when the cart is priced.
+model Gift {
+  id           String   @id @default(uuid()) @db.Uuid
+  giftGroupId  String   @db.Uuid
+  name         String   @db.VarChar(120)
+  price        Decimal  @db.Decimal(10, 2)
+  /// Cloudinary secure URL, same as every other admin-uploaded image in this schema.
+  image        String
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+
+  giftGroup GiftGroup @relation(fields: [giftGroupId], references: [id], onDelete: Cascade)
+
+  @@index([giftGroupId, isActive, displayOrder])
 }

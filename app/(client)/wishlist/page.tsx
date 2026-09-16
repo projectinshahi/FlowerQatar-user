@@ -1,17 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { useApp } from '../../../context/AppContext';
-import { PRODUCTS } from '../../../data/products';
 import ProductCard from '../../../components/ProductCard';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 
 export default function WishlistPage() {
-  const { wishlist } = useApp();
+  const { wishlist, wishlistItems, wishlistLoading, refreshWishlist } = useApp();
 
-  // Find products that match wishlist slugs
-  const wishlistProducts = PRODUCTS.filter(product => wishlist.includes(product.slug));
+  // Always show the latest server wishlist when the page is opened.
+  useEffect(() => {
+    refreshWishlist();
+  }, [refreshWishlist]);
+
+  // Server products, minus any whose heart was just un-clicked (so removals vanish instantly).
+  const wishlistProducts = wishlistItems.filter(product => wishlist.includes(product.slug));
 
   return (
     <main className="min-h-screen bg-[#F8F8F8] pt-[120px] pb-24">
@@ -31,7 +36,7 @@ export default function WishlistPage() {
         </div>
 
         {/* Wishlist Content */}
-        {wishlistProducts.length === 0 ? (
+        {wishlistLoading && wishlistProducts.length === 0 ? null : wishlistProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center bg-white py-24 shadow-sm">
             <p className="font-serif text-xl md:text-2xl text-primary mb-8 text-center">
               Your wishlist is currently empty.
@@ -45,12 +50,23 @@ export default function WishlistPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {wishlistProducts.map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-              />
-            ))}
+            {/* Un-hearting removes a card mid-grid, so it fades out and the rest slide up
+                instead of the whole grid jumping. */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {wishlistProducts.map(product => (
+                <motion.div
+                  key={product.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.94 }}
+                  transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="h-full"
+                >
+                  <ProductCard product={product} className="h-full" moveToCart />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
 

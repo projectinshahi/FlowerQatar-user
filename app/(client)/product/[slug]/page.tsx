@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/actions/product.actions";
 import { getRelatedProducts, mapDbProductToStore } from "@/lib/store-products";
 import { getProductReviews } from "@/lib/services/reviews";
+import { getGiftGroupsForCategory } from "@/lib/gifts";
 import { CATEGORY_META, shopCategoryHref } from "@/lib/category-config";
 import type { CategoryType } from "@prisma/client";
 import { absoluteUrl, stripHtml, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -97,13 +98,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const type = data.categoryType as CategoryType | null;
 
-  // Same-category recommendations, resolved on the server so the client makes no extra call.
-  const related = await getRelatedProducts(data.id, data.subcategoryId ?? null, type, 6);
+  /*
+   * These three reads are independent, so they run together: awaited one after another they
+   * added up (~6s of round trips against a remote database), and the gift lookup — the last
+   * of them — delayed the whole product page. In parallel the page waits for the slowest.
+   *
+   * Same-category recommendations, published reviews, and the optional gifts configured for
+   * this product's parent category (empty = the gift section renders nothing).
+   */
+  const [related, reviews, giftGroups] = await Promise.all([
+    getRelatedProducts(data.id, data.subcategoryId ?? null, type, 6),
+    getProductReviews(data.id),
+    getGiftGroupsForCategory(data.subcategory?.categoryId),
+  ]);
 
-  // Published reviews + their summary. Relative dates are computed HERE, on the server, and
-  // passed down as finished strings — formatting them in the client component would produce
-  // different text on each side and break hydration.
-  const reviews = await getProductReviews(data.id);
+  // Note: reviews carry relative dates computed HERE, on the server, and passed down as
+  // finished strings — formatting them in the client component would produce different text
+  // on each side and break hydration.
 
   const typeMeta = type ? (CATEGORY_META as Record<string, { label: string } | undefined>)[type] : undefined;
   const categoryLabel = typeMeta?.label ?? null;
@@ -183,6 +194,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             rating: data.rating ?? reviews.summary.average ?? store.rating,
             reviewCount: reviews.summary.count,
           }}
+          giftGroups={giftGroups}
         />
       </>
     );
@@ -191,7 +203,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <JsonLd data={[productLd, breadcrumbLd]} />
-      <ProductDetailClient product={product} related={related} reviews={reviews} />
+      <ProductDetailClient product={product} related={related} reviews={reviews} giftGroups={giftGroups} />
     </>
   );
 }

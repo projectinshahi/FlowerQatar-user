@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
-import { getStoreProducts } from "@/lib/store-products";
 import { prisma } from "@/lib/prisma";
 import { logDbError } from "@/lib/prisma-error";
 
@@ -37,12 +36,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let products: MetadataRoute.Sitemap = [];
   try {
-    const items = await getStoreProducts();
+    // Only the slug and its real modification date — this used to load the entire catalogue,
+    // variants JSON and all, to build a list of URLs.
+    const items = await prisma.product.findMany({
+      where: { status: "PUBLISHED" },
+      select: { slug: true, updatedAt: true },
+    });
     products = items
       .filter((p) => p.slug)
       .map((p) => ({
         url: `${SITE_URL}/product/${p.slug}`,
-        lastModified: now,
+        // A real timestamp: `now` on every regeneration teaches crawlers to ignore the field.
+        lastModified: p.updatedAt ?? now,
         changeFrequency: "weekly" as const,
         priority: 0.8,
       }));
