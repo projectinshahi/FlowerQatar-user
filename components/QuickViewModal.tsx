@@ -85,7 +85,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
             </div>
 
             {/* Right: Info and Customization */}
-            <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto md:max-h-[500px] no-scrollbar">
+            <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-center overflow-y-auto md:max-h-[500px] no-scrollbar">
               
               {/* Close Button */}
               <Dialog.Close className="absolute top-4 right-4 text-muted hover:text-primary transition-colors focus:outline-none rounded-none">
@@ -110,55 +110,17 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                   {product.description}
                 </p>
 
-                {/* Swatches: Rose Colors */}
-                {product.colors && product.colors.length > 0 && (
-                  <div className="mb-4">
-                    <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-primary block mb-2">
-                      1. Choose Rose Color: <span className="font-normal text-secondary">{selectedRoseColor}</span>
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {product.colors.map((color) => (
-                        <button
-                          key={color.name}
-                          onClick={() => setSelectedRoseColor(color.name)}
-                          className={`w-6 h-6 rounded-full border transition-all duration-300 relative ${
-                            selectedRoseColor === color.name ? 'border-primary scale-110 ring-1 ring-secondary' : 'border-divider hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: color.hex }}
-                          title={color.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Swatches: Box Colors */}
-                {product.boxColors && product.boxColors.length > 0 && (
-                  <div className="mb-6">
-                    <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-primary block mb-2">
-                      2. Choose Box Color: <span className="font-normal text-secondary">{selectedBoxColor}</span>
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {product.boxColors.map((box) => (
-                        <button
-                          key={box.name}
-                          onClick={() => setSelectedBoxColor(box.name)}
-                          className={`w-6 h-6 rounded-full border transition-all duration-300 relative ${
-                            selectedBoxColor === box.name ? 'border-primary scale-110 ring-1 ring-secondary' : 'border-divider hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: box.hex }}
-                          title={box.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/*
+                  No colour pickers here. The product's default colour is still what gets added
+                  (selectedRoseColor/selectedBoxColor are initialised from it above), so the cart
+                  line is unchanged — the choice just isn't offered in the quick view.
+                */}
 
                 {/* Sizes Selector (if available) */}
                 {product.sizes && product.sizes.length > 0 && (
                   <div className="mb-6">
                     <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-primary block mb-2">
-                      3. Select Box Arrangement Size
+                      Select Box Arrangement Size
                     </span>
                     <div className="grid grid-cols-2 gap-2">
                       {product.sizes.map((sz) => (

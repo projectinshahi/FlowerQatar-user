@@ -115,7 +115,16 @@ export default async function ShopPage({
   const tabField = tabKey ? TAB_FIELD[tabKey] : undefined;
 
   let scoped = all;
-  if (activeType) scoped = scoped.filter((p) => p.categoryType === activeType);
+  if (activeType) {
+    scoped = scoped.filter((p) => p.categoryType === activeType);
+  } else {
+    /*
+     * The all-products listing leaves out Blushing Blooms. That collection has its own page and
+     * its own design (?category=blushing-blooms), and is shown only there. Filtering here —
+     * before the facets are derived — keeps the side-panel counts in step with the grid.
+     */
+    scoped = scoped.filter((p) => p.categoryType !== "BLUSHING_BLOOMS");
+  }
   if (tabField) scoped = scoped.filter((p) => !!p[tabField]);
 
   /*
