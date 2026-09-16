@@ -82,6 +82,22 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                   Best Seller
                 </div>
               )}
+
+              {/*
+                Wishlist on the image's top-right corner, where shoppers look for it.
+                On a phone the image is the top of the dialog, so that corner is where the close
+                button sits — there the heart moves to the close button's left (right-16) instead
+                of sitting underneath it.
+              */}
+              <button
+                type="button"
+                onClick={() => toggleWishlist(product.slug)}
+                className="absolute top-4 right-16 md:right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-secondary shadow-sm backdrop-blur-sm transition hover:bg-white hover:scale-105 active:scale-95"
+                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                aria-pressed={isWishlisted}
+              >
+                <Heart size={18} strokeWidth={1.5} className={isWishlisted ? 'fill-secondary' : ''} />
+              </button>
             </div>
 
             {/* Right: Info and Customization */}
@@ -95,11 +111,14 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
               {/* Title & Price */}
               <div>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-muted block mb-1">
-                  Venus et Fl
+              LEBAMI
                 </span>
                 <Dialog.Title className="font-serif text-2xl md:text-3xl text-primary leading-tight mb-2">
                   {product.name}
                 </Dialog.Title>
+                <span className="text-xs text-muted uppercase tracking-widest">
+                     {product.categoryType}
+                  </span>
                 <div className="flex items-center space-x-4 mb-4">
                   <span className="text-xl font-semibold text-primary">QAR {product.price}</span>
                   <span className="text-xs text-muted uppercase tracking-widest">
@@ -141,7 +160,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                 )}
               </div>
 
-              {/* Bottom: Quantity, Add to Cart, Wishlist */}
+              {/* Bottom: Quantity, Add to Cart (the wishlist heart now sits on the image) */}
               <div className="mt-8 pt-4 border-t border-divider flex items-center gap-4">
                 <div className="flex items-center border border-divider bg-cream h-12 rounded-none">
                   <button
@@ -167,17 +186,6 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                   <span>Add To Cart</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => toggleWishlist(product.slug)}
-                  className={`p-3 border border-divider hover:border-primary transition-colors rounded-none ${
-                    isWishlisted ? 'text-secondary border-secondary' : 'text-muted'
-                  }`}
-                  aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                  aria-pressed={isWishlisted}
-                >
-                  <Heart size={18} className={isWishlisted ? 'fill-secondary' : ''} />
-                </button>
               </div>
 
             </div>

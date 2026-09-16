@@ -104,6 +104,10 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
                 {product.badge || (product.isBestSeller ? 'Pre-Order' : 'Limited Quantities')}
               </span>
             )}
+          </div>
+
+          {/* Right corner: wishlist heart, then the rating to its right. */}
+          <div className="flex items-center gap-2.5 pointer-events-auto">
             <button
               type="button"
               onClick={(e) => {
@@ -122,11 +126,10 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
                 className={`transition-all duration-300 ease-out ${isWishlisted ? 'fill-secondary text-secondary scale-110' : 'scale-100'}`}
               />
             </button>
-          </div>
-          
-          <div className="flex items-center gap-1 text-[10px] text-secondary font-sans pointer-events-auto">
-            <span className="text-[12px] mb-0.5">☆</span>
-            <span>{product.rating?.toFixed(1) || "5.0"}</span>
+            <div className="flex items-center gap-1 text-[10px] text-secondary font-sans">
+              <span className="text-[12px] mb-0.5">☆</span>
+              <span>{product.rating?.toFixed(1) || "5.0"}</span>
+            </div>
           </div>
         </div>
 
