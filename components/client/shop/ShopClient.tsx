@@ -17,7 +17,17 @@ import {
 /** Marketing shot used whenever the listing is not narrowed to one subcategory. */
 const DEFAULT_HERO_IMAGE = '/images/hero_background_1782286769476.png';
 
-const PAGE_SIZE = 6;
+/*
+ * Products revealed per "Load More". Was 6, which on the All listing hid whole categories: the
+ * default Featured sort puts every best-seller first, so the first Blushing Blooms product sat
+ * at position 15 and most at 29-39 — several clicks away, so shoppers never saw them.
+ *
+ * The full result set is already on the client (see ShopViewProps.products), so a larger page
+ * costs no extra request — only more cards, whose images next/image lazy-loads off-screen.
+ * 48 shows the whole current catalogue at once; "Load More" still takes over past that, so the
+ * page stays light as the catalogue grows.
+ */
+const PAGE_SIZE = 48;
 
 interface ShopViewProps {
   /** Already scoped, filtered and sorted on the server. The client never re-filters. */
@@ -327,7 +337,7 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
             <div className="space-y-12">
               <div className="grid gap-0 border-l border-t border-divider/40 grid-cols-2 lg:grid-cols-3">
                 {products.slice(0, shown).map((product, i) => (
-                  <ProductCard key={product.slug} product={product} onQuickView={openQuickView} priority={i < 3} />
+                  <ProductCard key={product.slug} product={product} onQuickView={openQuickView} priority={i < 3} showColors={false} />
                 ))}
               </div>
 
