@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useDialogA11y } from '../hooks/useDialogA11y';
-import Link from 'next/link';
 import OtpInput from './auth/OtpInput';
 import PasswordField from './auth/PasswordField';
 
 const GoogleButton = () => (
   <div className="mt-6 pt-6 border-t border-[#EAEAEA]">
+    {/* A plain <a> on purpose: /api/auth/google is an API route that redirects to Google, not a
+        page. <Link> would prefetch it, calling the OAuth endpoint in the background. */}
+    {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
     <a
       href="/api/auth/google"
       className="w-full flex items-center justify-center space-x-3 border border-black py-3 hover:bg-black hover:text-white transition-colors duration-300 text-[11px] uppercase tracking-[0.15em] font-medium"
@@ -124,8 +126,8 @@ export default function AccountDrawer() {
       }
       addToast('Successfully logged in!', 'success');
       window.location.href = '/';
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -153,8 +155,8 @@ export default function AccountDrawer() {
       setOtpValue('');
       setResendSeconds(60);
       setRegStep('otp');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -176,8 +178,8 @@ export default function AccountDrawer() {
       if (!res.ok) throw new Error(data.error || 'Verification failed.');
       setRegToken(data.token);
       setRegStep('password');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -198,8 +200,8 @@ export default function AccountDrawer() {
       setOtpValue('');
       setResendSeconds(60);
       addToast('A new code has been sent.', 'success');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -232,8 +234,8 @@ export default function AccountDrawer() {
         setEmail(regEmail);
         setSuccessMsg('Your account is ready. Please sign in.');
       }, 2000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

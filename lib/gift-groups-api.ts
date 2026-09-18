@@ -11,9 +11,17 @@ import { isDbUnreachable, logDbError } from '@/lib/prisma-error';
  * HTTP verbs and route config, so anything shared between sibling routes belongs here.
  */
 
-/** Gift sections are rendered by the product pages, so they re-render after every change. */
+/**
+ * Gift sections are rendered by the product pages, so they re-render after every change.
+ *
+ * The pattern must include the `(client)` route group: the page file is
+ * app/(client)/product/[slug]/page.tsx, and a route pattern is matched against the file path.
+ * '/product/[slug]' matched nothing, so in production every product page kept serving its
+ * cached copy (x-nextjs-cache: HIT) with the old gifts after an admin edit. Dev never caches
+ * pages, which is why it only showed on the live site.
+ */
 export function revalidateStorefront() {
-  revalidatePath('/product/[slug]', 'page');
+  revalidatePath('/(client)/product/[slug]', 'page');
 }
 
 /** One error shape for every gift route: validation -> 400, FK -> 404, DB down -> 503. */

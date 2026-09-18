@@ -243,6 +243,12 @@ export default function GiftGroupFormModal({ groupId, onClose, onSaved }: Props)
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
                   Categories <span className="text-red-500">*</span>
                 </h3>
+                {/* Admins add SUBcategories, which never appear in this list; say why. */}
+                <p className="text-xs text-gray-500">
+                  Gifts apply to every product in the selected main categories, including all of
+                  their subcategories. New subcategories are covered automatically, so they are
+                  not listed here.
+                </p>
 
                 {selectedCategories.length > 0 && (
                   <div className="flex flex-wrap gap-2">
