@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from '../../components/LuxuryImage';
+import Image from '../../../components/LuxuryImage';
 import Link from 'next/link';
 import { Clock, Calendar, ArrowRight } from 'lucide-react';
-import Breadcrumbs from '../../components/Breadcrumbs';
-import { BlogPost } from '../../types';
-import { BLOG_POSTS } from '../../data/blog-posts';
+import Breadcrumbs from '../../../components/Breadcrumbs';
+import { BlogPost } from '../../../types';
+import { BLOG_POSTS } from '../../../data/blog-posts';
 
 export default function JournalPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');

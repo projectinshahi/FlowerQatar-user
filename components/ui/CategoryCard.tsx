@@ -29,7 +29,7 @@ export default function CategoryCard({
       <Image 
         src={image} 
         alt={name} 
-        fill 
+        fill sizes="(max-width: 768px) 50vw, 25vw" 
         className="object-cover transition-transform duration-700 ease-out group-hover:scale-110 z-0"
       />
       

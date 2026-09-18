@@ -117,7 +117,7 @@ export default function Footer() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full text-xs bg-transparent border-none outline-none focus:ring-0 placeholder-white/50 text-white pr-4"
               />
-              <button type="submit" className="text-white/80 hover:text-soft transition-colors">
+              <button aria-label="Subscribe" type="submit" className="text-white/80 hover:text-soft transition-colors">
                 <ArrowRight size={16} />
               </button>
             </form>

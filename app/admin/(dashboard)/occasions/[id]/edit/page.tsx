@@ -1,12 +1,14 @@
 import OccasionForm from '@/components/admin/occasions/OccasionForm';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
+import { requireAdminPage } from '@/lib/admin-guard';
 
 export const metadata = {
   title: 'Edit Occasion | Admin',
 };
 
 export default async function EditOccasionPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const { id } = await params;
 
   const occasion = await prisma.occasion.findUnique({

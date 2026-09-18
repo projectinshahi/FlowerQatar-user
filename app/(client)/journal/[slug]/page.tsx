@@ -1,12 +1,13 @@
 'use client';
 
 import React, { use, useState, useEffect } from 'react';
-import Image from '../../../components/LuxuryImage';
+import Image from '../../../../components/LuxuryImage';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Calendar, Clock, User, ArrowLeft, Link as LinkIcon, Heart } from 'lucide-react';
-import { BlogPost } from '../../../types';
-import { BLOG_POSTS } from '../../../data/blog-posts';
-import Breadcrumbs from '../../../components/Breadcrumbs';
+import { BlogPost } from '../../../../types';
+import { BLOG_POSTS } from '../../../../data/blog-posts';
+import Breadcrumbs from '../../../../components/Breadcrumbs';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -18,16 +19,8 @@ export default function BlogPostDetailPage({ params }: PageProps) {
   const post = BLOG_POSTS.find((p) => p.slug === slug);
   const [copied, setCopied] = useState(false);
 
-  if (!post) {
-    return (
-      <div className="max-w-7xl mx-auto px-6 py-24 text-center font-sans">
-        <h2 className="font-serif text-2xl mb-4">Article Not Found</h2>
-        <Link href="/journal" className="text-secondary underline uppercase tracking-widest text-xs">
-          Return to Journal
-        </Link>
-      </div>
-    );
-  }
+  // A real 404: the old "Article Not Found" block was served with status 200 (a soft 404).
+  if (!post) notFound();
 
   // Resolve 3 related articles (exclude current)
   const relatedPosts = BLOG_POSTS.filter((p) => p.slug !== post.slug).slice(0, 3);

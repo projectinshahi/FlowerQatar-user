@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { XCircle } from 'lucide-react';
 
-export const metadata: Metadata = { title: 'Payment Failed' };
+export const metadata: Metadata = { title: 'Payment Failed', robots: { index: false, follow: false } };
 
 export default async function MembershipFailedPage({
   searchParams,

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
@@ -132,9 +133,29 @@ const STORE_PRODUCT_SELECT = {
   subcategory: { select: { id: true, name: true } },
 } as const;
 
-/** All published products mapped for the storefront. cache() dedupes within a request. */
-export const getStoreProducts = cache(async (): Promise<Product[]> => {
-  try {
+export const STORE_PRODUCTS_TAG = "store-products";
+
+/**
+ * Purge the cached catalogue. Call after ANY write to products (or to subcategory names, which
+ * listings show). `expire: 0` makes the very next request read fresh data, so an admin sees
+ * their edit immediately rather than one stale view later. Checkout never reads this cache:
+ * cart and order prices are always re-read from the database.
+ */
+export function revalidateStoreProducts() {
+  revalidateTag(STORE_PRODUCTS_TAG, { expire: 0 });
+}
+
+/*
+ * The published catalogue, cached across requests (60s backstop) and purged on every product
+ * write. /shop reads searchParams, which makes it dynamic, so its `revalidate = 60` never
+ * applied and every visit re-read the whole catalogue from the database. The mapped list is
+ * plain JSON (about 70KB for 48 products, no Dates), so it round-trips the cache unchanged.
+ *
+ * Errors are deliberately NOT caught in here: unstable_cache does not store a thrown result,
+ * whereas returning [] on a database blip would cache an empty shop for a minute.
+ */
+const loadStoreProducts = unstable_cache(
+  async (): Promise<Product[]> => {
     const rows = await prisma.product.findMany({
       where: { status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
@@ -144,6 +165,15 @@ export const getStoreProducts = cache(async (): Promise<Product[]> => {
       select: STORE_PRODUCT_SELECT,
     });
     return rows.map(mapDbProductToStore);
+  },
+  ["store-products-v1"],
+  { tags: [STORE_PRODUCTS_TAG], revalidate: 60 }
+);
+
+/** All published products mapped for the storefront. cache() dedupes within a request. */
+export const getStoreProducts = cache(async (): Promise<Product[]> => {
+  try {
+    return await loadStoreProducts();
   } catch (e) {
     logDbError("getStoreProducts", e);
     return [];

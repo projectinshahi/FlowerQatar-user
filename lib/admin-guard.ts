@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { isDbUnreachable, logDbError, retryOnUnreachable } from "@/lib/prisma-error";
@@ -79,6 +80,17 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
 export async function requireUser(): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) throw new AuthError("You must be signed in", 401);
+  return user;
+}
+
+/**
+ * Page guard for admin Server Components: redirects anyone who is not an admin to the admin
+ * login rather than throwing. Pages must call this themselves — a layout's check is not
+ * guaranteed to run for every page request, and proxy.ts only checks that a session exists.
+ */
+export async function requireAdminPage(): Promise<AuthUser> {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) redirect("/admin/login");
   return user;
 }
 

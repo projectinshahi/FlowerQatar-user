@@ -337,7 +337,13 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
   useEffect(() => {
     const el = headerRef.current
     if (!el) return
-    const measure = () => setHeaderH(el.offsetHeight)
+    const measure = () => {
+      setHeaderH(el.offsetHeight)
+      // Also published as a CSS variable, so layout that must sit just under this fixed header
+      // (the product page's sticky gallery) follows its real height — which changes with the
+      // admin's announcement bar — instead of hard-coding a number that drifts.
+      document.documentElement.style.setProperty('--site-header-h', `${el.offsetHeight}px`)
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)

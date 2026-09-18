@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { CATEGORY_ORDER, CATEGORY_META, categorySlug } from "./lib/category-config";
 
 // Intended Content-Security-Policy. Shipped in Report-Only mode so it can never break
 // the live site; promote to "Content-Security-Policy" after reviewing violation reports.
@@ -39,6 +40,20 @@ const nextConfig: NextConfig = {
 
   compress: true,
   poweredByHeader: false,
+
+  /*
+   * Old category URLs (/flowers, /gift-combos, ...) to the /shop listing, as a real HTTP 308.
+   * app/(client)/[category] also redirects, but a redirect() inside a streamed page reaches the
+   * client as a 200 with a meta refresh, so search engines never saw a permanent move. The
+   * incoming query (e.g. ?tab=) is carried over automatically.
+   */
+  async redirects() {
+    return CATEGORY_ORDER.map((c) => ({
+      source: CATEGORY_META[c].base,
+      destination: `/shop?category=${categorySlug(c)}`,
+      permanent: true,
+    }));
+  },
 
   // Security headers applied to every route. HSTS is prod-only so localhost/http is unaffected.
   async headers() {

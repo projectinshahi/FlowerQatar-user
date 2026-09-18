@@ -1,6 +1,7 @@
 import { Star } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { logDbError } from '@/lib/prisma-error';
+import { requireAdminPage } from '@/lib/admin-guard';
 import { imagesOnly, stillOf } from '@/lib/media';
 import ProductReviewsManager, {
   type ProductRow,
@@ -75,6 +76,7 @@ async function getProducts(): Promise<ProductRow[]> {
 }
 
 export default async function ReviewsPage() {
+  await requireAdminPage();
   const products = await getProducts();
   const withReviews = products.filter((p) => p.totalReviews > 0).length;
 

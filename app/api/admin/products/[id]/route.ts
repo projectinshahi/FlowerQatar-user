@@ -3,6 +3,7 @@ import { getProductById, updateProduct, deleteProduct } from '@/lib/actions/prod
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { logDbError } from '@/lib/prisma-error';
+import { revalidateStoreProducts } from '@/lib/store-products';
 import type { CategoryType } from '@prisma/client';
 import { z } from 'zod';
 
@@ -34,6 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       data: { subcategoryId, categoryType },
       include: { subcategory: { include: { category: { select: { id: true, name: true } } } } },
     });
+    revalidateStoreProducts(); // the listing groups by subcategory/category
     return NextResponse.json(product);
   } catch (error) {
     if (error instanceof z.ZodError) {

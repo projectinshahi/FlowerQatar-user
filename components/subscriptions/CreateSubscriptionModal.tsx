@@ -169,9 +169,9 @@ export default function CreateSubscriptionModal({
                     <div>
                       <label className={labelCls}>Quantity</label>
                       <div className="flex items-center rounded-lg border border-[#E2E2E2] overflow-hidden w-max">
-                        <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="px-3 py-2.5 text-[#666] hover:bg-[#F5F5F5]"><Minus size={14} /></button>
+                        <button aria-label="Decrease quantity" type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="px-3 py-2.5 text-[#666] hover:bg-[#F5F5F5]"><Minus size={14} /></button>
                         <span className="px-4 text-sm text-primary tabular-nums">{quantity}</span>
-                        <button type="button" onClick={() => setQuantity((q) => Math.min(99, q + 1))} className="px-3 py-2.5 text-[#666] hover:bg-[#F5F5F5]"><Plus size={14} /></button>
+                        <button aria-label="Increase quantity" type="button" onClick={() => setQuantity((q) => Math.min(99, q + 1))} className="px-3 py-2.5 text-[#666] hover:bg-[#F5F5F5]"><Plus size={14} /></button>
                       </div>
                     </div>
                     <div>

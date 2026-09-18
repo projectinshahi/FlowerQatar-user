@@ -15,17 +15,18 @@ interface ProductCardProps {
   /** Wishlist page: a quick add moves the product to the cart, so drop the heart too. */
   moveToCart?: boolean;
   /**
-   * Show the colour name in the subtitle and the colour swatch dots. On by default; the shop
-   * listing turns it off, where the colour row read as noise under every card.
+   * Show the colour name in the subtitle and the colour swatch dots. When not set, only
+   * Blushing Blooms products show them — for every other category the colour row is hidden.
    */
   showColors?: boolean;
 }
 
-export default function ProductCard({ product, onQuickView, priority = false, className = '', moveToCart = false, showColors = true }: ProductCardProps) {
+export default function ProductCard({ product, onQuickView, priority = false, className = '', moveToCart = false, showColors }: ProductCardProps) {
   const { wishlist, toggleWishlist, addToCart, user } = useApp();
   const [hovered, setHovered] = useState(false);
 
   const isWishlisted = wishlist.includes(product.slug);
+  const colorsVisible = showColors ?? product.categoryType === 'BLUSHING_BLOOMS';
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -57,7 +58,7 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
   const hoverImage = product.hoverImage || (product.images && product.images[1]) || '';
 
   // Only real, resolved names — never the subcategory id, which is a UUID.
-  const subtitle = [product.collectionName, showColors ? product.colors?.[0]?.name : null]
+  const subtitle = [product.collectionName, colorsVisible ? product.colors?.[0]?.name : null]
     .filter(Boolean)
     .join(' • ');
 
@@ -185,7 +186,7 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
         )}
 
         {/* Color swatches */}
-        {showColors && product.colors && product.colors.length > 0 && (
+        {colorsVisible && product.colors && product.colors.length > 0 && (
           <div className="flex items-center gap-1.5 mt-3">
             {product.colors.slice(0, 3).map((color, idx) => (
               <div 

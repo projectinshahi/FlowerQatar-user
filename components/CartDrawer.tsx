@@ -4,17 +4,20 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Minus, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import LuxuryImage from './LuxuryImage';
 import Link from 'next/link';
 import Image from 'next/image';
+import { qar } from '../lib/utils';
 
 export default function CartDrawer() {
   const { cart, isCartOpen, setCartOpen, updateCartQuantity, removeFromCart, getCartTotal } = useApp();
+  const dialogRef = useDialogA11y<HTMLDivElement>(isCartOpen, () => setCartOpen(false));
 
   return (
     <AnimatePresence>
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Shopping cart" className="fixed inset-0 z-50 overflow-hidden font-sans">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -35,7 +38,7 @@ export default function CartDrawer() {
             >
               {/* Header */}
               <div className="px-5 md:px-6 py-4 bg-[#F8F8F8] flex items-center justify-start border-b border-[#EAEAEA]">
-                <button
+                <button aria-label="Close cart"
                   onClick={() => setCartOpen(false)}
                   className="text-primary hover:text-secondary transition-colors rounded-none mr-4"
                 >
@@ -77,7 +80,7 @@ export default function CartDrawer() {
                       {/* Item 1 */}
                       <Link href="/shop/roses" onClick={() => setCartOpen(false)}>
                         <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Roses" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <Image src="/images/category_bouquets_1782290106325.png" alt="Roses" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
                           <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                             <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase">ROSES</span>
                           </div>
@@ -86,7 +89,7 @@ export default function CartDrawer() {
                       {/* Item 2 */}
                       <Link href="/shop/mixed-florals" onClick={() => setCartOpen(false)}>
                         <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Mixed Florals" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <Image src="/images/category_bouquets_1782290106325.png" alt="Mixed Florals" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
                           <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                             <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase text-center px-2">MIXED FLORALS</span>
                           </div>
@@ -95,7 +98,7 @@ export default function CartDrawer() {
                       {/* Item 3 */}
                       <Link href="/shop/hydrangeas" onClick={() => setCartOpen(false)}>
                         <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Hydrangeas" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <Image src="/images/category_bouquets_1782290106325.png" alt="Hydrangeas" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
                           <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                             <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase">HYDRANGEAS</span>
                           </div>
@@ -104,7 +107,7 @@ export default function CartDrawer() {
                       {/* Item 4 */}
                       <Link href="/shop" onClick={() => setCartOpen(false)}>
                         <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Shop All" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <Image src="/images/category_bouquets_1782290106325.png" alt="Shop All" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
                           <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                             <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase">SHOP ALL</span>
                           </div>
@@ -142,7 +145,7 @@ export default function CartDrawer() {
                             <div>
                               <div className="flex justify-between text-xs uppercase tracking-wider font-semibold text-primary mb-1 gap-2">
                                 <h3 className="line-clamp-2 leading-snug truncate whitespace-normal">{item.product.name}</h3>
-                                <span className="flex-shrink-0">${item.price * item.quantity}</span>
+                                <span className="flex-shrink-0">{qar(item.price * item.quantity)}</span>
                               </div>
                               
                               {/* Selected Options */}
@@ -169,14 +172,14 @@ export default function CartDrawer() {
                             {/* Quantity and Actions */}
                             <div className="flex items-center justify-between mt-3 md:mt-4">
                               <div className="flex items-center border border-divider bg-cream rounded-none">
-                                <button
+                                <button aria-label="Decrease quantity"
                                   onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                                   className="px-2 py-1 text-muted hover:text-primary transition-colors rounded-none"
                                 >
                                   <Minus size={12} />
                                 </button>
                                 <span className="px-2 text-xs font-medium text-primary">{item.quantity}</span>
-                                <button
+                                <button aria-label="Increase quantity"
                                   onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                                   className="px-2 py-1 text-muted hover:text-primary transition-colors rounded-none"
                                 >
@@ -205,7 +208,7 @@ export default function CartDrawer() {
                 <div className="border-t border-divider px-5 md:px-6 py-5 md:py-6 bg-[#F8F8F8] space-y-4">
                   <div className="flex justify-between text-xs uppercase tracking-widest text-primary font-medium">
                     <span>Subtotal</span>
-                    <span className="font-semibold">${getCartTotal()}</span>
+                    <span className="font-semibold">{qar(getCartTotal())}</span>
                   </div>
                   <p className="text-[10px] md:text-[11px] text-[#888] italic leading-snug">
                     Shipping & taxes calculated at checkout. Eternity preservation guaranteed.

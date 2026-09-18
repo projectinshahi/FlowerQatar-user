@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { logDbError } from '@/lib/prisma-error';
+import { requireAdminPage } from '@/lib/admin-guard';
 import OccasionForm from '@/components/admin/occasions/OccasionForm';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,7 @@ export const metadata = {
 };
 
 export default async function NewOccasionPage() {
+  await requireAdminPage();
   /*
    * Only one occasion may exist. The list hides its "Add" button once there is one, but this
    * URL can still be typed or bookmarked — without this check the admin would fill in the

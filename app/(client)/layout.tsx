@@ -16,6 +16,7 @@ import { Suspense } from "react";
 import Analytics from "../../components/analytics/Analytics";
 import GoogleTranslate from "../../components/GoogleTranslate";
 import TranslateSync from "../../components/TranslateSync";
+import MotionPreferences from "../../components/MotionPreferences";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
 const WelcomePopup = dynamic(() => import("../../components/WelcomePopup"));
@@ -43,7 +44,8 @@ export const metadata: Metadata = {
   },
   description: "Experience the original Eternity® Roses, handcrafted luxury arrangements of real roses that last a year.",
   applicationName: SITE_NAME,
-  alternates: { canonical: "/" },
+  // No site-wide canonical here: it was inherited by every page without its own, pointing
+  // /shop, every category listing, /collections and others at the home page as duplicates.
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",
@@ -123,8 +125,16 @@ export default async function RootLayout({
           ]}
         />
         <AppContextProvider>
+          <MotionPreferences>
+          {/* Keyboard users jump past the navigation; invisible until focused. */}
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-full focus:bg-white focus:px-5 focus:py-2.5 focus:text-xs focus:uppercase focus:tracking-widest focus:text-primary focus:shadow-lg"
+          >
+            Skip to content
+          </a>
           <Navbar menu={navMenu} />
-          <main className="flex-grow">
+          <main id="main" className="flex-grow">
             {children}
           </main>
           <Footer />
@@ -139,6 +149,7 @@ export default async function RootLayout({
           <Suspense fallback={null}>
             <TranslateSync />
           </Suspense>
+          </MotionPreferences>
         </AppContextProvider>
       </body>
     </html>

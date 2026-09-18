@@ -58,6 +58,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description,
     keywords,
     alternates: { canonical: url },
+    // Draft and archived products stay reachable for the admin preview but out of the index.
+    ...(product.status !== "PUBLISHED" ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       type: "website",
       siteName: SITE_NAME,

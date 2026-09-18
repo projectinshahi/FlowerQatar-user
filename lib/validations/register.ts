@@ -44,3 +44,20 @@ export const createAccountSchema = z
 export type SendOtpInput = z.infer<typeof sendOtpSchema>;
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+
+/* ─────────────── Forgot password ─────────────── */
+
+export const forgotPasswordSchema = z.object({ email });
+
+/** The reset step: the emailed code plus the new password, held to the same policy as sign-up. */
+export const resetPasswordSchema = z
+  .object({
+    email,
+    otp: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });

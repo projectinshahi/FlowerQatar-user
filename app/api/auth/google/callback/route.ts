@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { GOOGLE_STATE_COOKIE } from '@/lib/google-oauth';
 
 export async function GET(req: Request) {
   try {
@@ -9,7 +10,11 @@ export async function GET(req: Request) {
     const code = url.searchParams.get('code');
     const redirectUri = `${url.origin}/api/auth/google/callback`;
     
-    if (!code) {
+    // CSRF: Google must echo back the `state` this browser was given (see ../route.ts).
+    const stateStore = await cookies();
+    const expectedState = stateStore.get(GOOGLE_STATE_COOKIE)?.value;
+    stateStore.delete({ name: GOOGLE_STATE_COOKIE, path: '/api/auth/google' });
+    if (!code || !expectedState || url.searchParams.get('state') !== expectedState) {
       return NextResponse.redirect(`${url.origin}/account/login?error=GoogleAuthFailed`);
     }
 
@@ -41,7 +46,8 @@ export async function GET(req: Request) {
     });
     const googleUser = await userRes.json();
 
-    if (!googleUser.email) {
+    // An unverified Google email proves nothing about who owns the address.
+    if (!googleUser.email || googleUser.verified_email !== true) {
       return NextResponse.redirect(`${url.origin}/account/login?error=GoogleEmailMissing`);
     }
 
@@ -62,6 +68,12 @@ export async function GET(req: Request) {
             providerId: googleUser.id,
             isEmailVerified: true, // Google verifies emails
             profileImage: user.profileImage || googleUser.picture,
+            /*
+             * Account pre-hijack guard: a password on a row whose email was never verified may
+             * have been chosen by whoever registered this address first. Google has now proved
+             * ownership, so that password must stop working.
+             */
+            ...(user.isEmailVerified ? {} : { password: null }),
           },
         });
       }

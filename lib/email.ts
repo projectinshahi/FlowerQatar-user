@@ -72,9 +72,31 @@ function logoAttachment(): Attachment[] {
 }
 
 /** Professional HTML template for the verification code email. */
-export function otpEmailTemplate(firstName: string, otp: string, hasLogo: boolean): { subject: string; html: string; text: string } {
+/** Which flow the code belongs to — only the wording differs; the design is shared. */
+export type OtpEmailPurpose = "register" | "reset";
+
+const OTP_COPY: Record<OtpEmailPurpose, { subject: string; intro: string; textIntro: string }> = {
+  register: {
+    subject: "Verify Your Email",
+    intro: "Thank you for creating your account. Your verification code is:",
+    textIntro: "Thank you for creating your account.\n\nYour verification code is",
+  },
+  reset: {
+    subject: "Reset Your Password",
+    intro: "We received a request to reset your password. Your reset code is:",
+    textIntro: "We received a request to reset your password.\n\nYour reset code is",
+  },
+};
+
+export function otpEmailTemplate(
+  firstName: string,
+  otp: string,
+  hasLogo: boolean,
+  purpose: OtpEmailPurpose = "register"
+): { subject: string; html: string; text: string } {
   const name = firstName?.trim() || "there";
-  const subject = "Verify Your Email";
+  const copy = OTP_COPY[purpose];
+  const subject = copy.subject;
   const header = hasLogo
     ? `<img src="cid:${LOGO_CID}" alt="${COMPANY}" width="150" style="max-width:170px;height:auto;display:inline-block;" />`
     : `<span style="color:#61000B;font-size:24px;letter-spacing:3px;text-transform:uppercase;font-weight:bold;">${COMPANY}</span>`;
@@ -95,7 +117,7 @@ export function otpEmailTemplate(firstName: string, otp: string, hasLogo: boolea
               <tr>
                 <td style="padding:36px 32px 8px;">
                   <p style="margin:0 0 16px;font-size:16px;">Hello ${name},</p>
-                  <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#555;">Thank you for creating your account. Your verification code is:</p>
+                  <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#555;">${copy.intro}</p>
                   <div style="text-align:center;margin:8px 0 24px;">
                     <span style="display:inline-block;font-family:'Courier New',monospace;font-size:34px;letter-spacing:10px;font-weight:bold;color:#61000B;background:#faf7f2;border:1px solid #ece7df;border-radius:8px;padding:16px 24px;">${otp}</span>
                   </div>
@@ -118,16 +140,21 @@ export function otpEmailTemplate(firstName: string, otp: string, hasLogo: boolea
       </table>
     </body>
   </html>`;
-  const text = `Hello ${name},\n\nThank you for creating your account.\n\nYour verification code is ${otp}\n\nThis code is valid for 5 minutes.\n\nIf you did not request this, you can safely ignore this email.\n\nNeed help? Contact us at ${SUPPORT_EMAIL}.\n\nRegards,\n${COMPANY}`;
+  const text = `Hello ${name},\n\n${copy.textIntro} ${otp}\n\nThis code is valid for 5 minutes.\n\nIf you did not request this, you can safely ignore this email.\n\nNeed help? Contact us at ${SUPPORT_EMAIL}.\n\nRegards,\n${COMPANY}`;
   return { subject, html, text };
 }
 
-export async function sendOtpEmail(to: string, firstName: string, otp: string): Promise<{ sent: boolean }> {
+export async function sendOtpEmail(
+  to: string,
+  firstName: string,
+  otp: string,
+  purpose: OtpEmailPurpose = "register"
+): Promise<{ sent: boolean }> {
   // In non-production, always surface the code in the server log for convenience.
   if (process.env.NODE_ENV !== "production") {
     console.log(`\n========================================\n🔑 OTP for ${to}: ${otp}\n========================================\n`);
   }
   const attachments = logoAttachment();
-  const { subject, html, text } = otpEmailTemplate(firstName, otp, attachments.length > 0);
+  const { subject, html, text } = otpEmailTemplate(firstName, otp, attachments.length > 0, purpose);
   return sendMail({ to, subject, html, text, attachments });
 }

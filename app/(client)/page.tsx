@@ -28,6 +28,9 @@ const ArtTriptych = dynamic(() => import('../sections/ArtTriptych'))
 // Refresh homepage product data periodically without a redeploy.
 export const revalidate = 60
 
+// The home page's own canonical (the layout no longer sets one for every page).
+export const metadata = { alternates: { canonical: '/' } }
+
 /*
  * Each section owns its own await and its own Suspense boundary. Previously a single
  * Promise.all held the whole page back until the slowest query returned; now the static

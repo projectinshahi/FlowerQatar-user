@@ -1,16 +1,13 @@
-'use client';
-
-import { motion } from 'framer-motion';
-
+/**
+ * Page-entry fade and rise, in CSS.
+ *
+ * This was a framer-motion component, which renders `opacity: 0` into the server HTML and only
+ * fades in once the page's JavaScript has hydrated, so every page's content (including its LCP
+ * element) stayed invisible until hydration plus 0.6s, and framer-motion loaded on every route
+ * just for this. The same curve and distance as a CSS animation start at first paint and need no
+ * JavaScript. A template remounts on each navigation, so the animation still replays; `exit`
+ * never ran before (there was no AnimatePresence), so nothing is lost.
+ */
 export default function Template({ children }: { children: React.ReactNode }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 12 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className="page-enter">{children}</div>;
 }

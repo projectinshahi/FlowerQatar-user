@@ -1,19 +1,47 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import Image from '../../../components/LuxuryImage';
 import Link from 'next/link';
 import { Trash2, Plus, Minus, ShieldCheck, Truck, ShoppingBag, ArrowLeft } from 'lucide-react';
 import Breadcrumbs from '../../../components/Breadcrumbs';
+import { qar } from '../../../lib/utils';
+import {
+  NO_SHIPPING,
+  amountToFreeShipping,
+  calculateShippingForMethod,
+  type ShippingConfig,
+} from '../../../lib/shipping';
 
 export default function CartPage() {
   const { cart, cartLoading, updateCartQuantity, removeFromCart, getCartTotal } = useApp();
 
+  /*
+   * The same rules as checkout and the order itself: the admin's DeliveryCharge row for
+   * shipping, and no sales tax (Qatar). This page used to hardcode QAR 15 under 150 plus an 8%
+   * "tax mock", so its estimate disagreed with checkout, the drawer and what was actually billed.
+   */
+  const [shippingConfig, setShippingConfig] = useState<ShippingConfig>(NO_SHIPPING);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/shipping')
+      .then((r) => r.json())
+      .then((json) => {
+        if (alive && json?.success && json.data) setShippingConfig(json.data as ShippingConfig);
+      })
+      .catch(() => {
+        // Keep NO_SHIPPING; checkout and the order re-derive the real figure.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const subtotal = getCartTotal();
-  const shipping = subtotal >= 150 ? 0 : 15;
-  const tax = Math.round(subtotal * 0.08); // 8% tax mock
-  const total = subtotal + shipping + tax;
+  const shipping = calculateShippingForMethod(subtotal, shippingConfig, 'standard');
+  const total = subtotal + shipping;
+  const toFreeShipping = amountToFreeShipping(subtotal, shippingConfig);
 
   return (
     <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 font-sans text-primary">
@@ -96,7 +124,7 @@ export default function CartPage() {
                         <h3 className="text-xs uppercase tracking-wider font-semibold text-primary">
                           {item.product.name}
                         </h3>
-                        <span className="text-xs font-semibold text-primary">${item.price * item.quantity}</span>
+                        <span className="text-xs font-semibold text-primary">{qar(item.price * item.quantity)}</span>
                       </div>
 
                       {/* Customized parameters */}
@@ -123,14 +151,14 @@ export default function CartPage() {
                     {/* Quantity Selector & Action Button */}
                     <div className="flex items-center justify-between mt-6 pt-4 border-t border-divider/40">
                       <div className="flex items-center border border-divider bg-cream rounded-none">
-                        <button
+                        <button aria-label="Decrease quantity"
                           onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                           className="px-3 py-1.5 text-muted hover:text-primary transition-colors"
                         >
                           <Minus size={12} />
                         </button>
                         <span className="px-3 text-xs font-semibold text-primary">{item.quantity}</span>
-                        <button
+                        <button aria-label="Increase quantity"
                           onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                           className="px-3 py-1.5 text-muted hover:text-primary transition-colors"
                         >
@@ -171,27 +199,23 @@ export default function CartPage() {
               <div className="space-y-3 text-xs tracking-wide">
                 <div className="flex justify-between text-muted">
                   <span>Cart Subtotal</span>
-                  <span className="font-medium text-primary">${subtotal}</span>
+                  <span className="font-medium text-primary">{qar(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-muted">
                   <span>Estimated Shipping</span>
                   <span className="font-medium text-primary">
-                    {shipping === 0 ? 'Complimentary' : `$${shipping}`}
+                    {shipping === 0 ? 'Complimentary' : qar(shipping)}
                   </span>
-                </div>
-                <div className="flex justify-between text-muted">
-                  <span>Estimated Sales Tax</span>
-                  <span className="font-medium text-primary">${tax}</span>
                 </div>
                 <div className="border-t border-divider pt-4 flex justify-between font-semibold text-sm">
                   <span className="uppercase tracking-widest text-xs">Total Estimate</span>
-                  <span className="text-secondary text-lg font-bold">${total}</span>
+                  <span className="text-secondary text-lg font-bold">{qar(total)}</span>
                 </div>
               </div>
 
-              {shipping > 0 && (
+              {toFreeShipping != null && (
                 <p className="text-[10px] text-secondary font-medium bg-secondary/5 border border-secondary/10 p-3 text-center uppercase tracking-widest leading-relaxed">
-                  Add ${(150 - subtotal)} more to qualify for complimentary shipping!
+                  Add {qar(toFreeShipping)} more to qualify for complimentary shipping!
                 </p>
               )}
 

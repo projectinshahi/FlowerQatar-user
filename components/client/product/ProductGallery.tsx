@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, Maximize2, ImageOff, ArrowUp, ArrowDown, Film, Play } from "lucide-react";
@@ -22,6 +23,14 @@ const LENS_W = PANEL_W / ZOOM;
 const LENS_H = PANEL_H / ZOOM;
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
+/*
+ * True only after hydration: the server snapshot is false, so the server HTML and the first
+ * client render agree, then React re-renders with the client value. Same pattern as
+ * LanguageToggle. Gates the lightbox portal, which needs `document.body`.
+ */
+const noopSubscribe = () => () => {};
+const useIsClient = () => useSyncExternalStore(noopSubscribe, () => true, () => false);
+
 /** Shared with the admin uploader and the store mapper so the rules can't drift apart. */
 const isVideoItem = isVideoMedia;
 
@@ -39,7 +48,8 @@ export default function ProductGallery({
   const [active, setActive] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [zoomedFull, setZoomedFull] = useState(false);
-  const [zoom, setZoom] = useState<{ x: number; y: number; rw: number; rh: number } | null>(null);
+  const [zoom, setZoom] = useState<{ x: number; y: number; rw: number; rh: number; nw: number; nh: number } | null>(null);
+  const isClient = useIsClient();
   const touchX = useRef<number | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -110,20 +120,52 @@ export default function ProductGallery({
     const el = frameRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setZoom({ x: e.clientX - r.left, y: e.clientY - r.top, rw: r.width, rh: r.height });
+    // The photo's own proportions — the frame crops it (object-cover), so the zoom needs them.
+    const img = el.querySelector("img");
+    const nw = img?.naturalWidth || r.width;
+    const nh = img?.naturalHeight || r.height;
+    setZoom({ x: e.clientX - r.left, y: e.clientY - r.top, rw: r.width, rh: r.height, nw, nh });
   };
 
   // lens position (clamped inside the image)
   const lensLeft = zoom ? clamp(zoom.x - LENS_W / 2, 0, zoom.rw - LENS_W) : 0;
   const lensTop = zoom ? clamp(zoom.y - LENS_H / 2, 0, zoom.rh - LENS_H) : 0;
 
+  /*
+   * Where the photo actually sits inside the frame. The frame shows it with object-cover —
+   * scaled to cover, centred, overflow cropped — so the magnified view must use that same
+   * geometry. Sizing the zoom background to the FRAME's box instead stretched every photo whose
+   * shape differs from the frame's, and put the panel off from what was under the lens.
+   */
+  const cover = zoom
+    ? (() => {
+        const s = Math.max(zoom.rw / zoom.nw, zoom.rh / zoom.nh);
+        const dw = zoom.nw * s;
+        const dh = zoom.nh * s;
+        return { dw, dh, ox: (zoom.rw - dw) / 2, oy: (zoom.rh - dh) / 2 };
+      })()
+    : null;
+
   return (
-    <div onKeyDown={onKeyDown} tabIndex={0} aria-roledescription="carousel" aria-label={`${productName} images`} className="relative outline-none">
+    /* lg:left-8 nudges the photo, arrows and thumbnails right as one block. A relative offset
+       rather than padding/margin, so the width the photo sizes itself from is untouched — the
+       photo stays the same size — and the 2rem lands inside the column's own lg:pr-8. */
+    <div onKeyDown={onKeyDown} tabIndex={0} aria-roledescription="carousel" aria-label={`${productName} images`} className="relative outline-none lg:left-8">
       <div className="w-full flex items-center gap-4 lg:gap-6">
-        {/* Main image / video */}
+        {/* Main image / video.
+            Same frame model as the Blushing Blooms gallery: a 650:713 shape and, on desktop, a
+            width capped by the viewport height, so the whole photograph is always on screen. The
+            old 4:5 frame had no such cap and ran 95-115px below the fold on a laptop, pushing the
+            image past what the shopper could see. 13.5rem is the Blushing Blooms reserve, so the
+            two pages size their photo identically; it still clears the fold here, where the
+            frame starts ~207px down. 0.912 is 650/713.
+
+            Left-aligned rather than centred: the thumbnail strip below starts at the column edge,
+            and centring the frame in the space beside the arrows pushed it right of the strip —
+            further the wider and shorter the screen. */}
         <div
           ref={frameRef}
-          className={`relative flex-grow w-full aspect-[4/5] bg-[#FAFAFA] overflow-hidden group rounded-sm ${currentIsVideo ? "cursor-pointer" : "cursor-crosshair"}`}
+          className={`relative flex-grow w-full aspect-[650/713] bg-[#FAFAFA] overflow-hidden group rounded-sm lg:flex-grow-0 lg:w-[min(100%,calc((100vh-13.5rem)*0.912))] ${currentIsVideo ? "cursor-pointer" : "cursor-crosshair"}`}
           onMouseMove={onMove}
           onMouseLeave={() => setZoom(null)}
           onTouchStart={onTouchStart}
@@ -168,7 +210,10 @@ export default function ProductGallery({
                 fill
                 sizes="(max-width: 1024px) 100vw, 55vw"
                 priority={active === 0}
-                className="object-contain lg:object-cover"
+                /* Every photo fills the same 4:5 frame at every width. `object-contain` below lg
+                   letterboxed each one at its own proportions, so the image changed size from
+                   slide to slide on phones and tablets. */
+                className="object-cover"
               />
 
               {/* Hover lens (desktop only, images only) */}
@@ -251,7 +296,16 @@ export default function ProductGallery({
           drives the same `active` index as the arrows, dots, swipe and keyboard, so they all agree,
           and a video selected here autoplays through the effect above. */}
       {showThumbnails && (
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1 lg:mt-4 lg:gap-3">
+        <div
+          /* Exactly the main frame's width, so the strip sits under the photo and never past it.
+             With more than one item the frame shares its row with the arrow column (24px gap +
+             32px buttons + 8px padding = 4rem), which is why that case reserves 4rem. */
+          className={`no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1 lg:mt-4 lg:gap-3 ${
+            count > 1
+              ? "lg:w-[min(calc(100%-4rem),calc((100vh-13.5rem)*0.912))]"
+              : "lg:w-[min(100%,calc((100vh-13.5rem)*0.912))]"
+          }`}
+        >
           {pics.map((item, idx) => {
             const video = isVideoItem(item);
             const on = idx === active;
@@ -291,14 +345,18 @@ export default function ProductGallery({
             height: PANEL_H,
             backgroundImage: `url(${current})`,
             backgroundRepeat: "no-repeat",
-            backgroundSize: `${zoom.rw * ZOOM}px ${zoom.rh * ZOOM}px`,
-            backgroundPosition: `-${lensLeft * ZOOM}px -${lensTop * ZOOM}px`,
+            backgroundSize: `${cover!.dw * ZOOM}px ${cover!.dh * ZOOM}px`,
+            backgroundPosition: `${-(lensLeft - cover!.ox) * ZOOM}px ${-(lensTop - cover!.oy) * ZOOM}px`,
           }}
           aria-hidden="true"
         />
       )}
 
-      {/* Fullscreen lightbox (tap/pinch zoom for touch devices) */}
+      {/* Fullscreen lightbox (tap/pinch zoom for touch devices).
+          Portalled to <body>: the gallery column is `position: sticky`, which creates its own
+          stacking context, so rendered in place the overlay's z-[95] was trapped under the fixed
+          header (z-50) — the header stayed lit on top and hid the top of the photo. */}
+      {isClient && createPortal(
       <AnimatePresence>
         {lightbox && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[95] bg-black/90 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Media preview" onClick={() => setLightbox(false)}>
@@ -337,7 +395,9 @@ export default function ProductGallery({
             )}
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getCartPayload, loadShippingConfig } from "@/lib/services/cart";
+import { getCartPayload, loadShippingConfig, TAX_RATE } from "@/lib/services/cart";
 import { calculateShippingForMethod } from "@/lib/shipping";
 import { validateCoupon } from "@/lib/services/marketing";
 import { redeemPoints, refundPoints } from "@/lib/services/wallet";
@@ -69,6 +69,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
   // Coupon — re-validated server-side; ignored if no longer valid (order still proceeds).
   let couponDiscount = 0;
   let freeDelivery = false;
+  let couponId: string | null = null;
   if (input.couponCode) {
     const couponItems = lineItems.map((i) => ({
       productId: i.productId as string,
@@ -79,6 +80,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
     if (result.valid) {
       couponDiscount = result.discount;
       freeDelivery = result.freeDelivery;
+      couponId = result.couponId;
     }
   }
 
@@ -90,7 +92,11 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
    */
   const shippingFee = calculateShippingForMethod(subtotal, shippingConfig, input.shippingMethod);
   const effectiveShipping = freeDelivery ? 0 : shippingFee;
-  const tax = Math.round(subtotal * 0.08);
+  /*
+   * Same rate as the cart (TAX_RATE, 0 in Qatar). This used to add a hardcoded 8% that the
+   * checkout never displayed, so stored orders and invoices totalled more than the customer saw.
+   */
+  const tax = round2(subtotal * TAX_RATE);
   const total = Math.max(0, round2(subtotal + effectiveShipping + tax - couponDiscount));
 
   const grandTotal = Math.max(0, round2(total - pointsRequested));
@@ -104,6 +110,17 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
   }
 
   const order = await prisma.$transaction(async (tx) => {
+    /*
+     * Serialise concurrent checkouts for this user: lock the user row, then confirm the cart
+     * still holds items. A second request (double-submit, retry, another tab) waits here until
+     * the first commits; by then the cart is empty, so it stops instead of creating a duplicate.
+     */
+    const [locked] = await tx.$queryRaw<{ cart: unknown }[]>`
+      SELECT "cart" FROM "User" WHERE "id" = ${userId}::uuid FOR UPDATE`;
+    if (!Array.isArray(locked?.cart) || locked.cart.length === 0) {
+      throw new OrderError("This order has already been placed.", 409);
+    }
+
     const created = await tx.order.create({
       data: {
         userId,
@@ -128,6 +145,38 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
       },
     });
 
+    /*
+     * Record the coupon use against this order, atomically. validateCoupon above is read-only,
+     * so usage limits (global and per-customer) were never enforced: a single-use coupon worked
+     * on every order. Same steps as applyCoupon, inside this transaction so a failure here rolls
+     * the order back rather than leaving an order with an unrecorded discount.
+     */
+    if (couponId) {
+      const coupon = await tx.coupon.findUnique({
+        where: { id: couponId },
+        select: { usageLimit: true, usagePerCustomer: true },
+      });
+      const bumped = await tx.coupon.updateMany({
+        where:
+          coupon?.usageLimit == null
+            ? { id: couponId }
+            : { id: couponId, currentUsage: { lt: coupon.usageLimit } },
+        data: { currentUsage: { increment: 1 } },
+      });
+      if (bumped.count === 0) {
+        throw new OrderError("This coupon has just reached its usage limit. Please remove it and try again.", 409);
+      }
+      if (coupon?.usagePerCustomer != null) {
+        const used = await tx.couponUsage.count({ where: { couponId, userId } });
+        if (used >= coupon.usagePerCustomer) {
+          throw new OrderError("You have already used this coupon.", 409);
+        }
+      }
+      await tx.couponUsage.create({
+        data: { couponId, userId, orderId: created.id, discount: couponDiscount },
+      });
+    }
+
     // Deduct points atomically against this order (double-spend safe, ledgered).
     if (pointsRequested > 0) {
       await redeemPoints(userId, pointsRequested, total, { reason: "Redeemed at checkout", reference: created.id }, tx);
@@ -137,6 +186,14 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
     await tx.user.update({ where: { id: userId }, data: { cart: [] } });
 
     return created;
+  }, {
+    /*
+     * A concurrent checkout for the same user waits on the row lock above for the whole of the
+     * first transaction. Prisma's 5s default counted that wait as its own runtime, so on a slow
+     * link the WAITING request failed with a 500 instead of the clean "already placed" 409.
+     */
+    maxWait: 10_000,
+    timeout: 20_000,
   });
 
   return {

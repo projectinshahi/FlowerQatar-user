@@ -5,10 +5,11 @@ import { guardAdmin } from '@/lib/admin-guard';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createSubcategorySchema, subcategoryListQuerySchema } from '@/lib/validations/subcategory';
 import { NAV_MENU_TAG } from '@/lib/subcategories';
+import { revalidateStoreProducts } from '@/lib/store-products';
 import { logDbError } from '@/lib/prisma-error';
 import { z } from 'zod';
 
-function revalidateStorefront() { revalidateTag(NAV_MENU_TAG, 'max'); revalidatePath('/', 'layout'); }
+function revalidateStorefront() { revalidateTag(NAV_MENU_TAG, 'max'); revalidatePath('/', 'layout'); revalidateStoreProducts(); }
 
 export async function GET(request: Request) {
   const denied = await guardAdmin(); if (denied) return denied;

@@ -11,7 +11,8 @@ import { resolveExtraPrices } from "@/lib/gifts";
 // Shipping is NOT configured here any more — it comes from the admin's DeliveryCharge row
 // (see loadShippingConfig below). The old hardcoded 15 fee / 150 threshold meant the admin
 // screen had no effect on what customers were actually charged.
-const TAX_RATE = 0; // Qatar has no default sales tax.
+/** Qatar has no default sales tax. Shared with order placement so cart and order agree. */
+export const TAX_RATE = 0;
 const MAX_QTY = 99;
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -365,7 +366,7 @@ export async function addItem(userId: string, dto: AddItemInput): Promise<CartPa
   const [prices, product, items] = await Promise.all([
     resolveExtraPrices(extraIds(dto.selection)),
     dto.productId
-      ? prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true, variants: true } })
+      ? prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true, variants: true, status: true } })
       : null,
     readCart(userId),
   ]);
@@ -378,7 +379,8 @@ export async function addItem(userId: string, dto: AddItemInput): Promise<CartPa
 
   // Validate the product and re-derive the authoritative price from the DB (never trust the client price).
   if (dto.productId) {
-    if (!product) throw new CartError("Product not found", 404);
+    // Draft or archived products are not for sale, even if their id is known.
+    if (!product || product.status !== "PUBLISHED") throw new CartError("This product is not available", 404);
     const dbPrice = resolvePrice(product, dto);
     if (dbPrice != null) unitPrice = dbPrice;
     // Note: no stock validation — the single-table Product model has no stock field.

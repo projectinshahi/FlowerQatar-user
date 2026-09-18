@@ -4,7 +4,7 @@ import ProfileForm from "@/components/account/ProfileForm";
 import ChangePasswordCard from "@/components/account/ChangePasswordCard";
 import PrivacySecurity from "@/components/account/PrivacySecurity";
 
-export const metadata = { title: "My Profile | Lebami" };
+export const metadata = { title: "My Profile" };
 
 export default async function ProfilePage() {
   // The account layout already guards auth; here we only need to know whether the

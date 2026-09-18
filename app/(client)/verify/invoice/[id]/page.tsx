@@ -7,8 +7,9 @@ import { ShieldCheck, CheckCircle2, Building2, User, FileText, ArrowRight } from
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Invoice Authenticity Verification | Lebami',
+  title: 'Invoice Authenticity Verification',
   description: 'Official Tax Invoice Verification System',
+  robots: { index: false, follow: false },
 };
 
 export default async function VerifyInvoicePage({

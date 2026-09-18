@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import Link from 'next/link';
 import OtpInput from './auth/OtpInput';
 import PasswordField from './auth/PasswordField';
@@ -32,9 +33,20 @@ const primaryBtn =
   'w-full bg-black text-white py-3.5 text-[11px] uppercase tracking-[0.2em] hover:bg-secondary transition-colors duration-300 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed';
 
 type RegStep = 'form' | 'otp' | 'password' | 'success';
+type ForgotStep = 'email' | 'reset';
+
+/** The password policy shown as a live checklist — mirrors passwordSchema in lib/validations/register. */
+const passwordChecks = (pw: string) => [
+  { label: 'At least 8 characters', ok: pw.length >= 8 },
+  { label: 'One uppercase letter', ok: /[A-Z]/.test(pw) },
+  { label: 'One lowercase letter', ok: /[a-z]/.test(pw) },
+  { label: 'One number', ok: /[0-9]/.test(pw) },
+  { label: 'One special character', ok: /[^A-Za-z0-9]/.test(pw) },
+];
 
 export default function AccountDrawer() {
   const { isAccountOpen, setAccountOpen, addToast } = useApp();
+  const dialogRef = useDialogA11y<HTMLDivElement>(isAccountOpen, () => setAccountOpen(false));
   const [activeTab, setActiveTab] = useState<'signIn' | 'createAccount'>('signIn');
 
   // Sign-in
@@ -52,6 +64,14 @@ export default function AccountDrawer() {
   const [regConfirm, setRegConfirm] = useState('');
   const [resendSeconds, setResendSeconds] = useState(60);
 
+  // Forgot password (null = not in the reset flow)
+  const [forgotStep, setForgotStep] = useState<ForgotStep | null>(null);
+  const [fpEmail, setFpEmail] = useState('');
+  const [fpOtp, setFpOtp] = useState('');
+  const [fpPassword, setFpPassword] = useState('');
+  const [fpConfirm, setFpConfirm] = useState('');
+  const [fpResend, setFpResend] = useState(60);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -63,10 +83,17 @@ export default function AccountDrawer() {
     return () => clearTimeout(t);
   }, [regStep, resendSeconds]);
 
+  useEffect(() => {
+    if (forgotStep !== 'reset' || fpResend <= 0) return;
+    const t = setTimeout(() => setFpResend((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [forgotStep, fpResend]);
+
   const clearMessages = () => { setError(''); setSuccessMsg(''); };
 
   const switchTab = (tab: 'signIn' | 'createAccount') => {
     setActiveTab(tab);
+    setForgotStep(null);
     clearMessages();
     if (tab === 'createAccount') setRegStep('form');
   };
@@ -179,13 +206,7 @@ export default function AccountDrawer() {
   };
 
   /* ─────────────── Registration: step 3 → create account ─────────────── */
-  const pwChecks = [
-    { label: 'At least 8 characters', ok: regPassword.length >= 8 },
-    { label: 'One uppercase letter', ok: /[A-Z]/.test(regPassword) },
-    { label: 'One lowercase letter', ok: /[a-z]/.test(regPassword) },
-    { label: 'One number', ok: /[0-9]/.test(regPassword) },
-    { label: 'One special character', ok: /[^A-Za-z0-9]/.test(regPassword) },
-  ];
+  const pwChecks = passwordChecks(regPassword);
   const pwValid = pwChecks.every((c) => c.ok);
   const pwMatch = regConfirm.length > 0 && regPassword === regConfirm;
 
@@ -218,14 +239,103 @@ export default function AccountDrawer() {
     }
   };
 
-  const showTabs = activeTab === 'signIn' || (activeTab === 'createAccount' && regStep === 'form');
-  const stepTitle =
+  /* ─────────────── Forgot password ─────────────── */
+  const fpChecks = passwordChecks(fpPassword);
+  const fpValid = fpChecks.every((c) => c.ok);
+  const fpMatch = fpConfirm.length > 0 && fpPassword === fpConfirm;
+
+  const openForgot = () => {
+    clearMessages();
+    setFpEmail(email); // carry over whatever was typed on the sign-in form
+    setForgotStep('email');
+  };
+
+  const backToSignIn = () => {
+    setForgotStep(null);
+    setFpOtp(''); setFpPassword(''); setFpConfirm(''); setFpResend(60);
+    clearMessages();
+  };
+
+  const requestResetCode = async () => {
+    const res = await fetch('/api/auth/forgot-password/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: fpEmail }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || 'Could not send the reset code.');
+  };
+
+  const handleForgotSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearMessages();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fpEmail.trim())) return setError('Please enter a valid email address.');
+    setLoading(true);
+    try {
+      await requestResetCode();
+      setFpOtp(''); setFpPassword(''); setFpConfirm('');
+      setFpResend(60);
+      setForgotStep('reset');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotResend = async () => {
+    if (fpResend > 0 || loading) return;
+    clearMessages();
+    setLoading(true);
+    try {
+      await requestResetCode();
+      setFpOtp('');
+      setFpResend(60);
+      addToast('A new code has been sent.', 'success');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearMessages();
+    if (fpOtp.length !== 6) return setError('Please enter the 6-digit code.');
+    if (!fpValid) return setError('Please meet all password requirements.');
+    if (!fpMatch) return setError('Passwords do not match.');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: fpEmail, otp: fpOtp, password: fpPassword, confirmPassword: fpConfirm }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Could not reset your password.');
+      const resetEmail = fpEmail;
+      backToSignIn();
+      setEmail(resetEmail);
+      setPassword('');
+      setSuccessMsg('Your password has been reset. Please sign in.');
+      addToast('Password reset successfully.', 'success');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showTabs =
+    forgotStep === null && (activeTab === 'signIn' || (activeTab === 'createAccount' && regStep === 'form'));
+  const stepTitle = forgotStep ? 'RESET PASSWORD' :
     regStep === 'otp' ? 'VERIFY EMAIL' : regStep === 'password' ? 'CREATE PASSWORD' : regStep === 'success' ? 'WELCOME' : '';
 
   return (
     <AnimatePresence>
       {isAccountOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Account" className="fixed inset-0 z-50 overflow-hidden font-sans">
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setAccountOpen(false)}
@@ -239,7 +349,7 @@ export default function AccountDrawer() {
             >
               {/* Header */}
               <div className="px-5 md:px-6 py-4 bg-[#F8F8F8] flex items-center justify-start border-b border-[#EAEAEA]">
-                <button onClick={() => setAccountOpen(false)} className="text-primary hover:text-secondary transition-colors rounded-none mr-4">
+                <button aria-label="Close account panel" onClick={() => setAccountOpen(false)} className="text-primary hover:text-secondary transition-colors rounded-none mr-4">
                   <X size={22} className="stroke-[1.2]" />
                 </button>
                 <h2 className="text-xs uppercase tracking-[0.15em] font-medium text-primary">MY ACCOUNT</h2>
@@ -289,7 +399,7 @@ export default function AccountDrawer() {
                   <div className="flex flex-col space-y-6 w-full">
                     <AnimatePresence mode="wait">
                       {/* ───────── SIGN IN ───────── */}
-                      {activeTab === 'signIn' && (
+                      {activeTab === 'signIn' && forgotStep === null && (
                         <motion.div key="signIn" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="flex flex-col">
                           <form onSubmit={handleLogin}>
                             <div className="mb-8">
@@ -299,13 +409,91 @@ export default function AccountDrawer() {
                             <div className="mb-12">
                               <label htmlFor="signin-password" className={labelCls}>PASSWORD *</label>
                               <PasswordField id="signin-password" value={password} onChange={setPassword} required autoComplete="current-password" />
+                              {/* Right-aligned directly under the password field, where people look for it. */}
+                              <div className="mt-3 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={openForgot}
+                                  className="py-1 text-[10px] text-[#888] hover:text-primary uppercase tracking-[0.1em] underline decoration-1 underline-offset-4 transition-colors"
+                                >
+                                  Forgot password?
+                                </button>
+                              </div>
                             </div>
+                            
                             <button type="submit" disabled={loading} className={primaryBtn}>{loading ? 'PROCESSING...' : 'SIGN IN'}</button>
-                            <div className="mt-5 text-center">
-                              {/* No password-reset route exists yet — the link is hidden rather than dead. */}
-                            </div>
                           </form>
                           <GoogleButton />
+                        </motion.div>
+                      )}
+
+                      {/* ───────── FORGOT PASSWORD: email ───────── */}
+                      {activeTab === 'signIn' && forgotStep === 'email' && (
+                        <motion.div key="fp-email" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="flex flex-col">
+                          <p className="font-serif text-[13px] text-center text-[#666] mb-8 leading-relaxed">
+                            Enter the email address on your account and we will send you a code to reset your password.
+                          </p>
+                          <form onSubmit={handleForgotSend}>
+                            <div className="mb-10">
+                              <label htmlFor="fp-email" className={labelCls}>YOUR EMAIL *</label>
+                              <input id="fp-email" type="email" autoComplete="email" inputMode="email" required value={fpEmail} onChange={(e) => setFpEmail(e.target.value)} className={inputCls} />
+                            </div>
+                            <button type="submit" disabled={loading} className={primaryBtn}>{loading ? 'SENDING CODE...' : 'SEND RESET CODE'}</button>
+                          </form>
+                          <button type="button" onClick={backToSignIn} className="mt-6 text-[11px] text-[#888] hover:text-primary text-center uppercase tracking-[0.1em]">
+                            ← Back to sign in
+                          </button>
+                        </motion.div>
+                      )}
+
+                      {/* ───────── FORGOT PASSWORD: code + new password ───────── */}
+                      {activeTab === 'signIn' && forgotStep === 'reset' && (
+                        <motion.div key="fp-reset" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="flex flex-col">
+                          <p className="text-[13px] text-center text-[#666] mb-2 font-serif">If an account exists for</p>
+                          <p className="text-[13px] text-center text-primary font-medium mb-2 break-all">{fpEmail}</p>
+                          <p className="text-[13px] text-center text-[#666] mb-8 font-serif">we have sent a 6-digit reset code to it.</p>
+                          <form onSubmit={handleForgotReset}>
+                            <label className={`${labelCls} text-center mb-3`}>ENTER RESET CODE</label>
+                            <div className="mb-8">
+                              <OtpInput value={fpOtp} onChange={setFpOtp} onComplete={setFpOtp} disabled={loading} />
+                            </div>
+                            <div className="mb-6">
+                              <label htmlFor="fp-password" className={labelCls}>NEW PASSWORD *</label>
+                              <PasswordField id="fp-password" value={fpPassword} onChange={setFpPassword} required autoComplete="new-password" />
+                            </div>
+                            <ul className="mb-6 space-y-1.5">
+                              {fpChecks.map((c) => (
+                                <li key={c.label} className={`flex items-center gap-2 text-[11px] ${c.ok ? 'text-green-600' : 'text-[#999]'}`}>
+                                  <Check size={12} className={c.ok ? 'opacity-100' : 'opacity-30'} />
+                                  {c.label}
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="mb-3">
+                              <label htmlFor="fp-confirm" className={labelCls}>CONFIRM NEW PASSWORD *</label>
+                              <PasswordField id="fp-confirm" value={fpConfirm} onChange={setFpConfirm} required autoComplete="new-password" aria-describedby="fp-confirm-err" />
+                            </div>
+                            {fpConfirm.length > 0 && !fpMatch && (
+                              <p id="fp-confirm-err" role="alert" className="text-[11px] text-red-500 mb-6">Passwords do not match.</p>
+                            )}
+                            <button type="submit" disabled={loading || fpOtp.length !== 6 || !fpValid || !fpMatch} className={`${primaryBtn} mt-6 mb-5`}>
+                              {loading ? 'RESETTING...' : 'RESET PASSWORD'}
+                            </button>
+                          </form>
+                          <div className="text-center">
+                            {fpResend > 0 ? (
+                              <p className="text-[11px] text-[#888] uppercase tracking-[0.1em]">
+                                Resend available in <span className="text-primary font-medium">00:{String(fpResend).padStart(2, '0')}</span>
+                              </p>
+                            ) : (
+                              <button type="button" onClick={handleForgotResend} disabled={loading} className="text-[12px] text-primary underline decoration-1 underline-offset-4 hover:text-secondary uppercase tracking-[0.1em]">
+                                Resend code
+                              </button>
+                            )}
+                          </div>
+                          <button type="button" onClick={() => { setForgotStep('email'); clearMessages(); }} className="mt-6 text-[11px] text-[#888] hover:text-primary text-center uppercase tracking-[0.1em]">
+                            ← Change email
+                          </button>
                         </motion.div>
                       )}
 
