@@ -174,6 +174,8 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
 
   // Positions are per parent category, so reordering only makes sense inside one of them.
   const canReorder = Boolean(categoryId);
+  // The Explore Garden column is Flower-only; the unfiltered "all" view still needs it.
+  const showGardenColumn = !fixedCategoryName || CATEGORY_FEATURES[fixedCategoryName as CategoryType]?.explore;
   const gardenAvailable = Boolean(
     fixedCategoryName && CATEGORY_FEATURES[fixedCategoryName as CategoryType]?.explore
   );
@@ -410,7 +412,7 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
                   <th className="p-4">Hover image</th>
                   <th className="p-4">Subcategory</th>
                   {!fixedCategoryName && <th className="p-4">Parent category</th>}
-                  <th className="p-4">Explore Garden</th>
+                  {showGardenColumn && <th className="p-4">Explore Garden</th>}
                   <th className="p-4">Status</th>
                   <th className="p-4">Created</th>
                   <th className="p-4">Updated</th>
@@ -448,7 +450,9 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
                         {fixedCategoryLabel(item.category.name)}
                       </td>
                     )}
+                    {showGardenColumn && (
                     <td className="p-4">
+                      {CATEGORY_FEATURES[item.category.name as CategoryType]?.explore ? (
                       <button
                         type="button"
                         onClick={async () => {
@@ -499,7 +503,11 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
                           <span>Off</span>
                         )}
                       </button>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
+                    )}
                     <td className="p-4">
                       <button
                         onClick={async () => {

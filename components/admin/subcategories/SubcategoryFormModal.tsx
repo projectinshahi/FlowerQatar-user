@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, UploadCloud, X, FolderTree, Sparkles, Palette, Check, Compass, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import { subcategorySchema, type SubcategoryFormData } from '@/lib/validations/subcategory';
-import { fixedCategoryLabel } from '@/lib/category-config';
+import { CATEGORY_FEATURES, fixedCategoryLabel, type CategoryType } from '@/lib/category-config';
 import type { Subcat } from './SubcategoryManager';
 
 type Category = { id: string; name: string };
@@ -87,6 +87,7 @@ export default function SubcategoryFormModal({
   const isExploreGarden = useWatch({ control, name: 'isExploreGarden' });
   const hoverColor = useWatch({ control, name: 'hoverColor' }) || '#61000B';
   const subName = useWatch({ control, name: 'name' }) || 'Flower Name';
+  const categoryId = useWatch({ control, name: 'categoryId' });
 
   const getContrastColor = (hex: string) => {
     const clean = hex.replace('#', '');
@@ -137,6 +138,10 @@ export default function SubcategoryFormModal({
 
   const isSpecificCategory = Boolean(fixedCategoryName) || categories.length === 1;
   const currentCategoryName = fixedCategoryName || initial?.category?.name || targetCategory?.name || '';
+  // Navigation strip, catch-all and Explore Garden only exist for Flowers. Hidden fields keep
+  // their saved values (react-hook-form still submits defaultValues), so nothing is reset.
+  const parentName = categories.find((c) => c.id === categoryId)?.name ?? currentCategoryName;
+  const flowerFields = Boolean(CATEGORY_FEATURES[parentName as CategoryType]?.explore);
 
   return (
     <div
@@ -365,6 +370,7 @@ export default function SubcategoryFormModal({
             )}
           </div>
 
+          {flowerFields && (<>
           {/* Show in the storefront category strip — independent of Explore for Garden below. */}
           <div className="rounded-2xl border border-gray-200/80 bg-stone-50/50 p-4 transition-all">
             <label className="flex items-start justify-between gap-4 cursor-pointer select-none">
@@ -538,6 +544,7 @@ export default function SubcategoryFormModal({
               </div>
             )}
           </div>
+          </>)}
 
           <label className="flex items-center gap-3 text-sm font-medium text-gray-700 cursor-pointer select-none">
             <input
