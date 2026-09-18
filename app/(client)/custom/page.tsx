@@ -5,6 +5,7 @@ import { useApp } from '../../../context/AppContext';
 import { ROSE_COLORS, BOX_COLORS } from '../../../data/products';
 import { ChevronRight, ChevronLeft, ShoppingBag, Gift, Sparkles, Check, ShieldCheck } from 'lucide-react';
 import Breadcrumbs from '../../../components/Breadcrumbs';
+import { qar } from '../../../lib/utils';
 
 export default function CustomArrangementPage() {
   const { addToCart } = useApp();
@@ -482,7 +483,7 @@ export default function CustomArrangementPage() {
 
             <div className="text-center">
               <span className="text-[10px] uppercase tracking-widest text-muted block">Subtotal</span>
-              <span className="text-lg font-bold text-secondary">${calculatedPrice}</span>
+              <span className="text-lg font-bold text-secondary">{qar(calculatedPrice)}</span>
             </div>
 
             {/* Next or Add to Cart Button */}

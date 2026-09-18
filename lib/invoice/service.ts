@@ -167,11 +167,20 @@ export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData
     },
   };
 
+  /*
+   * The tax rate is whatever the ORDER was charged, never a constant. Orders placed before the
+   * 8% was removed keep their stored tax (so their invoices still match what was recorded);
+   * newer orders store 0. A hardcoded 0.08 here printed VAT on every invoice regardless.
+   */
+  const storedSubtotal = Number(order.subtotal) || 0;
+  const storedTax = Number(order.tax) || 0;
+  const orderTaxRate = storedSubtotal > 0 ? storedTax / storedSubtotal : 0;
+
   const lineItems: InvoiceLineItem[] = (order.items || []).map((it: any, index: number) => {
     const unitPrice = Number(it.price || 0);
     const quantity = Number(it.quantity || 1);
     const itemTotal = unitPrice * quantity;
-    const taxRate = 0.08; // 8% standard tax
+    const taxRate = orderTaxRate;
     const taxAmount = Math.round(itemTotal * taxRate * 100) / 100;
 
     const prod = it.product || {};
@@ -203,7 +212,7 @@ export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData
   const couponDiscount = Number(order.discount) || 0;
   const pointsRedeemed = Number(order.pointsRedeemed) || 0;
   const pointsDiscount = pointsRedeemed; // 1 point = 1 QAR
-  const taxAmount = Number(order.tax) || Math.round(subtotal * 0.08);
+  const taxAmount = storedTax;
   const grandTotal = Number(order.totalAmount) || Math.max(0, subtotal + shippingFee + taxAmount - couponDiscount - pointsDiscount);
 
   const financials: InvoiceFinancials = {
@@ -214,7 +223,7 @@ export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData
     pointsRedeemed,
     pointsDiscount,
     taxAmount,
-    taxRate: 0.08,
+    taxRate: orderTaxRate,
     otherCharges: 0,
     grandTotal,
     paidAmount: grandTotal,

@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { categoryFromSlug, categorySlug } from '../../../lib/subcategories';
 
 // The storefront funnels category browsing into the single /shop listing. This route
@@ -17,5 +17,7 @@ export default async function CategoryRedirect({
 
   const qs = new URLSearchParams({ category: categorySlug(type) });
   if (tab) qs.set('tab', tab);
-  redirect(`/shop?${qs.toString()}`);
+  // Permanent (308): these are the old category URLs, and a temporary redirect told search
+  // engines to keep indexing them instead of passing their signals to the /shop listing.
+  permanentRedirect(`/shop?${qs.toString()}`);
 }

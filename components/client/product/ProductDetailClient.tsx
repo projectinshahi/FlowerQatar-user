@@ -262,10 +262,24 @@ export default function ProductDetailClient({
       </div>
 
       {/* PRODUCT TWO-COLUMN LAYOUT */}
-      <div className="max-w-[1440px] mx-auto px-0 md:px-12 pb-16 lg:pb-24 flex flex-col lg:flex-row gap-0 lg:gap-16 pt-32 lg:pt-40">
+      {/*
+        Side spacing: 48px up to xl, then 112px (xl:px-28) so the image and the details sit in from
+        the page edges on desktop instead of running close to them. Only from 1280px up — below
+        that the wider padding would squeeze the details column.
+      */}
+      <div className="max-w-[1440px] mx-auto px-0 md:px-12 xl:px-28 pb-16 lg:pb-24 flex flex-col lg:flex-row gap-0 lg:gap-16 pt-32 lg:pt-40">
 
-        {/* LEFT COLUMN: IMAGES */}
-        <div className="w-full lg:w-[60%] flex flex-col gap-4 relative px-4 md:px-0 lg:pr-8">
+        {/*
+          LEFT COLUMN: IMAGES — pinned just under the fixed navbar while the details scroll, the
+          same behaviour as the Blushing Blooms product page. Plain CSS sticky: no scroll listener.
+          `self-start` matters: a flex row stretches its children to the row's height, and a
+          column as tall as the row has nowhere to stick. --site-header-h is the navbar's live
+          height (set by Navbar); 155px is its measured desktop height, used until it reports.
+        */}
+        {/* lg:z-10: sticky makes this column its own stacking layer, so the gallery's hover-zoom
+            panel — which extends over the details column — was painted under the gift images
+            there. Lifting the column keeps the panel on top; the header (z-50) stays above it. */}
+        <div className="w-full lg:w-[60%] flex flex-col gap-4 relative px-4 md:px-0 lg:pr-8 lg:sticky lg:top-[var(--site-header-h,155px)] lg:self-start lg:z-10">
           {/* M05: enhanced gallery (thumbnail strip, keyboard, swipe, hover-zoom, fullscreen lightbox) */}
           <ProductGallery key={selectedColorId} images={allImages} productName={product.name} showThumbnails={galleryMedia.length > 0} />
         </div>
@@ -381,7 +395,7 @@ export default function ProductDetailClient({
                       <Image
                         src="/images/category_bouquets_1782290106325.png"
                         alt={variant.variantName}
-                        fill
+                        fill sizes="60px"
                         className="object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                     </div>
@@ -454,7 +468,7 @@ export default function ProductDetailClient({
                           className="relative w-[60px] h-[60px] rounded-full overflow-hidden border border-gray-200"
                           style={{ backgroundColor: displayColor }}
                         >
-                          {imageUrl && <LuxuryImage src={imageUrl} alt={cv.colorName || 'Color swatch'} fill className="object-cover" />}
+                          {imageUrl && <LuxuryImage src={imageUrl} alt={cv.colorName || 'Color swatch'} fill sizes="60px" className="object-cover" />}
                         </div>
                       </div>
 
@@ -658,7 +672,7 @@ export default function ProductDetailClient({
           <Image
             src="/images/category_bouquets_1782290106325.png" // Fallback, replace with actual landscape image 
             alt="Vase lifestyle image"
-            fill
+            fill sizes="(max-width: 1024px) 100vw, 55vw"
             className="object-cover"
           />
         </div>
@@ -813,7 +827,8 @@ export default function ProductDetailClient({
                     QAR {item.price}
                   </span>
                   
-                  {item.colors?.length > 0 && (
+                  {/* Colour dots belong to the Blushing Blooms collection only. */}
+                  {item.categoryType === 'BLUSHING_BLOOMS' && item.colors?.length > 0 && (
                     <div className="flex gap-1">
                       {item.colors.slice(0, 4).map((c, i) => (
                         <span

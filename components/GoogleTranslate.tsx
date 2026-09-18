@@ -12,7 +12,10 @@ import Script from "next/script";
 export default function GoogleTranslate() {
   return (
     <>
-      <div id="google_translate_element" aria-hidden="true" />
+      {/* `inert`: the widget is visually hidden and aria-hidden, but Google's "Select Language"
+          link inside it was still a keyboard tab stop, an invisible control. The storefront's
+          own EN/AR switch drives translation, so nothing needs to reach this by keyboard. */}
+      <div id="google_translate_element" aria-hidden="true" inert />
       <Script id="google-translate-init" strategy="afterInteractive">
         {`window.googleTranslateElementInit = function () {
           // element.js publishes window.google.translate before TranslateElement finishes

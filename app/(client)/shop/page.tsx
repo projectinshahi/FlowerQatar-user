@@ -20,10 +20,33 @@ import {
 import { BLUSHING_BLOOMS_FALLBACK } from '../../../data/blushing-blooms';
 import type { Product } from '../../../types';
 
-export const metadata = {
-  title: 'Shop | The Collection',
-  description: 'Explore our signature boxes of preserved Eternity® Roses, handcrafted to order.',
-};
+/*
+ * Per-listing metadata. A single static `metadata` gave every category the same title, and the
+ * layout's canonical pointed all of them at the home page, so no listing could be indexed. The
+ * canonical keeps category and subcategory (real, distinct listings) and drops sort, price,
+ * country and tab, which only reorder or narrow the same set.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const one = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : undefined);
+  const type = one('category') ? categoryFromSlug(one('category')!) : null;
+  const sub = one('subcategory') || one('collection');
+  const qs = new URLSearchParams();
+  if (type) qs.set('category', categorySlug(type));
+  if (type && sub) qs.set('subcategory', sub);
+  const label = type ? CATEGORY_META[type].label : null;
+  return {
+    title: label ? `${label} | The Collection` : 'Shop | The Collection',
+    description: label
+      ? `Explore the ${label} collection from Lebami, handcrafted to order.`
+      : 'Explore our signature boxes of preserved Eternity® Roses, handcrafted to order.',
+    alternates: { canonical: qs.toString() ? `/shop?${qs.toString()}` : '/shop' },
+  };
+}
 
 // Revalidate periodically so newly published products appear without a redeploy......
 export const revalidate = 60;

@@ -221,7 +221,7 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
         <div className="flex items-center space-x-2">
           <div className="relative flex items-center gap-2 text-[11px] uppercase tracking-widest text-primary font-medium">
             <span>SORT BY:</span>
-            <select
+            <select aria-label="Sort products"
               value={filters.sort}
               onChange={(e) => setFilter({ sort: e.target.value === DEFAULT_SORT ? null : e.target.value })}
               className="appearance-none bg-transparent border-none pr-5 text-[11px] uppercase tracking-widest text-primary focus:outline-none focus:ring-0 cursor-pointer"
@@ -364,7 +364,7 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
             <div>
               <div className="flex justify-between items-center pb-4 border-b border-divider mb-6">
                 <h3 className="text-sm uppercase tracking-[0.2em] font-medium text-primary">Filter Arrangements</h3>
-                <button onClick={() => setIsFilterDrawerOpen(false)} className="text-muted hover:text-primary"><X size={20} /></button>
+                <button aria-label="Close filters" onClick={() => setIsFilterDrawerOpen(false)} className="text-muted hover:text-primary"><X size={20} /></button>
               </div>
               {facets.subcategories.length > 0 && (
                 <div className="mb-6">

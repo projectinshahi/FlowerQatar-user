@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Heart, Star, Plus, Eye } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
@@ -36,6 +36,17 @@ export default function BlushingProductCard({
 }) {
   const { wishlist, toggleWishlist, addToCart } = useApp();
 
+  /*
+   * The colour the shopper picked from the swatch row. Each colour carries its own photo, hover
+   * media and price (see mapDbProductToStore), so choosing one swaps all three — the same model
+   * the quick view uses. `colors[0]` is the product's default variant, whose media and price are
+   * exactly `product.image` / `product.price`, so the card first renders unchanged.
+   */
+  const [colorName, setColorName] = useState(product.colors?.[0]?.name);
+  const selectedColor = product.colors?.find((c) => c.name === colorName) ?? product.colors?.[0] ?? null;
+  const image = selectedColor?.image || product.image;
+  const price = selectedColor?.price ?? product.price;
+
   const isLinked = Boolean(product.slug);
   /*
    * The category is carried into the product URL so `loading.tsx` can show the dark Blushing
@@ -48,9 +59,9 @@ export default function BlushingProductCard({
 
   /**
    * Quick add is a one-click purchase: it puts the product in the basket and opens nothing.
-   * The default colour is `colors[0]`, which mapDbProductToStore already orders as the
-   * product's default variant colour — so `product.price` is that colour's price and the two
-   * cannot disagree. Anything needing a choice (colour, quantity, gifts) is quick view's job.
+   * It adds the colour currently shown on the card — the swatch the shopper picked, else the
+   * default `colors[0]` — at that colour's own price, so the basket always matches the photo.
+   * Anything needing more choice (quantity, gifts) is quick view's job.
    *
    * This is the same `addToCart` contract the shared card and the product page use, so a guest
    * gets the standard sign-in prompt rather than a second, divergent cart path.
@@ -59,13 +70,13 @@ export default function BlushingProductCard({
     e.preventDefault();
     e.stopPropagation();
     addToCart({
-      product: { id: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image },
+      product: { id: product.id, slug: product.slug, name: product.name, price, image },
       quantity: 1,
-      roseColor: product.colors?.[0]?.name || 'Default',
+      roseColor: selectedColor?.name || 'Default',
       boxColor: product.boxColors?.[0]?.name || 'Standard',
       boxShape: product.boxShape,
       size: product.sizes?.[0],
-      price: product.price,
+      price,
     });
   };
 
@@ -75,13 +86,14 @@ export default function BlushingProductCard({
    * Both layers go through LuxuryImage, so a video in either slot plays muted and inline.
    * `group-hover` only applies where hover exists; a tap on a phone goes straight to the page.
    */
-  const hoverMedia = product.hoverImage && product.hoverImage !== product.image ? product.hoverImage : null;
+  const hoverSource = selectedColor?.hoverImage || product.hoverImage;
+  const hoverMedia = hoverSource && hoverSource !== image ? hoverSource : null;
   const sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 460px';
 
   const media = (
     <>
       <LuxuryImage
-        src={product.image}
+        src={image}
         alt={product.name}
         fill
         sizes={sizes}
@@ -253,21 +265,32 @@ export default function BlushingProductCard({
             {isLinked ? <Link href={href}>{product.name}</Link> : product.name}
           </h3>
           <p className="mt-1 text-[15px] font-medium tracking-[0.1em] text-white sm:mt-2 sm:text-[clamp(1.0625rem,0.9988rem_+_0.2614vw,1.3125rem)]">
-            QAR {product.price}
+            QAR {price}
           </p>
         </div>
 
         {product.colors?.length > 0 && (
           <ul className="flex items-center gap-1.5 sm:gap-2" aria-label="Available colours">
-            {product.colors.slice(0, MAX_SWATCHES).map((color) => (
-              <li key={color.name} className="flex">
-                <ColorSwatch
-                  hex={color.hex}
-                  name={color.name}
-                  className="h-4 w-4 ring-white/10 sm:h-5 sm:w-5"
-                />
-              </li>
-            ))}
+            {product.colors.slice(0, MAX_SWATCHES).map((color) => {
+              const selected = color.name === selectedColor?.name;
+              return (
+                <li key={color.name} className="flex">
+                  {/*
+                    Outside the product link, so picking a colour swaps the photo without
+                    navigating. The faint ring is for unselected dots only: `cn` is twMerge, so
+                    passing it always would override the white selected ring. The offset matches
+                    the card surface, as the quick view does against its own.
+                  */}
+                  <ColorSwatch
+                    hex={color.hex}
+                    name={color.name}
+                    selected={selected}
+                    onSelect={() => setColorName(color.name)}
+                    className={`h-4 w-4 ring-offset-[#1e1918] sm:h-5 sm:w-5${selected ? '' : ' ring-white/10'}`}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

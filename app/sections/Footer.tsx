@@ -60,7 +60,7 @@ export default function Footer() {
           <div className="w-20 h-20 md:w-24 md:h-24 mx-auto flex items-center justify-center mb-2">
             <Image 
               src="/images/lebami.png"
-              alt="LB Logo"
+              alt="Lebami"
               width={96}
               height={96}
               className="object-contain"
@@ -73,7 +73,7 @@ export default function Footer() {
           
           {/* Email Input */}
           <form suppressHydrationWarning className="relative mt-4 md:mt-5 group max-w-sm mx-auto" onSubmit={(e) => e.preventDefault()}>
-            <input
+            <input aria-label="Email address"
               suppressHydrationWarning
               type="email"
               placeholder="EMAIL ADDRESS"

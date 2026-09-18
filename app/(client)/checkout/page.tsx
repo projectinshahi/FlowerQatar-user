@@ -12,6 +12,7 @@ import {
   calculateShippingForMethod,
   type ShippingConfig,
 } from '../../../lib/shipping';
+import { qar } from '../../../lib/utils';
 
 interface FormErrors {
   [key: string]: string;
@@ -659,7 +660,7 @@ export default function CheckoutPage() {
                       Qty: {item.quantity} • {item.roseColor}
                     </p>
                   </div>
-                  <span className="font-semibold text-primary/95 ml-2">${item.price * item.quantity}</span>
+                  <span className="font-semibold text-primary/95 ml-2">{qar(item.price * item.quantity)}</span>
                 </div>
               ))}
             </div>
@@ -678,17 +679,17 @@ export default function CheckoutPage() {
             <div className="border-t border-divider pt-4 space-y-2 text-xs">
               <div className="flex justify-between text-muted">
                 <span>Subtotal</span>
-                <span>${subtotal}</span>
+                <span>{qar(subtotal)}</span>
               </div>
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-green-600 font-medium">
                   <span>Coupon{appliedCoupon?.code ? ` (${appliedCoupon.code})` : ''}</span>
-                  <span>-${couponDiscount}</span>
+                  <span>-{qar(couponDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-muted">
                 <span>Shipping</span>
-                <span>{effectiveShipping === 0 ? 'Complimentary' : `$${effectiveShipping}`}</span>
+                <span>{effectiveShipping === 0 ? 'Complimentary' : qar(effectiveShipping)}</span>
               </div>
               {/* <div className="flex justify-between text-muted">
                 <span>Estimated Taxes</span>
@@ -697,12 +698,12 @@ export default function CheckoutPage() {
               {pointsDiscount > 0 && (
                 <div className="flex justify-between text-green-600 font-medium">
                   <span>Points Redeemed</span>
-                  <span>-${pointsDiscount}</span>
+                  <span>-{qar(pointsDiscount)}</span>
                 </div>
               )}
               <div className="border-t border-divider pt-3 flex justify-between font-bold text-sm">
                 <span className="uppercase tracking-widest text-xs">Estimated Total</span>
-                <span className="text-secondary text-lg font-bold">${grandTotal}</span>
+                <span className="text-secondary text-lg font-bold">{qar(grandTotal)}</span>
               </div>
             </div>
 

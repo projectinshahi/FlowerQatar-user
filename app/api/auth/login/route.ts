@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
   try {
+    // Per-IP ceiling on attempts, on top of the per-account lock below.
+    const limit = rateLimit(`login:${clientIp(req)}`, 20, 15 * 60 * 1000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many sign-in attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+      );
+    }
+
     const { email, password, isAdminLogin } = await req.json();
 
     if (!email || !password) {
@@ -19,20 +29,6 @@ export async function POST(req: Request) {
 
     if (!user || !user.password) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
-    }
-
-    if (!user.isActive || user.isBlocked || user.isDeleted) {
-      return NextResponse.json({ error: 'Account is deactivated or blocked' }, { status: 403 });
-    }
-
-    const hasAdminRole = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
-
-    if (isAdminLogin && !hasAdminRole) {
-      return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 403 });
-    }
-
-    if (!isAdminLogin && hasAdminRole) {
-      return NextResponse.json({ error: 'Admins cannot log in on the customer portal.' }, { status: 403 });
     }
 
     // Rate Limiting (Brute force protection)
@@ -52,6 +48,25 @@ export async function POST(req: Request) {
       await prisma.user.update({ where: { id: user.id }, data: updates });
 
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
+
+    /*
+     * Account-state and portal checks run only AFTER the password is proven. They used to run
+     * first, so anyone could learn which emails belong to admins, or to deactivated accounts,
+     * without knowing a password.
+     */
+    if (!user.isActive || user.isBlocked || user.isDeleted) {
+      return NextResponse.json({ error: 'Account is deactivated or blocked' }, { status: 403 });
+    }
+
+    const hasAdminRole = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+
+    if (isAdminLogin && !hasAdminRole) {
+      return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 403 });
+    }
+
+    if (!isAdminLogin && hasAdminRole) {
+      return NextResponse.json({ error: 'Admins cannot log in on the customer portal.' }, { status: 403 });
     }
 
     if (!user.isEmailVerified) {

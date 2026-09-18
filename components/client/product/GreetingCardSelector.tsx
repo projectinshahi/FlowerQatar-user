@@ -95,8 +95,15 @@ export default function GreetingCardSelector({
   onStyle: (s: GreetingStyle) => void;
 }) {
   const { data, loading, error, reload } = useGreetingCards();
+  /*
+   * The standard product page offers only the Classic Cream card, alongside "No card". The other
+   * templates stay active in the catalogue — this narrows what this page shows, it doesn't
+   * delete anything. Matched by name, case-insensitively: renaming the template in the admin
+   * would hide it here, so keep the name if you edit it.
+   */
+  const cards = (data ?? []).filter((t) => t.name.trim().toLowerCase() === "classic cream");
   const remaining = GREETING_MAX - message.length;
-  const selected = data?.find((t) => t.id === templateId) || null;
+  const selected = cards.find((t) => t.id === templateId) || null;
   const set = (patch: Partial<GreetingStyle>) => onStyle({ ...style, ...patch });
 
   return (
@@ -111,7 +118,7 @@ export default function GreetingCardSelector({
         </div>
       ) : error ? (
         <div className="flex items-center gap-2 text-[12px] text-red-500"><AlertCircle size={14} /> {error} <button type="button" onClick={reload} className="underline">Retry</button></div>
-      ) : data && data.length > 0 ? (
+      ) : cards.length > 0 ? (
         <>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             <button
@@ -122,7 +129,7 @@ export default function GreetingCardSelector({
             >
               No card
             </button>
-            {data.map((t) => (
+            {cards.map((t) => (
               <button
                 key={t.id}
                 type="button"

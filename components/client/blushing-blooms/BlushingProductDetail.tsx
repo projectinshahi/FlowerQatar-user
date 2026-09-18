@@ -541,7 +541,7 @@ export default function BlushingProductDetail({
                       {/* Rail controls. Hidden from assistive tech: the rail itself is keyboard
                           scrollable and every date is already a focusable button. */}
                       <div className="flex items-center gap-2" aria-hidden="true">
-                        <button type="button" onClick={() => nudge(-1)} tabIndex={-1} className="text-white/60 transition-colors hover:text-white">
+                        <button aria-label="Previous image" type="button" onClick={() => nudge(-1)} tabIndex={-1} className="text-white/60 transition-colors hover:text-white">
                           <ChevronLeft size={22} strokeWidth={1.5} />
                         </button>
                         <span className="relative h-3 flex-1 overflow-hidden rounded-full bg-white/5">
@@ -553,7 +553,7 @@ export default function BlushingProductDetail({
                             }}
                           />
                         </span>
-                        <button type="button" onClick={() => nudge(1)} tabIndex={-1} className="text-white/60 transition-colors hover:text-white">
+                        <button aria-label="Next image" type="button" onClick={() => nudge(1)} tabIndex={-1} className="text-white/60 transition-colors hover:text-white">
                           <ChevronRight size={22} strokeWidth={1.5} />
                         </button>
                       </div>

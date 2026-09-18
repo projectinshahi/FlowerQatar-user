@@ -50,7 +50,7 @@ function SearchContent({ products }: { products: Product[] }) {
       <div className="max-w-xl mx-auto text-center my-12">
         <h1 className="font-serif text-3xl font-medium tracking-wide mb-6">Search Atelier</h1>
         <form onSubmit={handleSearchSubmit} className="relative flex border-b border-secondary pb-2">
-          <input
+          <input aria-label="Search products"
             type="text"
             placeholder="Search arrangements, color swatches..."
             value={query}
@@ -58,7 +58,7 @@ function SearchContent({ products }: { products: Product[] }) {
             className="w-full text-base md:text-lg font-serif text-primary placeholder-gray/60 bg-transparent border-none focus:outline-none pr-10"
             suppressHydrationWarning
           />
-          <button type="submit" className="absolute right-0 top-1/2 transform -translate-y-1/2 text-secondary">
+          <button aria-label="Search" type="submit" className="absolute right-0 top-1/2 transform -translate-y-1/2 text-secondary">
             <Search size={20} />
           </button>
         </form>

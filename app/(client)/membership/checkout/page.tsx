@@ -6,7 +6,7 @@ import { formatValidity } from '@/lib/validations/subscription-plan';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import MembershipPayment from '@/components/membership/MembershipPayment';
 
-export const metadata: Metadata = { title: 'Membership Checkout' };
+export const metadata: Metadata = { title: 'Membership Checkout', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 export default async function MembershipCheckoutPage({

@@ -1,6 +1,7 @@
 import { Mail } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { logDbError } from '@/lib/prisma-error';
+import { requireAdminPage } from '@/lib/admin-guard';
 import ContactEnquiriesManager, {
   type Enquiry,
 } from '@/components/admin/contact/ContactEnquiriesManager';
@@ -52,6 +53,7 @@ async function getEnquiries(): Promise<Enquiry[]> {
 }
 
 export default async function ContactEnquiriesPage() {
+  await requireAdminPage();
   const enquiries = await getEnquiries();
   const unread = enquiries.filter((e) => e.status === 'NEW').length;
 

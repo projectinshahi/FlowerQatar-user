@@ -188,7 +188,7 @@ export default function CouponBox({ items, onApplied }: CouponBoxProps) {
       ) : (
         /* Input state */
         <div className="flex gap-2">
-          <input
+          <input aria-label="Promo code"
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}

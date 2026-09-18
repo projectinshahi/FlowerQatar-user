@@ -9,6 +9,7 @@ import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { requireAdmin } from "@/lib/admin-guard";
 import { logDbError, uniqueConstraintMessage } from "@/lib/prisma-error";
 import { supportsCountry } from "@/lib/category-config";
+import { revalidateStoreProducts } from "@/lib/store-products";
 
 /**
  * Normalizes the validated variants into the JSON shape stored on Product.variants.
@@ -142,6 +143,7 @@ export async function createProduct(data: ProductFormValues) {
     revalidatePath("/admin/products");
     revalidatePath("/products");
     revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
+    revalidateStoreProducts();
     return { success: true, data: product };
   } catch (error) {
     logDbError("createProduct", error);
@@ -219,6 +221,7 @@ export async function updateProduct(id: string, data: ProductFormValues) {
     revalidatePath("/products");
     revalidatePath(`/product/${product.slug}`);
     revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
+    revalidateStoreProducts();
     return { success: true, data: product };
   } catch (error) {
     logDbError("updateProduct", error);
@@ -351,6 +354,7 @@ export async function deleteProduct(id: string) {
     revalidatePath("/admin/products");
     revalidatePath("/products");
     revalidatePath("/");
+    revalidateStoreProducts();
     return { success: true };
   } catch (error: any) {
     console.error("Failed to delete product:", error);
@@ -368,6 +372,7 @@ export async function bulkUpdateProductStatus(ids: string[], status: ProductStat
     revalidatePath("/admin/products");
     revalidatePath("/products");
     revalidatePath("/");
+    revalidateStoreProducts();
     return { success: true };
   } catch (error: any) {
     console.error("Failed to bulk update products:", error);
@@ -382,6 +387,7 @@ export async function bulkDeleteProducts(ids: string[]) {
     revalidatePath("/admin/products");
     revalidatePath("/products");
     revalidatePath("/");
+    revalidateStoreProducts();
     return { success: true };
   } catch (error: any) {
     console.error("Failed to bulk delete products:", error);

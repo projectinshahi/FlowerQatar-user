@@ -8,7 +8,7 @@ import { planName, planAccent } from '@/lib/subscription-plans';
 import { formatValidity } from '@/lib/validations/subscription-plan';
 import { getWalletView } from '@/lib/services/wallet';
 
-export const metadata: Metadata = { title: 'Subscription Activated' };
+export const metadata: Metadata = { title: 'Subscription Activated', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 const fmtDate = (d: Date) =>

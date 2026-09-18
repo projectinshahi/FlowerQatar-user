@@ -5,7 +5,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 import { getStoreCategories } from '../../../lib/store-products';
 
 export const metadata = {
-  title: 'Collections | Lebami',
+  title: 'Collections',
   description: 'Browse our preserved Eternity® rose collections by category.',
 };
 

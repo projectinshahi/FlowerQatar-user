@@ -31,7 +31,15 @@ export default function BannerSection({
   return (
 
     <>
-      {banners.map((banner) => (
+      {banners.map((banner, i) => {
+        /*
+         * One <h1> per page: the first banner's title. Every banner used to render an <h1>
+         * (wrapped in an inline <b>, which is invalid around a heading and did not change its
+         * weight — the heading's own font-light applies), so a page with several banners had
+         * several h1s and one with an untitled first banner had none.
+         */
+        const Title = i === 0 ? 'h1' : 'h2'
+        return (
         <section
           key={banner.id}
           aria-label={banner.title || "Featured banner"}
@@ -68,14 +76,12 @@ export default function BannerSection({
                 <div className="flex flex-col max-w-[560px]">
                
                   {banner.title && (
-                    <b>
-                    <h1
+                    <Title
                       className="font-serif text-[40px] md:text-[56px] font-light tracking-[0.05em] leading-[1.1]"
                       style={{ color: banner.titleColor || DEFAULT_BANNER_TEXT_COLOR }}
                     >
                       {banner.title}
-                    </h1>
-                    </b>
+                    </Title>
                   )}
                      {banner.subheading && (
                     <p
@@ -101,7 +107,8 @@ export default function BannerSection({
           {/* Active promotions ticker, pinned to the bottom edge of the banner */}
           <PromotionBar items={promotions} theme={promotionTheme} />
         </section>
-      ))}
+        )
+      })}
     </>
   )
 }

@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 import { prisma } from "@/lib/prisma";
 import { logDbError } from "@/lib/prisma-error";
+import { CATEGORY_ORDER, shopCategoryHref } from "@/lib/category-config";
 
 // Regenerate hourly so newly published products appear without a redeploy.
 export const revalidate = 3600;
@@ -23,6 +24,7 @@ const STATIC_PATHS = [
   "/shipping-returns",
   "/boutiques",
   "/press",
+  "/journal",
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -77,5 +79,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     logDbError("sitemap.occasions", e);
   }
 
-  return [...staticRoutes, ...products, ...occasions];
+  // Each category listing is its own indexable page (it has its own title and canonical).
+  const categories: MetadataRoute.Sitemap = CATEGORY_ORDER.map((c) => ({
+    url: `${SITE_URL}${shopCategoryHref(c)}`,
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.8,
+  }));
+
+  return [...staticRoutes, ...categories, ...products, ...occasions];
 }

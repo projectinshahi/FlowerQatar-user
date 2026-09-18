@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 
 export const metadata = {
-  title: 'Our Boutiques | LEBAMI',
+  title: 'Our Boutiques',
   description: 'Visit our exclusive Lebami boutiques worldwide and experience the beauty of Eternity® Roses in person.',
 };
 
@@ -74,7 +74,7 @@ export default function BoutiquesPage() {
                 <Image 
                   src={boutique.image} 
                   alt={boutique.name}
-                  fill
+                  fill sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover group-hover:scale-105 transition-transform duration-1000"
                 />
               </div>

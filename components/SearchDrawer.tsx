@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import Link from 'next/link';
 import LuxuryImage from '@/components/LuxuryImage';
 import { Product } from '../types';
@@ -24,6 +25,7 @@ const TOP_SEARCHES = [
 
 export default function SearchDrawer() {
   const { isSearchOpen, setSearchOpen } = useApp();
+  const dialogRef = useDialogA11y<HTMLDivElement>(isSearchOpen, () => setSearchOpen(false));
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
@@ -84,7 +86,7 @@ export default function SearchDrawer() {
   return (
     <AnimatePresence>
       {isSearchOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Search" className="fixed inset-0 z-50 overflow-hidden font-sans">
           {/* Backdrop */}
           {/*
             No `transition-opacity` class here any more: Framer writes `opacity` inline on every
@@ -112,7 +114,7 @@ export default function SearchDrawer() {
             >
               {/* Header */}
               <div className="px-5 md:px-6 py-4 bg-[#F8F8F8] flex items-center justify-start border-b border-[#EAEAEA]">
-                <button
+                <button aria-label="Close search"
                   onClick={() => setSearchOpen(false)}
                   className="text-primary hover:text-secondary transition-colors rounded-none mr-4"
                 >
@@ -128,7 +130,7 @@ export default function SearchDrawer() {
                 <div className="mb-10 md:mb-12 relative w-full">
                   <div className="flex items-stretch w-full h-[42px]">
                     <div className="flex-1 border border-black flex items-center min-w-0">
-                      <input
+                      <input aria-label="Search products"
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
@@ -203,7 +205,7 @@ export default function SearchDrawer() {
                                 <LuxuryImage 
                                   src={product.image} 
                                   alt={product.name} 
-                                  fill 
+                                  fill sizes="70px" 
                                   className="object-cover group-hover:scale-105 transition-transform duration-500" 
                                 />
                               </div>

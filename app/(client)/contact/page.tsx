@@ -90,10 +90,10 @@ export default function ContactPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 font-sans">
           
           <div className="flex flex-col gap-2">
-            <label className="text-[13px] text-secondary">
+            <label htmlFor="contact-name" className="text-[13px] text-secondary">
               Full name <span className="text-red-400">*</span>
             </label>
-            <input 
+            <input id="contact-name" 
               type="text"
               required
               value={name}
@@ -103,10 +103,10 @@ export default function ContactPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[13px] text-secondary">
+            <label htmlFor="contact-email" className="text-[13px] text-secondary">
               Email <span className="text-red-400">*</span>
             </label>
-            <input 
+            <input id="contact-email" 
               type="email"
               required
               placeholder="your@email.com"
@@ -117,11 +117,11 @@ export default function ContactPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[13px] text-secondary">
+            <label htmlFor="contact-subject" className="text-[13px] text-secondary">
               Subject <span className="text-red-400">*</span>
             </label>
             <div className="relative">
-              <select
+              <select id="contact-subject"
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
@@ -140,10 +140,10 @@ export default function ContactPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[13px] text-secondary">
+            <label htmlFor="contact-message" className="text-[13px] text-secondary">
               Message <span className="text-red-400">*</span>
             </label>
-            <textarea
+            <textarea id="contact-message"
               required
               rows={6}
               value={message}

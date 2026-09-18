@@ -158,7 +158,9 @@ export default function NewArrivals({ items }: { items?: Product[] }) {
       <div className="w-full relative">
         <div className="flex justify-between items-end mb-12 px-6 md:px-12 max-w-[1440px] mx-auto">
           <div>
-            <h2 className="font-serif text-[48px] text-primary font-light leading-[1.2]">
+            {/* 40px below 360px only: at 320px the 48px title's longest word plus the two arrows
+                did not fit, and the Next arrow sat 13px off-screen. 360px and up are unchanged. */}
+            <h2 className="font-serif text-[40px] min-[360px]:text-[48px] text-primary font-light leading-[1.2]">
               NEW ARRIVALS
             </h2>
             <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-muted mt-4">

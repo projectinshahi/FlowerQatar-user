@@ -67,7 +67,7 @@ export const InvoiceSummary: React.FC<InvoiceSummaryProps> = ({ financials }) =>
 
       {/* VAT (8%) */}
       <div className="flex justify-between items-center text-[11px]">
-        <span>VAT (8%) | الضريبة</span>
+        <span>VAT ({Math.round((financials.taxRate || 0) * 100)}%) | الضريبة</span>
         <span className="font-mono text-[#2E2E2E]">
           {formatCurrencyEn(taxAmount, currencyCode)}
         </span>
