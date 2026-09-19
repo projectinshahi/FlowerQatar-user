@@ -172,6 +172,7 @@ export async function getAdminSubcategoryOptions(): Promise<
 export const getNavMenu = unstable_cache(
   async (): Promise<NavCategory[]> => {
     const grouped = await getMenuData();
+
     return CATEGORY_ORDER.map((key) => ({
       key,
       label: CATEGORY_META[key].label,
@@ -212,6 +213,6 @@ export const getNavMenu = unstable_cache(
    *
    * Bump this suffix whenever the shape or link logic below changes.
    */
-  ['nav-menu-v5'],
+  ['nav-menu-v6'],
   { tags: [NAV_MENU_TAG], revalidate: 3600 }
 );
