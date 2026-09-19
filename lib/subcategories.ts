@@ -6,6 +6,7 @@ import type { CategoryType } from '@prisma/client';
 import {
   CATEGORY_ORDER,
   CATEGORY_META,
+  CATEGORY_FEATURES,
   MENU_LAYOUT,
   subcategoryHref,
   shopCategoryHref,
@@ -88,8 +89,18 @@ const select = {
  */
 const NAV_ORDER = [{ navigationPosition: 'asc' }, { name: 'asc' }] as const;
 
-/** A subcategory is in the strip only if it is active AND flagged for navigation. */
-const NAV_VISIBLE = { isActive: true, showInNavigation: true } as const;
+/**
+ * A subcategory is listed only if it is active AND flagged for navigation.
+ *
+ * The "Show in Navigation" toggle exists only in the Flower admin form. Other categories no longer
+ * offer it, so a flag left off there (e.g. Gift Combos → Perfume Combo) would hide the row with
+ * no way to turn it back on; for those categories the flag is ignored.
+ */
+const NAV_FLAG_CATEGORIES = CATEGORY_ORDER.filter((c) => CATEGORY_FEATURES[c].explore);
+const NAV_VISIBLE = {
+  isActive: true,
+  OR: [{ showInNavigation: true }, { category: { name: { notIn: NAV_FLAG_CATEGORIES } } }],
+};
 
 export const getSubcategories = cache(
   async (categoryType: CategoryType): Promise<StoreSubcategory[]> => {
@@ -201,6 +212,6 @@ export const getNavMenu = unstable_cache(
    *
    * Bump this suffix whenever the shape or link logic below changes.
    */
-  ['nav-menu-v4'],
+  ['nav-menu-v5'],
   { tags: [NAV_MENU_TAG], revalidate: 3600 }
 );

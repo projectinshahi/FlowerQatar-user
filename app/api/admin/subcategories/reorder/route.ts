@@ -38,7 +38,8 @@ export async function POST(request: Request) {
       )
     );
 
-    revalidateTag(NAV_MENU_TAG, 'max');
+    // expire: 0, not 'max': 'max' serves the old menu once more before refreshing.
+    revalidateTag(NAV_MENU_TAG, { expire: 0 });
     revalidatePath('/', 'layout');
     return NextResponse.json({ message: 'Order updated successfully', section, count: ids.length });
   } catch (error) {
