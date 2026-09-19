@@ -9,7 +9,7 @@ import { revalidateStoreProducts } from '@/lib/store-products';
 import { logDbError } from '@/lib/prisma-error';
 import { z } from 'zod';
 
-function revalidateStorefront() { revalidateTag(NAV_MENU_TAG, 'max'); revalidatePath('/', 'layout'); revalidateStoreProducts(); }
+function revalidateStorefront() { revalidateTag(NAV_MENU_TAG, { expire: 0 }); revalidatePath('/', 'layout'); revalidateStoreProducts(); }
 
 export async function GET(request: Request) {
   const denied = await guardAdmin(); if (denied) return denied;
