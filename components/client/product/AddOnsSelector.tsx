@@ -2,6 +2,7 @@
 
 import { Check, Loader2, AlertCircle, Gift } from "lucide-react";
 import { useAddOns, type AddOn } from "@/hooks/useProductOptions";
+import { formatNumber } from "@/lib/utils";
 
 export default function AddOnsSelector({ selected, onChange }: { selected: AddOn[]; onChange: (a: AddOn[]) => void }) {
   const { data, loading, error, reload } = useAddOns();
@@ -42,7 +43,7 @@ export default function AddOnsSelector({ selected, onChange }: { selected: AddOn
           >
             {on && <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center"><Check size={11} /></span>}
             <p className="text-[13px] text-primary font-medium leading-tight pr-4">{a.name}</p>
-            <p className="text-[11px] text-[#8A8A8A] mt-0.5">+QAR {a.price.toLocaleString()}</p>
+            <p className="text-[11px] text-[#8A8A8A] mt-0.5">+QAR {formatNumber(a.price)}</p>
           </button>
         );
       })}

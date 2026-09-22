@@ -56,7 +56,7 @@ export async function POST(request: Request, { params }: Context) {
       data: { ...data, displayOrder, giftGroupId: id },
       select: giftSelect,
     });
-    revalidateStorefront();
+    revalidateStorefront('gift.created', [id]);
     return NextResponse.json({ ...gift, price: Number(gift.price) }, { status: 201 });
   } catch (error) {
     return fail(error, 'POST /admin/gift-groups/:id/gifts');

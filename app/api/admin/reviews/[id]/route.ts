@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath } from 'next/cache';
+import { publishChange } from '@/lib/live-sync';
+import type { LiveAction } from '@/lib/live-events';
 import { reviewPatchSchema, reviewSchema } from '@/lib/reviews';
 import { isDbUnreachable, logDbError } from '@/lib/prisma-error';
 
@@ -29,13 +30,13 @@ function fail(context: string, error: unknown) {
   return NextResponse.json({ error: 'Review operation failed' }, { status: 500 });
 }
 
-/** Drop the product page cache so an edit shows immediately. */
-async function revalidateProduct(productId: string) {
+/** Drop the product page cache so an edit shows immediately, and refresh open copies of it. */
+async function revalidateProduct(productId: string, action: LiveAction) {
   const product = await prisma.product.findUnique({
     where: { id: productId },
     select: { slug: true },
   });
-  if (product) revalidatePath(`/product/${product.slug}`);
+  if (product) publishChange({ type: `review.${action}`, ids: [productId], slugs: [product.slug] });
 }
 
 /** PUT — full update from the edit form. */
@@ -51,7 +52,7 @@ export async function PUT(request: Request, { params }: Context) {
       data,
       include: { product: { select: { id: true, name: true, slug: true } } },
     });
-    revalidatePath(`/product/${review.product.slug}`);
+    publishChange({ type: 'review.updated', ids: [review.product.id], slugs: [review.product.slug] });
     return NextResponse.json(review);
   } catch (error) {
     return fail('PUT /api/admin/reviews/[id]', error);
@@ -67,7 +68,7 @@ export async function PATCH(request: Request, { params }: Context) {
     const { id } = await params;
     const data = reviewPatchSchema.parse(await request.json());
     const review = await prisma.productReview.update({ where: { id }, data });
-    await revalidateProduct(review.productId);
+    await revalidateProduct(review.productId, 'updated');
     return NextResponse.json(review);
   } catch (error) {
     return fail('PATCH /api/admin/reviews/[id]', error);
@@ -81,7 +82,7 @@ export async function DELETE(_request: Request, { params }: Context) {
   try {
     const { id } = await params;
     const review = await prisma.productReview.delete({ where: { id } });
-    await revalidateProduct(review.productId);
+    await revalidateProduct(review.productId, 'deleted');
     return NextResponse.json({ message: 'Review deleted' });
   } catch (error) {
     return fail('DELETE /api/admin/reviews/[id]', error);

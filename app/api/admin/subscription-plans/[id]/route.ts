@@ -57,7 +57,7 @@ export async function PUT(request: Request, { params }: Params) {
       });
     });
 
-    revalidateStorefront();
+    revalidateStorefront(id);
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {

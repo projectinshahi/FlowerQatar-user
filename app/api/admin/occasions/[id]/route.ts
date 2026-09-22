@@ -90,7 +90,7 @@ export async function PUT(request: Request, { params }: Params) {
       });
     });
 
-    revalidateStorefront();
+    revalidateStorefront('updated', id);
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -116,7 +116,7 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     const updated = await prisma.occasion.update({ where: { id }, data: { isActive } });
-    revalidateStorefront();
+    revalidateStorefront('updated', id);
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -139,7 +139,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     }
 
     await prisma.occasion.delete({ where: { id } });
-    revalidateStorefront();
+    revalidateStorefront('deleted', id);
     return NextResponse.json({ message: 'Occasion deleted successfully' });
   } catch (error) {
     console.error('Failed to delete occasion:', error);

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, CreditCard, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { formatNumber } from '@/lib/utils';
 
 /**
  * A collision-safe idempotency key. `crypto.randomUUID()` only exists in a secure context,
@@ -45,7 +46,7 @@ export default function MembershipPayment({
   const [processing, setProcessing] = useState(false);
   const keyRef = useRef('');
 
-  const priceLabel = price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const priceLabel = formatNumber(price, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
   const pay = async (outcome: 'SUCCESS' | 'FAILED') => {
     // Simulated failure never touches the server — route straight to the failed page.

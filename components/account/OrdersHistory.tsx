@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Package, AlertCircle, ChevronDown, FileText } from "lucide-react";
 import { Skeleton } from '@/components/ui/Skeleton';
+import { onLive, onResync } from '@/lib/live-client';
 
 type OrderItem = {
   id: string;
@@ -50,8 +51,9 @@ export default function OrdersHistory() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
+  /** `quiet`: a live refresh re-reads in place, without flashing the loading skeleton. */
+  const load = async (quiet = false) => {
+    if (!quiet) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/orders");
@@ -67,6 +69,15 @@ export default function OrdersHistory() {
 
   useEffect(() => {
     load();
+    // The server sends order events only to this customer's own room (server.mjs).
+    const offLive = onLive((event) => {
+      if (event.type === 'order.statusChanged') load(true);
+    });
+    const offResync = onResync(() => load(true));
+    return () => {
+      offLive();
+      offResync();
+    };
   }, []);
 
   const cancel = async (id: string, refunded: number) => {
@@ -113,7 +124,7 @@ export default function OrdersHistory() {
           <AlertCircle className="mx-auto mb-3 text-red-400" />
           <p className="text-sm text-red-600 mb-4">{error}</p>
           <button
-            onClick={load}
+            onClick={() => load()}
             className="border border-black px-5 py-2 rounded-lg text-[11px] uppercase tracking-[0.12em] hover:bg-black hover:text-white transition-colors"
           >
             Try Again

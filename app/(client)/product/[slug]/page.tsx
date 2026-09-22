@@ -197,6 +197,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             reviewCount: reviews.summary.count,
           }}
           giftGroups={giftGroups}
+          published={inStock}
         />
       </>
     );
@@ -205,7 +206,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <JsonLd data={[productLd, breadcrumbLd]} />
-      <ProductDetailClient product={product} related={related} reviews={reviews} giftGroups={giftGroups} />
+      <ProductDetailClient product={product} related={related} reviews={reviews} giftGroups={giftGroups} published={inStock} />
     </>
   );
 }

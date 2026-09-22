@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/admin-guard';
 import { planName, planAccent } from '@/lib/subscription-plans';
 import { formatValidity } from '@/lib/validations/subscription-plan';
 import { getWalletView } from '@/lib/services/wallet';
+import { formatNumber } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Subscription Activated', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ export default async function MembershipSuccessPage({
   const rows: { icon: React.ReactNode; label: string; value: string }[] = [
     { icon: <Sparkles size={16} />, label: 'Plan', value: `${name} Membership` },
     { icon: <CalendarClock size={16} />, label: 'Validity', value: validityLabel },
-    { icon: <Gift size={16} />, label: 'Points credited', value: `${membership.pointsCredited.toLocaleString()} pts` },
+    { icon: <Gift size={16} />, label: 'Points credited', value: `${formatNumber(membership.pointsCredited)} pts` },
     { icon: <CalendarClock size={16} />, label: 'Starts', value: fmtDate(membership.startsAt) },
     { icon: <CalendarClock size={16} />, label: 'Expires', value: fmtDate(membership.expiresAt) },
   ];
@@ -76,7 +77,7 @@ export default async function MembershipSuccessPage({
       <div className="mt-4 rounded-sm border border-divider/60 bg-cream px-5 py-4">
         <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Current available points</p>
         <p className="mt-1 font-serif text-[36px] font-light leading-none text-primary">
-          {wallet.availablePoints.toLocaleString()}
+          {formatNumber(wallet.availablePoints)}
         </p>
       </div>
 

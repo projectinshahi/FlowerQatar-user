@@ -10,9 +10,10 @@ import CreateSubscriptionModal from "./CreateSubscriptionModal";
 import DeliveryTimeline from "./DeliveryTimeline";
 import StatusBadge from "./StatusBadge";
 import { Skeleton } from '@/components/ui/Skeleton';
+import { formatNumber, formatUtcDate } from "@/lib/utils";
 
 const fmt = (d: string | null) =>
-  d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
+  d ? formatUtcDate(d, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
 
 function Backdrop({ onClose }: { onClose: () => void }) {
   return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />;
@@ -132,7 +133,7 @@ export default function SubscriptionsManager() {
                     <StatusBadge status={detail.status} />
                   </div>
                   {detail.variantLabel && <p className="text-[12px] text-[#8A8A8A]">{detail.variantLabel}</p>}
-                  <p className="text-[13px] text-[#666] mt-2">{detail.frequencyLabel} · Qty {detail.quantity} · {detail.totalPrice.toLocaleString()} QAR / delivery</p>
+                  <p className="text-[13px] text-[#666] mt-2">{detail.frequencyLabel} · Qty {detail.quantity} · {formatNumber(detail.totalPrice)} QAR / delivery</p>
                   <p className="text-[13px] text-[#666]">
                     {detail.remainingDeliveries} remaining{detail.totalDeliveries ? ` of ${detail.totalDeliveries}` : " (ongoing)"} · {detail.skippedCount} skipped
                   </p>

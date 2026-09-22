@@ -9,7 +9,7 @@ import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { requireAdmin } from "@/lib/admin-guard";
 import { logDbError, uniqueConstraintMessage } from "@/lib/prisma-error";
 import { supportsCountry } from "@/lib/category-config";
-import { revalidateStoreProducts } from "@/lib/store-products";
+import { publishChange } from "@/lib/live-sync";
 
 /**
  * Normalizes the validated variants into the JSON shape stored on Product.variants.
@@ -142,8 +142,7 @@ export async function createProduct(data: ProductFormValues) {
 
     revalidatePath("/admin/products");
     revalidatePath("/products");
-    revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
-    revalidateStoreProducts();
+    publishChange({ type: "product.created", ids: [product.id], slugs: [product.slug], status: product.status });
     return { success: true, data: product };
   } catch (error) {
     logDbError("createProduct", error);
@@ -219,9 +218,12 @@ export async function updateProduct(id: string, data: ProductFormValues) {
 
     revalidatePath("/admin/products");
     revalidatePath("/products");
-    revalidatePath(`/product/${product.slug}`);
-    revalidatePath("/", "layout"); // homepage + category listings reflect the assignment
-    revalidateStoreProducts();
+    publishChange({
+      type: product.status === current.status ? "product.updated" : "product.statusChanged",
+      ids: [product.id],
+      slugs: [product.slug],
+      status: product.status,
+    });
     return { success: true, data: product };
   } catch (error) {
     logDbError("updateProduct", error);
@@ -353,8 +355,8 @@ export async function deleteProduct(id: string) {
     await prisma.product.delete({ where: { id } });
     revalidatePath("/admin/products");
     revalidatePath("/products");
-    revalidatePath("/");
-    revalidateStoreProducts();
+    // Was revalidatePath("/") only: the product's own page stayed cached for up to an hour.
+    publishChange({ type: "product.deleted", ids: [id], slugs: product ? [product.slug] : [] });
     return { success: true };
   } catch (error: any) {
     console.error("Failed to delete product:", error);
@@ -365,14 +367,13 @@ export async function deleteProduct(id: string) {
 export async function bulkUpdateProductStatus(ids: string[], status: ProductStatus) {
   try {
     await requireAdmin();
-    await prisma.product.updateMany({
-      where: { id: { in: ids } },
-      data: { status },
-    });
+    const [rows] = await prisma.$transaction([
+      prisma.product.findMany({ where: { id: { in: ids } }, select: { slug: true } }),
+      prisma.product.updateMany({ where: { id: { in: ids } }, data: { status } }),
+    ]);
     revalidatePath("/admin/products");
     revalidatePath("/products");
-    revalidatePath("/");
-    revalidateStoreProducts();
+    publishChange({ type: "product.statusChanged", ids, slugs: rows.map((r) => r.slug), status });
     return { success: true };
   } catch (error: any) {
     console.error("Failed to bulk update products:", error);
@@ -383,11 +384,13 @@ export async function bulkUpdateProductStatus(ids: string[], status: ProductStat
 export async function bulkDeleteProducts(ids: string[]) {
   try {
     await requireAdmin();
-    await prisma.product.deleteMany({ where: { id: { in: ids } } });
+    const [rows] = await prisma.$transaction([
+      prisma.product.findMany({ where: { id: { in: ids } }, select: { slug: true } }),
+      prisma.product.deleteMany({ where: { id: { in: ids } } }),
+    ]);
     revalidatePath("/admin/products");
     revalidatePath("/products");
-    revalidatePath("/");
-    revalidateStoreProducts();
+    publishChange({ type: "product.deleted", ids, slugs: rows.map((r) => r.slug) });
     return { success: true };
   } catch (error: any) {
     console.error("Failed to bulk delete products:", error);

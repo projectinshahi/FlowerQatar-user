@@ -29,6 +29,7 @@ import {
 import type { Product } from '@/types';
 import type { StoreGiftGroup } from '@/lib/gifts';
 import GiftSection from '@/components/client/product/GiftSection';
+import { ProductUnavailableNotice, useProductAvailable } from '@/components/client/product/ProductAvailability';
 import BlushingNav from './BlushingNav';
 import { GWENDOLYN_CSS, WISHING_FONTS, blushingFontVars, wishingFontCss, type WishingFontKey } from './fonts';
 import {
@@ -43,6 +44,7 @@ import {
   TILE_BG_ON,
   TILE_BORDER,
 } from './ui';
+import { formatNumber, formatUtcDate } from '@/lib/utils';
 
 /**
  * Blushing Blooms product page (Figma "Desktop - 7", node 156:1318).
@@ -114,9 +116,9 @@ const CARD_ICONS: Record<string, LucideIcon> = {
   'With Love': Heart,
 };
 
-const qar = (n: number) => `QAR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }).toUpperCase();
-const fmtDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' }).toUpperCase();
+const qar = (n: number) => `QAR ${formatNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtDay = (d: string) => formatUtcDate(d, { weekday: 'short', timeZone: 'UTC' }).toUpperCase();
+const fmtDate = (d: string) => formatUtcDate(d, { day: 'numeric', month: 'short', timeZone: 'UTC' }).toUpperCase();
 
 /** Section heading — Montserrat Medium 20/0.8 in the design, stepped down on small screens. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -151,12 +153,16 @@ const giftArt = (name: string, fallback: string | null) =>
 export default function BlushingProductDetail({
   product,
   giftGroups = [],
+  published = true,
 }: {
   product: Product;
+  /** Server-rendered status check; false once the product is unpublished (see ProductAvailability). */
+  published?: boolean;
   /** Gifts the admin configured for this product's category; empty renders nothing. */
   giftGroups?: StoreGiftGroup[];
 }) {
   const { addToCart } = useApp();
+  const available = useProductAvailable(product.id, published);
 
   const [colorName, setColorName] = useState<string | null>(null);
   const [addOns, setAddOns] = useState<AddOn[]>([]);
@@ -244,6 +250,7 @@ export default function BlushingProductDetail({
   const nudge = (dir: 1 | -1) => rail.current?.scrollBy({ left: dir * (rail.current.clientWidth * 0.8), behavior: 'smooth' });
 
     const handleAddToCart = () => {
+    if (!available) return;
     addToCart({
       product: { id: product.id, slug: product.slug, name: product.name, price: pricing.unitPrice, image: product.image },
       quantity: 1,
@@ -755,9 +762,14 @@ export default function BlushingProductDetail({
                     </div>
                   </div>
 
-                  <GoldButton onClick={handleAddToCart} className="h-12 w-full rounded-[24px] text-[13px] lg:h-10">
+                  <GoldButton
+                    onClick={handleAddToCart}
+                    disabled={!available}
+                    className="h-12 w-full rounded-[24px] text-[13px] disabled:cursor-not-allowed disabled:opacity-40 lg:h-10"
+                  >
                     Add to Cart
                   </GoldButton>
+                  {!available && <ProductUnavailableNotice className="text-white/70" />}
                 </section>
               </div>
             </div>

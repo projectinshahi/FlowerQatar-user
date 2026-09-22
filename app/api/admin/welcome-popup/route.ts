@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { welcomePopupSchema } from '@/lib/validations/welcome-popup';
 import { z } from 'zod';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath } from 'next/cache';
+import { publishChange } from '@/lib/live-sync';
 
 /** GET — the singleton config (or null). Admin only. */
 export async function GET() {
@@ -35,7 +35,7 @@ export async function PUT(request: Request) {
       : await prisma.welcomePopup.create({ data });
 
     // Refresh the storefront so the public popup picks up the new copy.
-    revalidatePath('/');
+    publishChange({ type: 'welcomePopup.updated' });
     return NextResponse.json({ success: true, data: saved });
   } catch (error) {
     if (error instanceof z.ZodError) {

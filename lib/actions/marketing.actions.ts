@@ -13,6 +13,7 @@ import {
   type FreeDeliveryFormValues,
 } from "@/lib/validations/marketing";
 import { getOfferState } from "@/lib/services/marketing";
+import { publishChange } from "@/lib/live-sync";
 
 /* ───────────────────────── Helpers ─────────────────────────── */
 
@@ -259,6 +260,8 @@ export async function createPromotion(data: PromotionFormValues) {
     const { id: _omit, banner, ...rest } = parsed;
     const promo = await prisma.promotion.create({ data: { ...rest, banner: banner || null } });
     revalidatePath("/admin/marketing/promotions");
+    // Promotions render on the storefront home page; admin-only paths left it up to 60s stale.
+    publishChange({ type: "promotion.created", ids: [promo.id] });
     return serialize(promo);
   });
 }
@@ -270,6 +273,7 @@ export async function updatePromotion(id: string, data: PromotionFormValues) {
     const promo = await prisma.promotion.update({ where: { id }, data: { title: parsed.title } });
     revalidatePath("/admin/marketing/promotions");
     revalidatePath(`/admin/marketing/promotions/${id}`);
+    publishChange({ type: "promotion.updated", ids: [id] });
     return serialize(promo);
   });
 }
@@ -283,6 +287,7 @@ export async function duplicatePromotion(id: string) {
       data: { ...rest, title: `${src.title} (Copy)`, status: "INACTIVE" },
     });
     revalidatePath("/admin/marketing/promotions");
+    publishChange({ type: "promotion.created", ids: [promo.id] });
     return serialize(promo);
   });
 }
@@ -291,6 +296,7 @@ export async function deletePromotion(id: string) {
   return withAdmin(async () => {
     await prisma.promotion.delete({ where: { id } });
     revalidatePath("/admin/marketing/promotions");
+    publishChange({ type: "promotion.deleted", ids: [id] });
     return { id };
   });
 }
@@ -299,6 +305,7 @@ export async function bulkDeletePromotions(ids: string[]) {
   return withAdmin(async () => {
     await prisma.promotion.deleteMany({ where: { id: { in: ids } } });
     revalidatePath("/admin/marketing/promotions");
+    publishChange({ type: "promotion.deleted", ids });
     return { count: ids.length };
   });
 }
@@ -307,6 +314,7 @@ export async function bulkSetPromotionStatus(ids: string[], status: "ACTIVE" | "
   return withAdmin(async () => {
     await prisma.promotion.updateMany({ where: { id: { in: ids } }, data: { status } });
     revalidatePath("/admin/marketing/promotions");
+    publishChange({ type: "promotion.statusChanged", ids, status });
     return { count: ids.length };
   });
 }

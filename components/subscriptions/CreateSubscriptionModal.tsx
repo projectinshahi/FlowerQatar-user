@@ -6,6 +6,7 @@ import { X, Loader2, Package, Minus, Plus, CalendarClock } from "lucide-react";
 import { errMsg } from "@/lib/error";
 import { FREQUENCIES } from "@/lib/validations/subscription";
 import { generateDeliveryDates, frequencyLabel } from "@/lib/services/subscription/schedule";
+import { formatNumber, formatUtcDate } from "@/lib/utils";
 
 interface CatalogItem { id: string; name: string; price: number; image: string | null }
 interface AddressItem { id: string; label: string; city: string; countryName: string; isDefault: boolean }
@@ -24,7 +25,7 @@ const FREQ_LABEL: Record<string, string> = {
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const labelCls = "block text-[10px] uppercase tracking-[0.15em] text-[#8A8A8A] mb-1.5";
 const inputCls = "w-full rounded-lg border border-[#E2E2E2] text-sm py-2.5 px-3 focus:border-primary outline-none bg-white transition-colors";
-const fmt = (d: Date) => d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const fmt = (d: Date) => formatUtcDate(d, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 type SubmitBody = Record<string, unknown>;
 
@@ -159,7 +160,7 @@ export default function CreateSubscriptionModal({
                     <select className={inputCls} value={productId} onChange={(e) => setProductId(e.target.value)}>
                       {catalog.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.name} — {c.price.toLocaleString()} QAR
+                          {c.name} — {formatNumber(c.price)} QAR
                         </option>
                       ))}
                     </select>
@@ -233,7 +234,7 @@ export default function CreateSubscriptionModal({
                     <p className="text-[12px] uppercase tracking-[0.12em] text-[#8A8A8A] mb-2 flex items-center gap-1.5"><CalendarClock size={13} /> {frequencyLabel({ frequency, intervalCount, weekday, monthDate })}</p>
                     <div className="flex items-center justify-between text-[13px] text-primary mb-3">
                       <span>{product ? `${product.name} × ${quantity}` : "—"}</span>
-                      <span className="font-medium">{product ? (product.price * quantity).toLocaleString() : 0} QAR / delivery</span>
+                      <span className="font-medium">{product ? formatNumber(product.price * quantity) : 0} QAR / delivery</span>
                     </div>
                     <p className="text-[11px] uppercase tracking-[0.1em] text-[#9a9a9a] mb-1.5">Upcoming</p>
                     <div className="flex flex-wrap gap-1.5">

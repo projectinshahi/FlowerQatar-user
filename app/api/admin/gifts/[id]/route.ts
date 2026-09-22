@@ -25,7 +25,7 @@ export async function PUT(request: Request, { params }: Context) {
 
     // A missing row raises P2025, which fail() reports as a 404 — one round trip, not two.
     const gift = await prisma.gift.update({ where: { id }, data, select: giftSelect });
-    revalidateStorefront();
+    revalidateStorefront('gift.updated', [id]);
     return NextResponse.json({ ...gift, price: Number(gift.price) });
   } catch (error) {
     return fail(error, 'PUT /admin/gifts/:id');
@@ -41,7 +41,7 @@ export async function PATCH(request: Request, { params }: Context) {
     const data = giftPatchSchema.parse(await request.json());
 
     const gift = await prisma.gift.update({ where: { id }, data, select: giftSelect });
-    revalidateStorefront();
+    revalidateStorefront('gift.updated', [id]);
     return NextResponse.json({ ...gift, price: Number(gift.price) });
   } catch (error) {
     return fail(error, 'PATCH /admin/gifts/:id');
@@ -55,7 +55,7 @@ export async function DELETE(_request: Request, { params }: Context) {
   try {
     const { id } = await params;
     await prisma.gift.delete({ where: { id } });
-    revalidateStorefront();
+    revalidateStorefront('gift.deleted', [id]);
     return NextResponse.json({ message: 'Gift deleted' });
   } catch (error) {
     return fail(error, 'DELETE /admin/gifts/:id');

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
+import { publishChange } from '@/lib/live-sync';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { blushingBloomsPageSchema } from '@/lib/validations/blushing-blooms';
@@ -38,7 +38,7 @@ export async function PUT(request: Request) {
       : await prisma.blushingBloomsPage.create({ data });
 
     // The category page is the only consumer; /shop is where it is served from.
-    revalidatePath('/shop');
+    publishChange({ type: 'blushingBlooms.updated' });
     return NextResponse.json({ success: true, data: saved });
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import type { StoreGiftGroup } from '@/lib/gifts';
 import type { AddOn } from '@/hooks/useProductOptions';
 import { CARD_BORDER, GOLD, TILE_BG_ON } from '@/components/client/blushing-blooms/ui';
+import { formatNumber } from '@/lib/utils';
 
 /**
  * Category-driven optional gifts on a product page.
@@ -28,7 +29,7 @@ type GiftTheme = 'cream' | 'blushing';
 
 /** Matches the Blushing page's formatting: "QAR 45.00". */
 const qar = (n: number) =>
-  `QAR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `QAR ${formatNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const SKIN: Record<
   GiftTheme,

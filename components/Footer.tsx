@@ -139,7 +139,9 @@ export default function Footer() {
         </div>
         
         <div className="text-[10px] text-white/80 tracking-wider flex items-center gap-1">
-          <span>© {new Date().getFullYear()} Lebami. All Rights Reserved.</span>
+          {/* The year in Qatar time on both server and browser, so a visitor in another timezone
+              around New Year cannot render a different year than the server did. */}
+          <span>© {new Date().toLocaleDateString('en-US', { year: 'numeric', timeZone: 'Asia/Qatar' })} Lebami. All Rights Reserved.</span>
         </div>
 
         {/* Payment Icons */}

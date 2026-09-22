@@ -2,14 +2,11 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath, revalidateTag } from 'next/cache';
 import { subcategoryPatchSchema, subcategorySchema } from '@/lib/validations/subcategory';
-import { NAV_MENU_TAG } from '@/lib/subcategories';
-import { revalidateStoreProducts } from '@/lib/store-products';
+import { publishChange } from '@/lib/live-sync';
 import { logDbError } from '@/lib/prisma-error';
 import { z } from 'zod';
 
-function revalidateStorefront() { revalidateTag(NAV_MENU_TAG, { expire: 0 }); revalidatePath('/', 'layout'); revalidateStoreProducts(); }
 type Context = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Context) {
@@ -32,7 +29,7 @@ export async function PUT(request: Request, { params }: Context) {
       if (duplicate) throw new Error('DUPLICATE');
       return tx.subcategory.update({ where: { id }, data, include: { category: { select: { id: true, name: true } } } });
     });
-    revalidateStorefront(); return NextResponse.json(updated);
+    publishChange({ type: 'subcategory.updated', ids: [id] }); return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
     if (error instanceof Error && error.message === 'NOT_FOUND') return NextResponse.json({ error: 'Subcategory not found' }, { status: 404 });
@@ -48,7 +45,7 @@ export async function PATCH(request: Request, { params }: Context) {
   try {
     const { id } = await params; const data = subcategoryPatchSchema.parse(await request.json());
     const updated = await prisma.subcategory.update({ where: { id }, data, include: { category: { select: { id: true, name: true } } } });
-    revalidateStorefront(); return NextResponse.json(updated);
+    publishChange({ type: 'subcategory.updated', ids: [id] }); return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
     logDbError('PATCH /admin/subcategories/[id]', error); return NextResponse.json({ error: 'Failed to update subcategory' }, { status: 500 });
@@ -62,7 +59,7 @@ export async function DELETE(_request: Request, { params }: Context) {
     const existing = await prisma.subcategory.findUnique({ where: { id }, include: { _count: { select: { products: true } } } });
     if (!existing) return NextResponse.json({ error: 'Subcategory not found' }, { status: 404 });
     if (existing._count.products) return NextResponse.json({ error: `This subcategory is used by ${existing._count.products} product(s). Reassign them before deleting it.` }, { status: 409 });
-    await prisma.subcategory.delete({ where: { id } }); revalidateStorefront();
+    await prisma.subcategory.delete({ where: { id } }); publishChange({ type: 'subcategory.deleted', ids: [id] });
     return NextResponse.json({ message: 'Subcategory deleted' });
   } catch (error) { logDbError('DELETE /admin/subcategories/[id]', error); return NextResponse.json({ error: 'Failed to delete subcategory' }, { status: 500 }); }
 }

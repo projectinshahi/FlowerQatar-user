@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath } from 'next/cache';
+import { publishChange } from '@/lib/live-sync';
 import { reviewListQuerySchema, reviewSchema } from '@/lib/reviews';
 import { isDbUnreachable, logDbError } from '@/lib/prisma-error';
 
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     });
 
     // The product page renders reviews server-side, so its cache must drop.
-    revalidatePath(`/product/${review.product.slug}`);
+    publishChange({ type: 'review.created', ids: [review.product.id], slugs: [review.product.slug] });
     return NextResponse.json(review, { status: 201 });
   } catch (error) {
     return fail('POST /api/admin/reviews', error);
