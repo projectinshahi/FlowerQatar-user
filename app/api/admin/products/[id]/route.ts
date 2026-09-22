@@ -3,7 +3,7 @@ import { getProductById, updateProduct, deleteProduct } from '@/lib/actions/prod
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { logDbError } from '@/lib/prisma-error';
-import { revalidateStoreProducts } from '@/lib/store-products';
+import { publishChange } from '@/lib/live-sync';
 import type { CategoryType } from '@prisma/client';
 import { z } from 'zod';
 
@@ -35,7 +35,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       data: { subcategoryId, categoryType },
       include: { subcategory: { include: { category: { select: { id: true, name: true } } } } },
     });
-    revalidateStoreProducts(); // the listing groups by subcategory/category
+    // Listings group by subcategory/category, and the product page shows its category.
+    publishChange({ type: 'product.updated', ids: [product.id], slugs: [product.slug], status: product.status });
     return NextResponse.json(product);
   } catch (error) {
     if (error instanceof z.ZodError) {

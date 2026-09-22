@@ -172,7 +172,7 @@ export async function PUT(request: Request, { params }: Context) {
     const updated = results[results.length - 1] as GiftGroupDetail | null;
     if (!updated) return NextResponse.json({ error: 'Gift group not found' }, { status: 404 });
 
-    revalidateStorefront();
+    revalidateStorefront('gift.updated', [id]);
     return NextResponse.json(serialize(updated));
   } catch (error) {
     return fail(error, 'PUT /admin/gift-groups/:id');
@@ -194,7 +194,7 @@ export async function PATCH(request: Request, { params }: Context) {
       data,
       select: { id: true, isActive: true, displayOrder: true },
     });
-    revalidateStorefront();
+    revalidateStorefront('gift.updated', [id]);
     return NextResponse.json(updated);
   } catch (error) {
     return fail(error, 'PATCH /admin/gift-groups/:id');
@@ -208,7 +208,7 @@ export async function DELETE(_request: Request, { params }: Context) {
   try {
     const { id } = await params;
     await prisma.giftGroup.delete({ where: { id } });
-    revalidateStorefront();
+    revalidateStorefront('gift.deleted', [id]);
     return NextResponse.json({ message: 'Gift group deleted' });
   } catch (error) {
     return fail(error, 'DELETE /admin/gift-groups/:id');

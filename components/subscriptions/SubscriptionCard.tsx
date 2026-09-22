@@ -4,9 +4,10 @@ import { motion } from "framer-motion";
 import { Calendar, Package, RefreshCw, Pause, Play, SkipForward, X, Eye } from "lucide-react";
 import type { Subscription } from "../../hooks/useSubscriptions";
 import StatusBadge from "./StatusBadge";
+import { formatNumber, formatUtcDate } from "@/lib/utils";
 
 const fmt = (d: string | null) =>
-  d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
+  d ? formatUtcDate(d, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
 
 const iconBtn =
   "inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.1em] transition-colors disabled:opacity-40";
@@ -84,7 +85,7 @@ export default function SubscriptionCard({
         <div>
           <p className="text-[10px] uppercase tracking-[0.1em] text-[#9a9a9a]">Per delivery</p>
           <p className="text-[13px] text-primary mt-0.5">
-            {sub.totalPrice.toLocaleString()} QAR
+            {formatNumber(sub.totalPrice)} QAR
             {sub.discountPercent > 0 && <span className="text-green-600 text-[11px] ml-1">-{sub.discountPercent}%</span>}
           </p>
         </div>

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Trash2, Plus, Minus, ShieldCheck, Truck, ShoppingBag, ArrowLeft } from 'lucide-react';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import { qar } from '../../../lib/utils';
+import { onLive, onResync } from '../../../lib/live-client';
 import {
   NO_SHIPPING,
   amountToFreeShipping,
@@ -25,16 +26,25 @@ export default function CartPage() {
   const [shippingConfig, setShippingConfig] = useState<ShippingConfig>(NO_SHIPPING);
   useEffect(() => {
     let alive = true;
-    fetch('/api/shipping')
-      .then((r) => r.json())
-      .then((json) => {
-        if (alive && json?.success && json.data) setShippingConfig(json.data as ShippingConfig);
-      })
-      .catch(() => {
-        // Keep NO_SHIPPING; checkout and the order re-derive the real figure.
-      });
+    const load = () =>
+      fetch('/api/shipping')
+        .then((r) => r.json())
+        .then((json) => {
+          if (alive && json?.success && json.data) setShippingConfig(json.data as ShippingConfig);
+        })
+        .catch(() => {
+          // Keep NO_SHIPPING; checkout and the order re-derive the real figure.
+        });
+    load();
+    // Re-read when an admin changes the delivery charge, or after missing that while offline.
+    const offLive = onLive((event) => {
+      if (event.type === 'delivery.updated') load();
+    });
+    const offResync = onResync(load);
     return () => {
       alive = false;
+      offLive();
+      offResync();
     };
   }, []);
 

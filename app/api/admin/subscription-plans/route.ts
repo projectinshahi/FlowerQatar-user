@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath } from 'next/cache';
+import { publishChange } from '@/lib/live-sync';
 import { planName, planAccent, comparePlans } from '@/lib/subscription-plans';
 
-/** Plans render on the storefront home page, so writes must refresh it. */
-export function revalidateStorefront() {
-  revalidatePath('/');
+/** Plans render on the storefront home page; see lib/live-sync.ts. */
+export function revalidateStorefront(id: string) {
+  publishChange({ type: 'subscriptionPlan.updated', ids: [id] });
 }
 
 /** Rejects ids that don't exist so mappings never point at missing products. */

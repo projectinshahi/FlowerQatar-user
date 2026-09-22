@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath } from 'next/cache';
+import { publishChange } from '@/lib/live-sync';
 import { promotionBarSchema } from '@/lib/validations/promotion-bar';
 import { PROMOTION_BAR_DEFAULTS } from '@/lib/promotions';
 
@@ -42,7 +42,7 @@ export async function PUT(request: Request) {
       : await prisma.promotionBarSetting.create({ data });
 
     // The ticker lives on the home banner.
-    revalidatePath('/');
+    publishChange({ type: 'promotion.updated' });
     return NextResponse.json({
       success: true,
       data: { barColor: saved.barColor, textColor: saved.textColor },

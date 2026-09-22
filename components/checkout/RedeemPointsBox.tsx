@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Sparkles, X, ChevronRight, Check } from 'lucide-react';
+import { formatNumber } from '@/lib/utils';
 
 interface Props {
   /** The order amount points can offset (subtotal + shipping + tax − coupon). 1 pt = 1 QAR. */
@@ -88,7 +89,7 @@ export default function RedeemPointsBox({ maxRedeemable, onChange }: Props) {
           <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">Membership Points</span>
         </div>
         {canRedeem && (
-          <span className="text-[11px] font-medium text-primary">{available!.toLocaleString()} available</span>
+          <span className="text-[11px] font-medium text-primary">{formatNumber(available!)} available</span>
         )}
       </div>
 
@@ -113,11 +114,11 @@ export default function RedeemPointsBox({ maxRedeemable, onChange }: Props) {
         /* Confirmed redemption */
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-[11px] font-medium text-green-700">
           <span className="inline-flex items-center gap-1.5">
-            <Check size={13} /> {applied.toLocaleString()} pts redeemed
+            <Check size={13} /> {formatNumber(applied)} pts redeemed
           </span>
           <span className="flex items-center gap-2">
-            <span>−QAR {applied.toLocaleString()}</span>
-            <span className="text-green-700/70">· {((available ?? 0) - applied).toLocaleString()} left</span>
+            <span>−QAR {formatNumber(applied)}</span>
+            <span className="text-green-700/70">· {formatNumber((available ?? 0) - applied)} left</span>
             <button
               type="button"
               onClick={removeRedeem}
@@ -165,7 +166,7 @@ export default function RedeemPointsBox({ maxRedeemable, onChange }: Props) {
               <Sparkles size={11} /> You have enough points to pay for this entire order — no card needed.
             </p>
           ) : (
-            <p className="text-[10px] text-muted/70">1 point = QAR 1. Redeem up to {cap.toLocaleString()} on this order.</p>
+            <p className="text-[10px] text-muted/70">1 point = QAR 1. Redeem up to {formatNumber(cap)} on this order.</p>
           )}
         </>
       )}
@@ -192,15 +193,15 @@ export default function RedeemPointsBox({ maxRedeemable, onChange }: Props) {
             <dl className="mt-5 space-y-2.5 rounded-lg border border-divider bg-cream/40 px-4 py-3 text-left text-[13px]">
               <div className="flex items-center justify-between">
                 <dt className="text-muted">Redeeming</dt>
-                <dd className="font-semibold text-primary">{input.toLocaleString()} pts</dd>
+                <dd className="font-semibold text-primary">{formatNumber(input)} pts</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-muted">Discount</dt>
-                <dd className="font-semibold text-green-700">− QAR {input.toLocaleString()}</dd>
+                <dd className="font-semibold text-green-700">− QAR {formatNumber(input)}</dd>
               </div>
               <div className="flex items-center justify-between border-t border-divider pt-2.5">
                 <dt className="text-muted">Balance after</dt>
-                <dd className="font-semibold text-primary">{balanceAfter.toLocaleString()} pts</dd>
+                <dd className="font-semibold text-primary">{formatNumber(balanceAfter)} pts</dd>
               </div>
             </dl>
 

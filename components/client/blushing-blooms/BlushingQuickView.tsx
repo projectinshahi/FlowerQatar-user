@@ -10,6 +10,7 @@ import { MAX_CART_QUANTITY } from '@/lib/validations/cart';
 import type { Product } from '@/types';
 import { blushingFontVars } from './fonts';
 import { ColorSwatch, GoldButton, SOFT_GOLD, StarRating } from './ui';
+import { formatNumber } from '@/lib/utils';
 
 /**
  * Blushing Blooms quick view (Figma node 184:2040).
@@ -46,7 +47,7 @@ const PANEL_OUT = { duration: 0.16, ease: EASE_IN } as const;
 const OVERLAY_IN = { duration: 0.24, ease: [0.23, 1, 0.32, 1] } as const;
 const OVERLAY_OUT = { duration: 0.16, ease: EASE_IN } as const;
 
-const qar = (n: number) => `QAR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const qar = (n: number) => `QAR ${formatNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function BlushingQuickView({
   product: requested,

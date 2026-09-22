@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { cancelOrder, OrderError } from '@/lib/services/order';
+import { notifyUser } from '@/lib/live-sync';
 
 // Allowed forward transitions; anything else (e.g. DELIVERED → PENDING) is rejected.
 const TRANSITIONS: Record<string, string[]> = {
@@ -39,6 +40,8 @@ export async function PATCH(
         await prisma.order.update({ where: { id }, data: { trackingNumber } });
       }
       const order = await prisma.order.findUnique({ where: { id } });
+      // Private: only the customer who owns the order hears about it (their user room).
+      if (order) notifyUser(order.userId, { type: 'order.statusChanged', ids: [id], status: order.status });
       return NextResponse.json({ message: 'Order updated successfully', order });
     }
 
@@ -52,6 +55,7 @@ export async function PATCH(
       },
     });
 
+    notifyUser(order.userId, { type: 'order.statusChanged', ids: [id], status: order.status });
     return NextResponse.json({ message: 'Order updated successfully', order });
   } catch (error: any) {
     if (error instanceof OrderError) {

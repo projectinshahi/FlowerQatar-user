@@ -66,6 +66,28 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
   // Only real products become order line items (OrderItem.productId is required).
   const lineItems = cart.items.filter((i) => i.productId);
 
+  /*
+   * A product can be deleted or unpublished by an admin AFTER it went into the cart. The cart
+   * still prices such a line from its stored selection, so without this check the order was
+   * placed anyway (an unpublished product sold, or a foreign-key failure for a deleted one).
+   * The live notice on the product page is only a courtesy; this is the enforcement.
+   */
+  const productIds = [...new Set(lineItems.map((i) => i.productId as string))];
+  if (productIds.length) {
+    const available = await prisma.product.findMany({
+      where: { id: { in: productIds }, status: "PUBLISHED" },
+      select: { id: true },
+    });
+    const ok = new Set(available.map((p) => p.id));
+    const gone = lineItems.find((i) => !ok.has(i.productId as string));
+    if (gone) {
+      throw new OrderError(
+        `"${gone.product.name}" is no longer available. Please remove it from your cart to continue.`,
+        409
+      );
+    }
+  }
+
   // Coupon — re-validated server-side; ignored if no longer valid (order still proceeds).
   let couponDiscount = 0;
   let freeDelivery = false;

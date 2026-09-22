@@ -1,4 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
+import prismaClient from '@prisma/client';
+
+const { PrismaClient } = prismaClient;
 const prisma = new PrismaClient();
 
 const CATEGORY_ORDER = [

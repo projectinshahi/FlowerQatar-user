@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Clock, Package } from 'lucide-react';
 import { AnimatedSection } from '@/components/AnimatedSection';
 import type { StoreSubscriptionPlan } from '@/lib/subscription-plans';
+import { formatNumber } from '@/lib/utils';
 
 /**
  * "Subscription Plans" — the three fixed tiers (Silver / Gold / Platinum) on the storefront.
@@ -46,13 +47,13 @@ export default function SubscriptionPlans({ plans }: { plans: StoreSubscriptionP
               {/* Price */}
               <p className="mt-2 font-serif text-[24px] font-light text-primary">
                 <span className="align-top text-[13px] tracking-wide text-muted">QAR </span>
-                {plan.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                {formatNumber(plan.price, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </p>
 
               {/* The single feature-points number — the hero of the card */}
               <div className="mt-6 flex-1">
                 <p className="font-serif text-[52px] font-light leading-none text-primary md:text-[60px]">
-                  {plan.featurePoints.toLocaleString()}
+                  {formatNumber(plan.featurePoints)}
                 </p>
                 <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.2em] text-muted">Feature Points</p>
               </div>

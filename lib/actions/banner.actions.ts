@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin, AuthError } from "@/lib/admin-guard";
 import { bannerSchema, type BannerFormValues } from "@/lib/validations/banner";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
+import { publishChange } from "@/lib/live-sync";
+import type { LiveAction } from "@/lib/live-events";
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -21,9 +23,10 @@ async function withAdmin<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   }
 }
 
-function revalidate() {
+/** The banner renders only on the storefront home page (see lib/live-sync.ts). */
+function revalidate(action: LiveAction, id: string) {
   revalidatePath("/admin/banners");
-  revalidatePath("/");
+  publishChange({ type: `banner.${action}`, ids: [id] });
 }
 
 export async function getBanners() {
@@ -68,7 +71,7 @@ export async function createBanner(data: BannerFormValues) {
     const parsed = bannerSchema.parse(data);
     const { id: _omit, ...rest } = parsed;
     const banner = await prisma.banner.create({ data: rest });
-    revalidate();
+    revalidate("created", banner.id);
     return serialize(banner);
   });
 }
@@ -78,7 +81,7 @@ export async function updateBanner(id: string, data: BannerFormValues) {
     const parsed = bannerSchema.parse(data);
     const { id: _omit, ...rest } = parsed;
     const banner = await prisma.banner.update({ where: { id }, data: rest });
-    revalidate();
+    revalidate("updated", id);
     return serialize(banner);
   });
 }
@@ -86,7 +89,7 @@ export async function updateBanner(id: string, data: BannerFormValues) {
 export async function toggleBannerActive(id: string, isActive: boolean) {
   return withAdmin(async () => {
     await prisma.banner.update({ where: { id }, data: { isActive } });
-    revalidate();
+    revalidate("statusChanged", id);
     return { id, isActive };
   });
 }
@@ -101,7 +104,7 @@ export async function deleteBanner(id: string) {
       );
     }
     await prisma.banner.delete({ where: { id } });
-    revalidate();
+    revalidate("deleted", id);
     return { id };
   });
 }

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { isDbUnreachable, logDbError } from '@/lib/prisma-error';
+import { publishChange } from '@/lib/live-sync';
+import type { LiveEventType } from '@/lib/live-events';
 
 /**
  * Shared helpers for the gift-group admin routes.
@@ -12,16 +13,14 @@ import { isDbUnreachable, logDbError } from '@/lib/prisma-error';
  */
 
 /**
- * Gift sections are rendered by the product pages, so they re-render after every change.
+ * Gift sections are rendered by the product pages, so they re-render after every change and
+ * open product pages refresh live. The invalidation itself lives in lib/live-sync.ts, which
+ * uses the '/(client)/product/[slug]' pattern (the route group is required).
  *
- * The pattern must include the `(client)` route group: the page file is
- * app/(client)/product/[slug]/page.tsx, and a route pattern is matched against the file path.
- * '/product/[slug]' matched nothing, so in production every product page kept serving its
- * cached copy (x-nextjs-cache: HIT) with the old gifts after an admin edit. Dev never caches
- * pages, which is why it only showed on the live site.
+ * `ids` are gift-group or gift ids; customers only need to know that gifts changed.
  */
-export function revalidateStorefront() {
-  revalidatePath('/(client)/product/[slug]', 'page');
+export function revalidateStorefront(type: Extract<LiveEventType, `gift.${string}`>, ids: string[]) {
+  publishChange({ type, ids });
 }
 
 /** One error shape for every gift route: validation -> 400, FK -> 404, DB down -> 503. */

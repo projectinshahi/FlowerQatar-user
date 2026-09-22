@@ -13,6 +13,7 @@ import GiftSection from './GiftSection'
 import DeliveryScheduler from './DeliveryScheduler'
 import GreetingCardSelector, { DEFAULT_GREETING_STYLE, type GreetingStyle } from './GreetingCardSelector'
 import PriceSummary from './PriceSummary'
+import { ProductUnavailableNotice, useProductAvailable } from './ProductAvailability'
 import { usePriceCalculator, type AddOn } from '@/hooks/useProductOptions'
 import { isVideoMedia } from '@/lib/media'
 import type { Product as StoreProduct } from '@/types'
@@ -60,8 +61,11 @@ export default function ProductDetailClient({
   related = [],
   reviews,
   giftGroups = [],
+  published = true,
 }: {
   product: ProductDetail;
+  /** Server-rendered status check; false once the product is unpublished (see ProductAvailability). */
+  published?: boolean;
   /** Same-category products resolved on the server; empty hides the section entirely. */
   related?: StoreProduct[];
   /** Published reviews + summary, resolved on the server. */
@@ -70,6 +74,7 @@ export default function ProductDetailClient({
   giftGroups?: StoreGiftGroup[];
 }) {
   const { addToCart, setCartOpen } = useApp()
+  const available = useProductAvailable(product.id, published)
 
   const defaultVariant = product.variants?.[0]
   const defaultColor = defaultVariant?.colorVariants?.[0]
@@ -133,7 +138,7 @@ export default function ProductDetailClient({
   const pricing = usePriceCalculator(basePrice, quantity, selectedAddOns)
 
   const handleAddToCart = () => {
-    if (!selectedVariant || !selectedColor) return
+    if (!available || !selectedVariant || !selectedColor) return
     addToCart({
       product: { id: product.id, slug: product.slug, name: product.name, price: pricing.unitPrice, image: thumbnail },
       quantity,
@@ -526,7 +531,8 @@ export default function ProductDetailClient({
           <div className="flex flex-col gap-4 mt-8">
             <button
               onClick={handleAddToCart}
-              className="w-full flex items-center justify-center font-sans text-[12px] font-bold uppercase tracking-[0.2em] transition-opacity hover:opacity-85"
+              disabled={!available}
+              className="w-full flex items-center justify-center font-sans text-[12px] font-bold uppercase tracking-[0.2em] transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
               style={{
                 backgroundColor: PALETTE.buttonBg,
                 color: PALETTE.buttonText,
@@ -536,6 +542,7 @@ export default function ProductDetailClient({
             >
               ADD TO CART
             </button>
+            {!available && <ProductUnavailableNotice className="text-black/70" />}
             {/* "Learn More" removed: there is no Klarna information page in this app, and a
                 link to "#" would scroll the customer to the top mid-checkout. */}
             <div className="flex items-center justify-center gap-1 font-sans text-[12px]" style={{ color: PALETTE.textSecondary }}>

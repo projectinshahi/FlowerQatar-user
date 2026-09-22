@@ -3,12 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { occasionSchema } from '@/lib/validations/occasion';
 import { z } from 'zod';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath } from 'next/cache';
+import { publishChange } from '@/lib/live-sync';
+import type { LiveAction } from '@/lib/live-events';
 import { Prisma } from '@prisma/client';
 
-/** Occasions render on the storefront home page, so writes must refresh it. */
-export function revalidateStorefront() {
-  revalidatePath('/');
+/** Occasions render on the storefront home page and their own pages; see lib/live-sync.ts. */
+export function revalidateStorefront(action: LiveAction, id: string) {
+  publishChange({ type: `occasion.${action}`, ids: [id] });
 }
 
 const SORTABLE = ['displayOrder', 'title', 'createdAt'] as const;
@@ -136,7 +137,7 @@ export async function POST(request: Request) {
       });
     });
 
-    revalidateStorefront();
+    revalidateStorefront('created', occasion.id);
     return NextResponse.json(occasion, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

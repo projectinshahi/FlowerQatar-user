@@ -2,9 +2,10 @@
 
 import { Loader2, AlertCircle, Calendar } from "lucide-react";
 import { useDeliveryDates, useDeliverySlots } from "@/hooks/useProductOptions";
+import { formatUtcDate } from "@/lib/utils";
 
-const fmtDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" });
-const fmtDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
+const fmtDay = (d: string) => formatUtcDate(d, { weekday: "short", timeZone: "UTC" });
+const fmtDate = (d: string) => formatUtcDate(d, { day: "numeric", month: "short", timeZone: "UTC" });
 
 export default function DeliveryScheduler({
   date,

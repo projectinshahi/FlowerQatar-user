@@ -1,4 +1,5 @@
 import type { SubDelivery } from "../../hooks/useSubscriptions";
+import { formatUtcDate } from "@/lib/utils";
 
 const DOT: Record<string, string> = {
   SCHEDULED: "bg-primary",
@@ -14,7 +15,7 @@ const LABEL: Record<string, string> = {
 };
 
 const fmt = (d: string) =>
-  new Date(d).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  formatUtcDate(d, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 export default function DeliveryTimeline({ deliveries }: { deliveries: SubDelivery[] }) {
   const items = [...deliveries].sort((a, b) => +new Date(a.scheduledDate) - +new Date(b.scheduledDate));

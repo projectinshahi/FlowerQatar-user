@@ -83,8 +83,13 @@ const MegaLink = memo(function MegaLink({
 })
 
 /**
- * Collection strip — the first row of the Flower panel. One centred row on xl;
- * snap-scrolls horizontally below that (tablet) with the scrollbar hidden.
+ * Collection strip — the first row of the Flower panel. Centred while it fits; once there are
+ * more subcategories than the width holds it scrolls horizontally at every size.
+ *
+ * It used to be `overflow-visible` + `justify-center` on xl: with more items than fit, centring
+ * pushed the first ones past the left edge where nothing could reach them, and there was no
+ * scroll at all. The auto margins on the first/last item centre without that overflow (unlike
+ * justify-content). Mouse users scroll it with the wheel; there are no arrow buttons.
  */
 const CategoryStrip = memo(function CategoryStrip({
   items,
@@ -102,17 +107,35 @@ const CategoryStrip = memo(function CategoryStrip({
   // The first item stays highlighted as default only if no specific item is currently hovered.
   const active = hoveredItem ? hoveredItem.name : (items[0]?.name ?? '')
 
+  const railRef = useRef<HTMLUListElement>(null)
+
+  useEffect(() => {
+    const el = railRef.current
+    if (!el) return
+    // A mouse wheel only scrolls vertically; turn it sideways while the strip can still move,
+    // and hand it back to the page at either end. Native listener: React's onWheel is passive.
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      const before = el.scrollLeft
+      el.scrollLeft += e.deltaY
+      if (el.scrollLeft !== before) e.preventDefault()
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   return (
     <motion.ul
+      ref={railRef}
       variants={STRIP_CONTAINER}
       initial="hidden"
       animate="show"
-      className="flex gap-4 lg:gap-5 overflow-x-auto xl:overflow-visible xl:justify-center snap-x snap-mandatory px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex gap-4 lg:gap-5 overflow-x-auto snap-x snap-proximity scroll-px-4 md:scroll-px-6 px-4 md:px-6 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {items.map((c) => {
         const isActive = active === c.name
         return (
-          <motion.li key={c.href} variants={STRIP_ITEM} className="shrink-0 snap-start">
+          <motion.li key={c.href} variants={STRIP_ITEM} className="shrink-0 snap-start first:ml-auto last:mr-auto">
             <Link
               href={c.href}
               onClick={onNavigate}
@@ -169,7 +192,8 @@ const MegaPanel = memo(function MegaPanel({ cat, onNavigate }: { cat: NavCategor
   // Strip layout (Flower): only render the circular category strip, cleanly centered
   if (isStrip && cat.items.length > 0) {
     return (
-      <div className="max-w-[1440px] mx-auto px-4 md:px-12 py-6 md:py-8">
+      // Full width: the strip scrolls edge to edge instead of stopping at the page margins.
+      <div className="w-full py-6 md:py-8">
         <CategoryStrip items={cat.items} onNavigate={onNavigate} />
       </div>
     )

@@ -20,6 +20,7 @@ import MotionPreferences from "../../components/MotionPreferences";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
 const WelcomePopup = dynamic(() => import("../../components/WelcomePopup"));
+const LiveUpdates = dynamic(() => import("../../components/LiveUpdates"));
 
 const cormorant = Cormorant_Garamond({
   weight: ["300", "400", "500", "600", "700"],
@@ -143,6 +144,8 @@ export default async function RootLayout({
           <SearchDrawer />
           <ToastContainer />
           <WelcomePopup />
+          {/* Re-renders the page when an admin changes what it shows (Socket.IO, server.mjs). */}
+          <LiveUpdates />
           <GoogleTranslate />
           {/* Re-applies the translation after client-side navigation. Needs Suspense because
               it reads searchParams, which opts its subtree into dynamic rendering. */}

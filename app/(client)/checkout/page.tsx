@@ -12,7 +12,8 @@ import {
   calculateShippingForMethod,
   type ShippingConfig,
 } from '../../../lib/shipping';
-import { qar } from '../../../lib/utils';
+import { qar, formatNumber } from '../../../lib/utils';
+import { onLive, onResync } from '../../../lib/live-client';
 
 interface FormErrors {
   [key: string]: string;
@@ -75,16 +76,25 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/shipping')
-      .then((r) => r.json())
-      .then((json) => {
-        if (alive && json?.success && json.data) setShippingConfig(json.data as ShippingConfig);
-      })
-      .catch(() => {
-        // Leave NO_SHIPPING in place; placeOrder re-derives the real figure server-side.
-      });
+    const load = () =>
+      fetch('/api/shipping')
+        .then((r) => r.json())
+        .then((json) => {
+          if (alive && json?.success && json.data) setShippingConfig(json.data as ShippingConfig);
+        })
+        .catch(() => {
+          // Leave NO_SHIPPING in place; placeOrder re-derives the real figure server-side.
+        });
+    load();
+    // Re-read when an admin changes the delivery charge, or after missing that while offline.
+    const offLive = onLive((event) => {
+      if (event.type === 'delivery.updated') load();
+    });
+    const offResync = onResync(load);
     return () => {
       alive = false;
+      offLive();
+      offResync();
     };
   }, []);
 
@@ -215,7 +225,7 @@ export default function CheckoutPage() {
           <p><span className="font-semibold text-primary">Order Reference:</span> #{orderRef}</p>
           <p><span className="font-semibold text-primary">Amount Paid:</span> QAR {grandTotal}</p>
           {pointsDiscount > 0 && (
-            <p><span className="font-semibold text-primary">Points Redeemed:</span> {pointsDiscount.toLocaleString()} pts (−QAR {pointsDiscount})</p>
+            <p><span className="font-semibold text-primary">Points Redeemed:</span> {formatNumber(pointsDiscount)} pts (−QAR {pointsDiscount})</p>
           )}
           <p><span className="font-semibold text-primary">Shipping Address:</span> {address}, {city}, {zip}</p>
           <p><span className="font-semibold text-primary">Estimated Arrival:</span> {shippingMethod === 'courier' ? 'Tomorrow by 6:00 PM' : '3-5 Business Days'}</p>
@@ -474,7 +484,7 @@ export default function CheckoutPage() {
                 <div className="flex items-center gap-3 rounded-none border border-green-200 bg-green-50 px-4 py-4 text-xs text-green-700">
                   <ShieldCheck size={18} className="flex-shrink-0" />
                   <span>
-                    This order is <span className="font-semibold">fully paid with {pointsDiscount.toLocaleString()} membership points</span> — no card required.
+                    This order is <span className="font-semibold">fully paid with {formatNumber(pointsDiscount)} membership points</span> — no card required.
                   </span>
                 </div>
               ) : (
@@ -597,7 +607,7 @@ export default function CheckoutPage() {
                 <div>
                   <h4 className="font-semibold text-primary uppercase tracking-wider mb-1">Payment Method</h4>
                   {grandTotal === 0 ? (
-                    <p>Membership Points ({pointsDiscount.toLocaleString()} pts)</p>
+                    <p>Membership Points ({formatNumber(pointsDiscount)} pts)</p>
                   ) : (
                     <p>Visa Credit ending in *{cardNumber.replace(/\s+/g, '').slice(-4)}</p>
                   )}
@@ -607,7 +617,7 @@ export default function CheckoutPage() {
               <p className="text-[11px] text-muted italic">
                 By clicking "Place Order", {grandTotal > 0
                   ? `you authorize charging $${grandTotal} to your credit card.`
-                  : `this order will be paid in full with ${pointsDiscount.toLocaleString()} membership points.`} All arrangements are final sale due to customized preserved biological makeup.
+                  : `this order will be paid in full with ${formatNumber(pointsDiscount)} membership points.`} All arrangements are final sale due to customized preserved biological makeup.
               </p>
 
               <div className="pt-6 border-t border-divider flex justify-between">

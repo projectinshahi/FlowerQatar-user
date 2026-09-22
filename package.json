@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.mjs --production",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "test": "tsx --test tests/**/*.test.ts"
@@ -43,6 +43,8 @@
     "react-hook-form": "^7.80.0",
     "react-phone-number-input": "^3.4.17",
     "react-quill-new": "^3.8.3",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"

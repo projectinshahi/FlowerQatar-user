@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       select: { id: true, name: true },
     });
 
-    revalidateStorefront();
+    revalidateStorefront('gift.created', [created.id]);
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     return fail(error, 'POST /admin/gift-groups');

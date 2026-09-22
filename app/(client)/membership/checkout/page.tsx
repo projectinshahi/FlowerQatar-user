@@ -5,6 +5,7 @@ import { planName, planAccent } from '@/lib/subscription-plans';
 import { formatValidity } from '@/lib/validations/subscription-plan';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import MembershipPayment from '@/components/membership/MembershipPayment';
+import { formatNumber } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Membership Checkout', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -42,14 +43,14 @@ export default async function MembershipCheckoutPage({
             <h2 className="font-serif text-[26px] font-light" style={{ color: accent }}>{name}</h2>
             <p className="font-serif text-[22px] font-light text-primary">
               <span className="align-top text-[12px] tracking-wide text-muted">QAR </span>
-              {price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              {formatNumber(price, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
             </p>
           </div>
 
           <dl className="mt-6 space-y-3 border-t border-divider/40 pt-5 text-[14px]">
             <div className="flex items-center justify-between">
               <dt className="text-muted">Points credited</dt>
-              <dd className="font-medium text-primary">{plan.featurePoints.toLocaleString()} pts</dd>
+              <dd className="font-medium text-primary">{formatNumber(plan.featurePoints)} pts</dd>
             </div>
             <div className="flex items-center justify-between">
               <dt className="text-muted">Validity</dt>
@@ -58,7 +59,7 @@ export default async function MembershipCheckoutPage({
             <div className="flex items-center justify-between border-t border-divider/40 pt-3">
               <dt className="text-[15px] font-semibold text-primary">Total due</dt>
               <dd className="text-[15px] font-semibold text-primary">
-                QAR {price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                QAR {formatNumber(price, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
               </dd>
             </div>
           </dl>

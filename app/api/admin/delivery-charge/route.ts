@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { deliveryChargeSchema } from '@/lib/validations/delivery-charge';
 import { z } from 'zod';
 import { guardAdmin } from '@/lib/admin-guard';
+import { publishChange } from '@/lib/live-sync';
 
 /** Serialize the Prisma row (Decimal → number) for the client. */
 function serialize(row: {
@@ -65,6 +66,8 @@ export async function POST(request: Request) {
         isActive: data.isActive ?? true,
       },
     });
+    // Cart and checkout read shipping live; the event lets open ones re-read it.
+    publishChange({ type: 'delivery.updated' });
     return NextResponse.json({ success: true, data: serialize(created) }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -116,6 +119,7 @@ export async function PUT(request: Request) {
         isActive: data.isActive,
       },
     });
+    publishChange({ type: 'delivery.updated' });
     return NextResponse.json({ success: true, data: serialize(updated) });
   } catch (error) {
     if (error instanceof z.ZodError) {

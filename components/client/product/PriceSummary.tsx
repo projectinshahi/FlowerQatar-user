@@ -1,8 +1,9 @@
 "use client";
 
 import type { AddOn } from "@/hooks/useProductOptions";
+import { formatNumber } from "@/lib/utils";
 
-const qar = (n: number) => `QAR ${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+const qar = (n: number) => `QAR ${formatNumber(n, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
 export default function PriceSummary({
   basePrice,

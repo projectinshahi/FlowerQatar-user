@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
-import { revalidatePath, revalidateTag } from 'next/cache';
 import { subcategoryReorderSchema } from '@/lib/validations/subcategory';
-import { NAV_MENU_TAG } from '@/lib/subcategories';
+import { publishChange } from '@/lib/live-sync';
 import { logDbError } from '@/lib/prisma-error';
 import { z } from 'zod';
 
@@ -38,9 +37,7 @@ export async function POST(request: Request) {
       )
     );
 
-    // expire: 0, not 'max': 'max' serves the old menu once more before refreshing.
-    revalidateTag(NAV_MENU_TAG, { expire: 0 });
-    revalidatePath('/', 'layout');
+    publishChange({ type: 'subcategory.updated', ids });
     return NextResponse.json({ message: 'Order updated successfully', section, count: ids.length });
   } catch (error) {
     if (error instanceof z.ZodError) {
