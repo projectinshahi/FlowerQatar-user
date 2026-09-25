@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Heart, Star } from 'lucide-react'
 import LuxuryImage from '@/components/LuxuryImage'
 import Link from 'next/link'
@@ -116,34 +116,65 @@ function NewArrivalCard({ product }: { product: Product }) {
 export default function NewArrivals({ items }: { items?: Product[] }) {
   // Only products the admin flags as "New Arrival" appear here (no mock/placeholder fallback).
   const products = items ?? []
-  // Loop the carousel only when there are more products than fit one desktop view (3).
-  // With 1–3 flagged products we render a simple static row (no duplicate clones).
+  // The row scrolls only when there are more products than fit one desktop view (3).
+  // With 1–3 flagged products we render a simple static row.
   const useCarousel = products.length > 3
 
-  const [currentIndex, setCurrentIndex] = useState(products.length)
-  const [isTransitioning, setIsTransitioning] = useState(false)
+  /*
+   * The same scrolling row as "You may also like" on a product page: a real scroll container
+   * with scroll snapping, so a swipe (or a trackpad, or a dragged scrollbar) moves it natively,
+   * and the arrows simply scroll it by one card. It stops at both ends — no wrap-around — which
+   * is what makes the arrows' disabled state meaningful.
+   */
+  const trackRef = useRef<HTMLDivElement | null>(null)
+  const [edges, setEdges] = useState({ canScrollLeft: false, canScrollRight: false })
 
-  const displayItems = [...products, ...products, ...products]
+  /**
+   * Which way the row can still move. The 2px tolerance absorbs sub-pixel rounding — an exact
+   * comparison leaves `scrollLeft` a fraction short of the maximum, so the end is never
+   * detected and the right arrow stays enabled on a row that cannot move any further.
+   */
+  const measure = useCallback((track: HTMLDivElement | null) => {
+    if (!track) return
+    const max = track.scrollWidth - track.clientWidth
+    setEdges({
+      canScrollLeft: track.scrollLeft > 2,
+      // `max <= 2` means everything already fits, so there is nothing to scroll to.
+      canScrollRight: max > 2 && track.scrollLeft < max - 2,
+    })
+  }, [])
 
-  const nextSlide = () => {
-    if (isTransitioning) return
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => prev + 1)
-  }
+  /** Callback ref: measures as soon as the row is in the DOM. */
+  const attachTrack = useCallback(
+    (track: HTMLDivElement | null) => {
+      trackRef.current = track
+      measure(track)
+    },
+    [measure]
+  )
 
-  const prevSlide = () => {
-    if (isTransitioning) return
-    setIsTransitioning(true)
-    setCurrentIndex((prev) => prev - 1)
-  }
+  // Card widths are percentage-based, so a resize changes where the end is.
+  useEffect(() => {
+    const onResize = () => measure(trackRef.current)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [measure])
 
-  const handleTransitionEnd = () => {
-    setIsTransitioning(false)
-    if (currentIndex === 0) {
-      setCurrentIndex(products.length)
-    } else if (currentIndex >= products.length * 2) {
-      setCurrentIndex(products.length)
-    }
+  /**
+   * Scroll by exactly one card, clamped to the ends.
+   *
+   * The step is the distance between the first two cards' left edges, which is correct at
+   * every breakpoint (the cards are percentage-based, so a hardcoded width would be wrong on
+   * mobile). Falls back to the viewport width when there is only one card to measure.
+   */
+  const scrollByCard = (direction: 1 | -1) => {
+    const track = trackRef.current
+    if (!track) return
+    const [first, second] = track.children as unknown as HTMLElement[]
+    const step = first && second ? second.offsetLeft - first.offsetLeft : track.clientWidth
+    const max = track.scrollWidth - track.clientWidth
+    const left = Math.min(max, Math.max(0, track.scrollLeft + direction * step))
+    track.scrollTo({ left, behavior: 'smooth' })
   }
 
   // No admin-flagged New Arrivals → don't render the section at all.
@@ -151,10 +182,6 @@ export default function NewArrivals({ items }: { items?: Product[] }) {
 
   return (
     <AnimatedSection className="py-16 md:py-24 bg-[#FFF6F0]">
-      <style>{`
-        .carousel-track-new-arrivals { --slide-width: 100%; }
-        @media (min-width: 768px) { .carousel-track-new-arrivals { --slide-width: 33.333333%; } }
-      `}</style>
       <div className="w-full relative">
         <div className="flex justify-between items-end mb-12 px-6 md:px-12 max-w-[1440px] mx-auto">
           <div>
@@ -170,24 +197,24 @@ export default function NewArrivals({ items }: { items?: Product[] }) {
 
           {/* Top Right Navigation Controls */}
           <div className="flex items-center gap-4 mb-2 md:mb-0">
-            {/* <Link href="/shop" className="hidden md:block font-sans text-[11px] uppercase tracking-[0.15em] text-primary hover:text-secondary transition-colors border-b border-primary pb-1 mr-4">
-              VIEW ALL
-            </Link> */}
-
             {useCarousel && (
               <div className="flex gap-2">
                 <button
-                  onClick={prevSlide}
+                  onClick={() => scrollByCard(-1)}
+                  disabled={!edges.canScrollLeft}
                   className="w-10 h-10 flex items-center justify-center bg-transparent border border-divider text-primary rounded-full hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Previous product"
+                  aria-controls="new-arrivals-track"
                   suppressHydrationWarning
                 >
                   <ArrowLeft size={16} strokeWidth={1} />
                 </button>
                 <button
-                  onClick={nextSlide}
+                  onClick={() => scrollByCard(1)}
+                  disabled={!edges.canScrollRight}
                   className="w-10 h-10 flex items-center justify-center bg-transparent border border-divider text-primary rounded-full hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Next product"
+                  aria-controls="new-arrivals-track"
                   suppressHydrationWarning
                 >
                   <ArrowRight size={16} strokeWidth={1} />
@@ -198,18 +225,18 @@ export default function NewArrivals({ items }: { items?: Product[] }) {
         </div>
 
         {useCarousel ? (
-          <div className="relative overflow-hidden">
-            <div
-              className={`carousel-track-new-arrivals flex ${isTransitioning ? 'transition-transform duration-500 ease-in-out' : ''}`}
-              style={{ transform: `translateX(calc(-${currentIndex} * var(--slide-width)))` }}
-              onTransitionEnd={handleTransitionEnd}
-            >
-              {displayItems.map((product, idx) => (
-                <div key={`${product.id}-${idx}`} className="w-full md:w-1/3 flex-shrink-0">
-                  <NewArrivalCard product={product} />
-                </div>
-              ))}
-            </div>
+          <div
+            id="new-arrivals-track"
+            ref={attachTrack}
+            onScroll={(e) => measure(e.currentTarget)}
+            /* Scrollbar hidden so the row looks exactly as it did while it was a transform. */
+            className="carousel-track-new-arrivals flex overflow-x-auto snap-x snap-mandatory scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {products.map((product) => (
+              <div key={product.id} className="w-full md:w-1/3 flex-shrink-0 snap-start">
+                <NewArrivalCard product={product} />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="flex flex-wrap justify-center gap-y-8 px-6 md:px-12 max-w-[1440px] mx-auto">

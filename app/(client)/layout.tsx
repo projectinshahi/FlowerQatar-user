@@ -17,6 +17,7 @@ import Analytics from "../../components/analytics/Analytics";
 import GoogleTranslate from "../../components/GoogleTranslate";
 import TranslateSync from "../../components/TranslateSync";
 import MotionPreferences from "../../components/MotionPreferences";
+import ScrollToTop from "../../components/ScrollToTop";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
 const WelcomePopup = dynamic(() => import("../../components/WelcomePopup"));
@@ -125,6 +126,8 @@ export default async function RootLayout({
             },
           ]}
         />
+        {/* Every route starts at the top; see the component for why Next does not. */}
+        <ScrollToTop />
         <AppContextProvider>
           <MotionPreferences>
           {/* Keyboard users jump past the navigation; invisible until focused. */}

@@ -142,7 +142,9 @@ export async function createSubscription(userId: string, input: CreateSubscripti
       variantLabel: pricing.variantLabel,
       quantity: input.quantity,
       unitPrice: pricing.unitPrice,
-      discountPercent: input.discountPercent ?? 0,
+      // Server-side only: the customer cannot send a discount. A subscription discount, when
+      // there is one, belongs here - derived from the plan, not from the request body.
+      discountPercent: 0,
       frequency: input.frequency,
       intervalCount: input.intervalCount,
       weekday: input.weekday ?? null,

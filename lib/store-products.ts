@@ -414,7 +414,14 @@ export async function getNewArrivalItems(limit = 8): Promise<NewArrivalItem[]> {
   let arrivals: Product[] = [];
   try {
     const rows = await prisma.product.findMany({
-      where: { status: "PUBLISHED", isNewArrival: true },
+      where: {
+        status: "PUBLISHED",
+        isNewArrival: true,
+        // Blushing Blooms is never shown here — it has its own page, and the shop listing
+        // already excludes it the same way. Written as an OR because a plain `not` on a
+        // nullable column would also drop products that have no category at all.
+        OR: [{ categoryType: null }, { categoryType: { not: "BLUSHING_BLOOMS" } }],
+      },
       orderBy: { createdAt: "desc" },
       take: limit,
       select: STORE_PRODUCT_SELECT,

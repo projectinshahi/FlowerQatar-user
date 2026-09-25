@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "node server.mjs --production",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "postinstall": "prisma generate",
     "test": "tsx --test tests/**/*.test.ts"
   },

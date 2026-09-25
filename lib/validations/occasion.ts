@@ -36,7 +36,18 @@ export const occasionSchema = z.object({
   bannerImage: optionalBanner,
   // Optional: falls back to "View Collection" / /occasion/[slug] on the storefront.
   buttonText: z.string().max(50, 'Button text must be at most 50 characters').trim().optional().nullable(),
-  buttonLink: z.string().max(255, 'Button link must be at most 255 characters').trim().optional().nullable(),
+  // Rendered as an href, so the same shape rule the banner already uses: an absolute
+  // http(s) URL or a root-relative path, never an arbitrary scheme.
+  buttonLink: z
+    .string()
+    .max(255, 'Button link must be at most 255 characters')
+    .trim()
+    .refine(
+      (v) => v === '' || /^https?:\/\//.test(v) || v.startsWith('/'),
+      'Link must start with / or https://'
+    )
+    .optional()
+    .nullable(),
   isFeatured: z.boolean().default(false),
   displayOrder: z.coerce.number().int().min(0, 'Display order must be 0 or greater').default(0),
   isActive: z.boolean().default(true),

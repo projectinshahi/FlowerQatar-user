@@ -10,6 +10,7 @@ import { getSubscriptionPlans } from '../../lib/subscription-plans'
 import ShopByOccasion from '../../components/home/ShopByOccasion'
 import SubscriptionPlans from '../../components/home/SubscriptionPlans'
 import WhatsAppButton from '../../components/WhatsAppButton'
+import ScrollToHash from '../../components/ScrollToHash'
 import {
   HeroSkeleton,
   ShopByOccasionSkeleton,
@@ -101,6 +102,9 @@ export default function Home() {
 
       <BrandStory />
       <ArtTriptych />
+
+      {/* Sections stream in, so a /#hash link has to wait for its target before scrolling. */}
+      <ScrollToHash />
 
       {/* Floating contact button. Renders only when NEXT_PUBLIC_WHATSAPP_NUMBER is set. */}
       <WhatsAppButton />

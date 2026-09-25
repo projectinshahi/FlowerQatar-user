@@ -56,10 +56,13 @@ function buildVariantsJson(variants: ProductFormValues["variants"]) {
 }
 
 function slugify(value: string) {
-  return value
+  const slug = value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
+  // A name made only of whitespace or of non-latin characters slugifies to "", which would be
+  // saved as an unreachable /products/ URL. Fall back and let the clash branch make it unique.
+  return slug || "product";
 }
 
 /**
@@ -103,14 +106,18 @@ export async function createProduct(data: ProductFormValues) {
       finalSlug = `${finalSlug}-${Date.now()}`;
     }
 
-    // If subcategoryId is provided, ensure categoryType matches its parent category
+    // The chosen subcategory decides the category. It used to be consulted only when no
+    // categoryType was sent, so a mismatched pair was stored as-is and the product was filtered
+    // under one category while its page claimed another. The reassign route already resolves it
+    // this way. A subcategory that does not exist is reported instead of failing on the FK.
     let resolvedCategoryType = parsed.categoryType || null;
-    if (parsed.subcategoryId && !resolvedCategoryType) {
+    if (parsed.subcategoryId) {
       const subcat = await prisma.subcategory.findUnique({
         where: { id: parsed.subcategoryId },
         include: { category: true },
       });
-      if (subcat?.category?.name) {
+      if (!subcat) return { success: false, error: "Selected subcategory no longer exists" };
+      if (subcat.category?.name) {
         resolvedCategoryType = subcat.category.name as any;
       }
     }
@@ -178,14 +185,18 @@ export async function updateProduct(id: string, data: ProductFormValues) {
       }
     }
 
-    // If subcategoryId is provided, ensure categoryType matches its parent category
+    // The chosen subcategory decides the category. It used to be consulted only when no
+    // categoryType was sent, so a mismatched pair was stored as-is and the product was filtered
+    // under one category while its page claimed another. The reassign route already resolves it
+    // this way. A subcategory that does not exist is reported instead of failing on the FK.
     let resolvedCategoryType = parsed.categoryType || null;
-    if (parsed.subcategoryId && !resolvedCategoryType) {
+    if (parsed.subcategoryId) {
       const subcat = await prisma.subcategory.findUnique({
         where: { id: parsed.subcategoryId },
         include: { category: true },
       });
-      if (subcat?.category?.name) {
+      if (!subcat) return { success: false, error: "Selected subcategory no longer exists" };
+      if (subcat.category?.name) {
         resolvedCategoryType = subcat.category.name as any;
       }
     }

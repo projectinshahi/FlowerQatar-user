@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
+import { cpus } from "os";
 import { CATEGORY_ORDER, CATEGORY_META, categorySlug } from "./lib/category-config";
+
+const cpuCount = cpus().length || 1;
 
 // Intended Content-Security-Policy. Shipped in Report-Only mode so it can never break
 // the live site; promote to "Content-Security-Policy" after reviewing violation reports.
@@ -35,7 +38,20 @@ const nextConfig: NextConfig = {
   // Trim the client bundle so pages hydrate/interact more smoothly.
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
-    cpus: 1,
+    /*
+     * Build workers for page-data collection and static generation.
+     *
+     * This was pinned to 1, which made the 129 prerendered pages generate strictly one after
+     * another. Their cost is mostly waiting on the remote database, not CPU, so the worker sat
+     * idle: measured here, static generation was 39.2s on one worker and 16.3s on four.
+     *
+     * Capped rather than unlimited. Letting Next use all 12 cores took static generation to
+     * 10.8s but slowed compilation and type checking by ~12s between them (each worker is a
+     * whole Node process, and this box has 8GB), so the build as a whole was slower. Four is
+     * the measured sweet spot, and `min` keeps a smaller build machine from being oversubscribed
+     * — on a single-core deploy box this is still 1, exactly as before.
+     */
+    cpus: Math.min(4, cpuCount),
   },
 
   compress: true,

@@ -24,9 +24,16 @@ export default async function MembershipSuccessPage({
   const user = await getCurrentUser();
   if (!user) redirect('/');
 
-  // Scoped to the authenticated user — never expose another user's membership.
+  /*
+   * Scoped to the authenticated user — never expose another user's membership — and to an
+   * ACTIVE one: a membership whose payment has not been verified has activated nothing and
+   * must not be presented as though it had.
+   */
   const membership = m
-    ? await prisma.membership.findFirst({ where: { id: m, userId: user.id }, include: { plan: true } })
+    ? await prisma.membership.findFirst({
+        where: { id: m, userId: user.id, status: 'ACTIVE' },
+        include: { plan: true },
+      })
     : null;
   if (!membership) redirect('/');
 

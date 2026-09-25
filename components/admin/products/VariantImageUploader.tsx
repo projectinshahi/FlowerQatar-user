@@ -5,6 +5,11 @@ import { Upload, X, Star, GripHorizontal, Film, Play, Loader2 } from "lucide-rea
 import { useFormContext } from "react-hook-form";
 import { isVideoMedia, shouldBePrimary } from "@/lib/media";
 
+// The same ceilings SingleMediaUploader applies, so both product uploaders agree.
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 export default function VariantImageUploader({
   variantIndex,
   colorVariantIndex,
@@ -29,9 +34,19 @@ export default function VariantImageUploader({
   const handleFileUpload = async (file: File, isVideo: boolean) => {
     if (!file) return;
 
-    if (isVideo && file.size > 100 * 1024 * 1024) {
+    if (isVideo && file.size > MAX_VIDEO_BYTES) {
       setUploadError("Video must be under 100MB");
       return;
+    }
+    if (!isVideo) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        setUploadError("Use a JPG, PNG or WEBP image");
+        return;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        setUploadError("Image must be under 10MB");
+        return;
+      }
     }
 
     try {

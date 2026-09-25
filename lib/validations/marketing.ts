@@ -50,7 +50,7 @@ export const couponSchema = z
       .string()
       .max(50, "Coupon code is too long")
       .optional()
-      .transform((v) => (v ? v.trim().toUpperCase() : undefined)),
+      .transform((v) => v?.trim().toUpperCase() || undefined),
     name: z.string().min(1, "Coupon name is required").max(255),
     description: z.string().optional().nullable(),
     type: z.enum(DISCOUNT_TYPES),
@@ -111,7 +111,16 @@ export const promotionSchema = z.object({
   applicableProducts: idArray,
   excludedProducts: idArray,
   excludedCategories: idArray,
-});
+})
+  // The same two rules coupons and free-delivery campaigns already carry.
+  .refine((d) => d.endDate > d.startDate, {
+    message: "End date must be after start date",
+    path: ["endDate"],
+  })
+  .refine((d) => d.discountType !== "PERCENTAGE" || d.discountValue <= 100, {
+    message: "Percentage discount cannot exceed 100",
+    path: ["discountValue"],
+  });
 
 export type PromotionFormValues = z.infer<typeof promotionSchema>;
 

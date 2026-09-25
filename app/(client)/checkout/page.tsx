@@ -12,8 +12,13 @@ import {
   calculateShippingForMethod,
   type ShippingConfig,
 } from '../../../lib/shipping';
+import { isValidPostalCode } from '../../../lib/postal';
 import { qar, formatNumber } from '../../../lib/utils';
 import { onLive, onResync } from '../../../lib/live-client';
+
+// The store delivers within Qatar and this form has no country picker. lib/postal.ts lists QA
+// as a country that operates no postal-code system, so the field is optional here.
+const STORE_COUNTRY = 'QA';
 
 interface FormErrors {
   [key: string]: string;
@@ -26,13 +31,15 @@ interface AppliedCoupon {
 }
 
 export default function CheckoutPage() {
-  const { cart, getCartTotal, clearCart, user, addToast } = useApp();
+  const { cart, getCartTotal, refreshCart, user, addToast } = useApp();
   const [step, setStep] = useState(1);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placing, setPlacing] = useState(false);
   // Generated once when the order is placed, so the reference stays stable across re-renders.
   const [orderRef, setOrderRef] = useState('');
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  /** Filled when the order is settled: the figures come from the order, not from the cart. */
+  const [paidOrder, setPaidOrder] = useState<{ amount: number; points: number } | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   // Membership points redeemed at checkout (1 point = 1 QAR). Committed server-side on placement.
   const [pointsRedeemed, setPointsRedeemed] = useState(0);
@@ -48,10 +55,6 @@ export default function CheckoutPage() {
   
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'courier'>('standard');
 
-  const [cardName, setCardName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
 
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -133,27 +136,14 @@ export default function CheckoutPage() {
       if (!lastName.trim()) tempErrors.lastName = 'Last name is required';
       if (!address.trim()) tempErrors.address = 'Street address is required';
       if (!city.trim()) tempErrors.city = 'City is required';
-      if (!zip.match(/^\d{5}(-\d{4})?$/)) {
-        tempErrors.zip = 'Enter a valid 5-digit zip code';
+      if (!isValidPostalCode(STORE_COUNTRY, zip)) {
+        tempErrors.zip = 'Enter a valid postal code';
       }
-      if (!phone.match(/^\+?[\d\s-]{10,15}$/)) {
-        tempErrors.phone = 'Enter a valid phone number (min 10 digits)';
-      }
-    }
-
-    // Card details are only required when there is a balance to charge. When membership
-    // points cover the whole order (grandTotal === 0), the order is paid entirely with points.
-    if (step === 3 && grandTotal > 0) {
-      if (!cardName.trim()) tempErrors.cardName = 'Cardholder name is required';
-      const cleanNum = cardNumber.replace(/\s+/g, '');
-      if (!cleanNum.match(/^\d{16}$/)) {
-        tempErrors.cardNumber = 'Enter a valid 16-digit credit card number';
-      }
-      if (!cardExpiry.match(/^(0[1-9]|1[0-2])\/?([2-9][0-9])$/)) {
-        tempErrors.cardExpiry = 'Enter expiry date in MM/YY format';
-      }
-      if (!cardCvv.match(/^\d{3,4}$/)) {
-        tempErrors.cardCvv = 'Enter a valid 3 or 4 digit security code';
+      // Digits, not characters: a Qatari number is 8 digits locally and 11 with the +974 code,
+      // so the old 10-character minimum rejected the local form outright.
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (!/^\+?[\d\s-]+$/.test(phone.trim()) || phoneDigits.length < 8 || phoneDigits.length > 15) {
+        tempErrors.phone = 'Enter a valid phone number';
       }
     }
 
@@ -172,12 +162,60 @@ export default function CheckoutPage() {
     setStep((s) => Math.max(1, s - 1));
   };
 
+  /*
+   * Coming back from the payment gateway. The order was created before the customer left, so
+   * the form state behind this screen is gone — the confirmation is rebuilt from the order.
+   * The payment itself was verified server-side; the query string is only a hint about where
+   * to land, never proof that anything was paid.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    const orderId = params.get('order');
+    if (!payment) return;
+    // Drop the parameters so a refresh of this page does not replay the landing.
+    window.history.replaceState(null, '', '/checkout');
+
+    if (payment !== 'success' || !orderId) {
+      addToast(
+        payment === 'pending'
+          ? 'We are still waiting for your payment to be confirmed. Your cart is unchanged.'
+          : 'Your payment was not completed. Your cart is unchanged — you can try again.',
+        'error'
+      );
+      return;
+    }
+
+    (async () => {
+      const res = await fetch(`/api/orders/${orderId}`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) return;
+      const info = (data.order.shippingInfo ?? {}) as Record<string, string>;
+      setEmail(info.email ?? '');
+      setAddress(info.address ?? '');
+      setCity(info.city ?? '');
+      setZip(info.zip ?? '');
+      if (info.shippingMethod === 'courier') setShippingMethod('courier');
+      setPaidOrder({ amount: Number(data.order.totalAmount), points: data.order.pointsRedeemed ?? 0 });
+      setCreatedOrderId(orderId);
+      setOrderRef(orderId.slice(0, 8).toUpperCase());
+      setOrderPlaced(true);
+      // The server already removed exactly the lines that were paid for.
+      refreshCart();
+    })();
+    // Runs once, on landing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handlePlaceOrder = async () => {
     if (placing) return;
     setPlacing(true);
+    // Set when the browser is on its way to the gateway: the button must stay disabled.
+    let handedOff = false;
     try {
-      // Create the real order on the server: it re-derives the totals from the authoritative
-      // cart, records the Order (+ items), atomically redeems any points, and clears the cart.
+      // Create the order on the server: it re-derives the totals from the authoritative cart
+      // and records the Order (+ items) as UNPAID. Nothing is spent until the payment is
+      // verified — the cart, the points and the coupon are all left alone for now.
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,12 +234,22 @@ export default function CheckoutPage() {
       }
       setCreatedOrderId(data.orderId || data.id || null);
       setOrderRef(data.reference || data.orderId);
+
+      // Card payment: hand the customer over to the SkipCash hosted page.
+      if (data.payUrl) {
+        handedOff = true;
+        window.location.href = data.payUrl;
+        return;
+      }
+
+      // Nothing was payable (points/discount covered it): the order is already settled.
+      setPaidOrder({ amount: data.totalAmount ?? 0, points: data.pointsRedeemed ?? 0 });
       setOrderPlaced(true);
-      clearCart();
+      refreshCart();
     } catch {
       addToast('Something went wrong placing your order. Please try again.', 'error');
     } finally {
-      setPlacing(false);
+      if (!handedOff) setPlacing(false);
     }
   };
 
@@ -223,9 +271,9 @@ export default function CheckoutPage() {
         </p>
         <div className="bg-cream border border-divider p-6 text-left space-y-2 text-xs text-muted rounded-none">
           <p><span className="font-semibold text-primary">Order Reference:</span> #{orderRef}</p>
-          <p><span className="font-semibold text-primary">Amount Paid:</span> QAR {grandTotal}</p>
-          {pointsDiscount > 0 && (
-            <p><span className="font-semibold text-primary">Points Redeemed:</span> {formatNumber(pointsDiscount)} pts (−QAR {pointsDiscount})</p>
+          <p><span className="font-semibold text-primary">Amount Paid:</span> QAR {paidOrder?.amount ?? grandTotal}</p>
+          {(paidOrder?.points ?? pointsDiscount) > 0 && (
+            <p><span className="font-semibold text-primary">Points Redeemed:</span> {formatNumber(paidOrder?.points ?? pointsDiscount)} pts (−QAR {paidOrder?.points ?? pointsDiscount})</p>
           )}
           <p><span className="font-semibold text-primary">Shipping Address:</span> {address}, {city}, {zip}</p>
           <p><span className="font-semibold text-primary">Estimated Arrival:</span> {shippingMethod === 'courier' ? 'Tomorrow by 6:00 PM' : '3-5 Business Days'}</p>
@@ -368,11 +416,10 @@ export default function CheckoutPage() {
                     </label>
                     <input
                       type="text"
-                      required
                       value={zip}
                       id="co-zip" aria-label="Zip code" autoComplete="postal-code" aria-invalid={!!errors.zip || undefined} aria-describedby={errors.zip ? "co-zip-err" : undefined} onChange={(e) => setZip(e.target.value)}
                       className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                      placeholder="e.g. 10012"
+                      placeholder="Optional"
                     />
                     {errors.zip && <p id="co-zip-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.zip}</p>}
                   </div>
@@ -489,80 +536,14 @@ export default function CheckoutPage() {
                 </div>
               ) : (
               <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                    Cardholder Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={cardName}
-                    onChange={(e) => setCardName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                    placeholder="Name as printed on front of card"
-                  />
-                  {errors.cardName && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.cardName}</p>}
-                </div>
-
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                    Card Number
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())}
-                      maxLength={19}
-                      className="w-full pl-10 pr-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                      placeholder="0000 0000 0000 0000"
-                    />
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted/50">
-                      <CreditCard size={16} />
-                    </span>
-                  </div>
-                  {errors.cardNumber && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.cardNumber}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                      Expiration Date
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={cardExpiry}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        if (val.length <= 2) {
-                          setCardExpiry(val);
-                        } else {
-                          setCardExpiry(`${val.slice(0, 2)}/${val.slice(2, 4)}`);
-                        }
-                      }}
-                      maxLength={5}
-                      placeholder="MM/YY"
-                      className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs text-center rounded-none"
-                    />
-                    {errors.cardExpiry && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.cardExpiry}</p>}
-                  </div>
-                  <div>
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                      CVV / Security Code
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={cardCvv}
-                      onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
-                      maxLength={4}
-                      placeholder="3 or 4 digits"
-                      className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs text-center rounded-none"
-                    />
-                    {errors.cardCvv && <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.cardCvv}</p>}
-                  </div>
+                <div className="flex items-start gap-3 rounded-none border border-divider bg-cream/30 px-4 py-4 text-xs text-muted">
+                  <CreditCard size={18} className="flex-shrink-0 mt-0.5 text-secondary" />
+                  <span>
+                    Card details are never entered here. When you place your order you are taken to
+                    <span className="font-semibold text-primary"> SkipCash</span>, our payment provider, to pay
+                    <span className="font-semibold text-primary"> QAR {grandTotal}</span> securely by Visa, MasterCard or American Express,
+                    and brought straight back here afterwards.
+                  </span>
                 </div>
               </div>
               )}
@@ -609,14 +590,14 @@ export default function CheckoutPage() {
                   {grandTotal === 0 ? (
                     <p>Membership Points ({formatNumber(pointsDiscount)} pts)</p>
                   ) : (
-                    <p>Visa Credit ending in *{cardNumber.replace(/\s+/g, '').slice(-4)}</p>
+                    <p>Card — paid securely on the SkipCash payment page</p>
                   )}
                 </div>
               </div>
 
               <p className="text-[11px] text-muted italic">
                 By clicking "Place Order", {grandTotal > 0
-                  ? `you authorize charging $${grandTotal} to your credit card.`
+                  ? `you will be taken to SkipCash to pay QAR ${grandTotal} by card.`
                   : `this order will be paid in full with ${formatNumber(pointsDiscount)} membership points.`} All arrangements are final sale due to customized preserved biological makeup.
               </p>
 

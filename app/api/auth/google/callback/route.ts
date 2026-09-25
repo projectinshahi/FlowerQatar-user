@@ -81,8 +81,8 @@ export async function GET(req: Request) {
       // Create new user
       user = await prisma.user.create({
         data: {
-          firstName: googleUser.given_name || 'User',
-          lastName: googleUser.family_name || '',
+          firstName: (googleUser.given_name || 'User').trim().slice(0, 50),
+          lastName: (googleUser.family_name || '').trim().slice(0, 50),
           email: normalizedEmail,
           provider: 'GOOGLE',
           providerId: googleUser.id,

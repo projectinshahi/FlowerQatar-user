@@ -66,11 +66,11 @@ export default async function MembershipCheckoutPage({
         </div>
       </div>
 
-      {/* Simulated payment controls (client) */}
+      {/* Payment controls (client) — hands over to the SkipCash hosted card form */}
       <MembershipPayment planId={plan.id} planName={name} price={price} accent={accent} />
 
       <p className="mt-6 text-center text-[11px] text-muted">
-        This is a simulated payment — no real card is charged.
+        You will be redirected to our secure payment provider to complete your payment.
       </p>
     </div>
   );

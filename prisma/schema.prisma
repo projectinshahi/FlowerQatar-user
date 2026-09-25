@@ -90,6 +90,21 @@ model Order {
   // How the customer paid: points redeemed + method (CARD | POINTS | MIXED).
   pointsRedeemed Int         @default(0)
   paymentMethod  String      @default("CARD") @db.VarChar(20)
+  // Payment gateway state. `status` above is fulfilment only; this is the money.
+  // Nothing is charged to the customer's points/coupon/cart until paymentStatus is PAID.
+  paymentStatus        PaymentStatus @default(UNPAID)
+  paymentProvider      String?       @db.VarChar(20)
+  /// The gateway's own payment id (SkipCash `resultObj.id`). Unique: a webhook or return
+  /// for a payment can therefore only ever resolve to the one order that created it.
+  paymentId            String?       @unique @db.VarChar(64)
+  paymentTxnId         String?       @db.VarChar(100)
+  paidAt               DateTime?     @db.Timestamptz(6)
+  paymentFailureReason String?       @db.VarChar(255)
+  /// Coupon held for this order, applied (usage recorded) only once payment is verified.
+  couponId             String?       @db.Uuid
+  /// Ids of the User.cart lines this order was built from, removed only once payment is
+  /// verified — so an abandoned or failed payment leaves the customer's cart intact.
+  cartItemIds          Json?
   // Snapshot of the delivery/contact details entered at checkout.
   shippingInfo   Json?
   status         OrderStatus @default(PENDING)
@@ -247,6 +262,16 @@ model EmailOTP {
 
   @@index([email, purpose])
   @@index([expiresAt])
+}
+
+/// Money state of an order, separate from OrderStatus (which is fulfilment).
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
 }
 
 enum OrderStatus {
@@ -631,6 +656,8 @@ model SubscriptionPlan {
 
 /// Enums for the membership + points-wallet system (distinct from recurring delivery Subscriptions).
 enum MembershipStatus {
+  /// Purchased but not paid for yet — grants nothing until the payment is verified.
+  PENDING
   ACTIVE
   EXPIRED
   CANCELLED
@@ -656,13 +683,20 @@ model Membership {
   expiresAt      DateTime         @db.Timestamptz(6)
   /// Points this purchase granted (immutable record; the spendable balance is on PointsWallet).
   pointsCredited Int              @default(0)
+  /// The amount charged, taken from the plan at purchase time — never from the browser.
   pricePaid      Decimal          @default(0) @db.Decimal(10, 2)
-  /// Simulated-payment record (swap the gateway later without touching this shape).
+  /// Gateway record. Defaults are the legacy simulated values kept for historical rows;
+  /// every new purchase is written as SKIPCASH / CARD / PENDING until the payment verifies.
   paymentGateway String           @default("SIMULATED") @db.VarChar(30)
   paymentMethod  String           @default("DEVELOPMENT") @db.VarChar(30)
   paymentStatus  String           @default("SUCCESS") @db.VarChar(20)
   paymentTxnId   String?          @db.VarChar(100)
-  /// Anti-replay: a client-supplied key makes the "simulate payment" call idempotent.
+  /// The gateway's own payment id (SkipCash `resultObj.id`). Unique, exactly like Order.paymentId:
+  /// a webhook or a return for a payment can only ever resolve to the membership that created it.
+  paymentId            String?    @unique @db.VarChar(64)
+  paidAt               DateTime?  @db.Timestamptz(6)
+  paymentFailureReason String?    @db.VarChar(255)
+  /// Anti-replay: a client-supplied key makes the purchase call idempotent.
   idempotencyKey String?          @unique @db.VarChar(100)
   createdAt      DateTime         @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @db.Timestamptz(6)

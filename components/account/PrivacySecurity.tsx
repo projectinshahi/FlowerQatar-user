@@ -113,6 +113,7 @@ export default function PrivacySecurity({ hasPassword }: { hasPassword: boolean 
   };
 
   const doDelete = async () => {
+    if (deleting) return; // irreversible - a second Enter must not fire a second request
     setDeleteError("");
     if (!deleteValue.trim()) return setDeleteError(hasPassword ? "Enter your password" : "Enter your email");
     setDeleting(true);

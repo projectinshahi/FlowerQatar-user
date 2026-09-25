@@ -45,18 +45,31 @@ export const galleryImageSchema = z.object({
   type: z.enum(["image", "video"]).optional().default("image"),
 });
 
-export const colorVariantSchema = z.object({
-  id: z.string().optional(),
-  colorName: z.string().min(1, "Color name is required"),
-  colorCode: z.string().min(1, "Color code is required"),
-  price: requiredNumber("Price"),
-  salePrice: optionalNumber,
-  swatchImage: z.string().optional().nullable(),
-  hoverImage: z.string().optional().nullable(),
-  galleryImages: z.array(galleryImageSchema).default([]),
-  isActive: z.boolean().default(true),
-  isDefault: z.boolean().default(false),
-});
+export const colorVariantSchema = z
+  .object({
+    id: z.string().optional(),
+    colorName: z.string().trim().min(1, "Color name is required").max(100, "Color name is too long"),
+    // Hex, like the category and subcategory schemas already require - this value is written
+    // straight into a style attribute, so a free-form string is neither safe nor renderable.
+    colorCode: z
+      .string()
+      .trim()
+      .min(1, "Color code is required")
+      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Enter a valid hex color, e.g. #F5E1E1"),
+    price: requiredNumber("Price"),
+    salePrice: optionalNumber,
+    swatchImage: z.string().optional().nullable(),
+    hoverImage: z.string().optional().nullable(),
+    galleryImages: z.array(galleryImageSchema).default([]),
+    isActive: z.boolean().default(true),
+    isDefault: z.boolean().default(false),
+  })
+  // A sale price above the original is not a discount. Most read paths clamp it themselves, but
+  // subscription pricing takes salePrice verbatim, so it has to be rejected at the source.
+  .refine((c) => c.salePrice == null || c.salePrice <= c.price, {
+    message: "Sale price must be less than or equal to the price",
+    path: ["salePrice"],
+  });
 
 export const specificationSchema = z.object({
   id: z.string().optional(),
@@ -85,9 +98,11 @@ export const variantSchema = z.object({
 
 export const productSchema = z.object({
   id: z.string().optional(),
-  name: z.string().optional(),
-  slug: z.string().optional(),
-  sku: z.string().optional().nullable(),
+  // Optional by design: the action falls back to the first variant's name. Trimmed and bounded
+  // to the VarChar(255)/VarChar(100) columns so an over-long value is a field error, not a 500.
+  name: z.string().trim().max(255, "Name is too long").optional(),
+  slug: z.string().trim().max(255, "URL slug is too long").optional(),
+  sku: z.string().trim().max(100, "SKU is too long").optional().nullable(),
   shortDescription: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   country: z.string().optional().nullable(),
@@ -96,7 +111,8 @@ export const productSchema = z.object({
     .enum(["GIFT_COMBOS", "SHOP_BY_OCCASION", "FLOWER", "BLUSHING_BLOOMS"])
     .optional()
     .nullable(),
-  subcategoryId: z.string().optional().nullable(),
+  // "" is what the admin select posts for "no subcategory"; anything else must be a real id.
+  subcategoryId: z.string().uuid("Select a valid subcategory").or(z.literal("")).optional().nullable(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
 
   isFeatured: z.boolean().default(false),
