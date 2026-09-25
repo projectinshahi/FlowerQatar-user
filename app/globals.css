@@ -156,6 +156,27 @@ body {
   transform: scale(1.02);
 }
 
+/*
+ * Clear the fixed site header.
+ *
+ * The header is position:fixed and the layout has no spacer, so a page whose content starts
+ * with text (rather than a hero image designed to sit behind the nav) needs its own top space
+ * or its first heading is covered.
+ *
+ * Navbar publishes its measured height as --site-header-h, so this follows the real header —
+ * including when the admin turns the announcement bar on or off. The fallbacks are the header's
+ * actual heights at each breakpoint, so the server-rendered first paint already matches and
+ * nothing shifts when the variable arrives.
+ */
+.page-below-header {
+  padding-top: calc(var(--site-header-h, 120px) + 2rem);
+}
+@media (min-width: 768px) {
+  .page-below-header {
+    padding-top: calc(var(--site-header-h, 155px) + 2rem);
+  }
+}
+
 /* Hide scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

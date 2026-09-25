@@ -7,7 +7,6 @@ import { useApp } from '../context/AppContext';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 import LuxuryImage from './LuxuryImage';
 import Link from 'next/link';
-import Image from 'next/image';
 import { qar } from '../lib/utils';
 
 export default function CartDrawer() {
@@ -47,73 +46,18 @@ export default function CartDrawer() {
                 <h2 className="text-xs uppercase tracking-[0.15em] font-medium text-primary">MY CART</h2>
               </div>
 
-              {/* Progress Bar Section */}
-              <div className="px-5 md:px-6 py-5 border-b border-[#EAEAEA] text-center bg-white">
-                <p className="font-serif text-[13px] md:text-[14px] text-primary mb-3 leading-snug md:leading-normal">
-                  Add QAR 399 for your Complimentary Fragrance Discovery Set.
-                </p>
-                <div className="w-full h-[6px] bg-[#F0F0F0] rounded-full overflow-hidden mb-2">
-                  <div className="h-full bg-secondary w-0 transition-all duration-500"></div>
-                </div>
-                <p className="text-[9px] text-[#888] uppercase tracking-widest mt-2">
-                  COMPLIMENTARY GIFT ON ALL ORDERS QAR 399+
-                </p>
-              </div>
-
               {/* Items List or Empty State */}
               <div className="flex-1 overflow-y-auto bg-white">
                 {cart.length === 0 ? (
-                  <div className="flex flex-col">
-                    <div className="flex flex-col items-center pt-10 pb-8">
-                      <p className="font-serif text-[18px] md:text-[20px] text-primary mb-6">Your cart is empty</p>
-                      <Link
-                        href="/shop"
-                        onClick={() => setCartOpen(false)}
-                        className="bg-black text-white px-8 md:px-10 py-3.5 text-[10px] uppercase tracking-widest hover:bg-secondary transition-colors font-medium"
-                      >
-                        LET'S SHOP
-                      </Link>
-                    </div>
-
-                    {/* Recommendations Grid */}
-                    <div className="grid grid-cols-2 gap-1 px-3 md:px-4 pb-12">
-                      {/* Item 1 */}
-                      <Link href="/shop/roses" onClick={() => setCartOpen(false)}>
-                        <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Roses" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
-                            <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase">ROSES</span>
-                          </div>
-                        </div>
-                      </Link>
-                      {/* Item 2 */}
-                      <Link href="/shop/mixed-florals" onClick={() => setCartOpen(false)}>
-                        <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Mixed Florals" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
-                            <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase text-center px-2">MIXED FLORALS</span>
-                          </div>
-                        </div>
-                      </Link>
-                      {/* Item 3 */}
-                      <Link href="/shop/hydrangeas" onClick={() => setCartOpen(false)}>
-                        <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Hydrangeas" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
-                            <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase">HYDRANGEAS</span>
-                          </div>
-                        </div>
-                      </Link>
-                      {/* Item 4 */}
-                      <Link href="/shop" onClick={() => setCartOpen(false)}>
-                        <div className="relative group cursor-pointer aspect-square bg-gray-100 overflow-hidden">
-                          <Image src="/images/category_bouquets_1782290106325.png" alt="Shop All" fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                          <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
-                            <span className="font-serif text-white text-[14px] md:text-[16px] tracking-widest uppercase">SHOP ALL</span>
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
+                  <div className="flex min-h-full flex-col items-center justify-center px-6 py-10">
+                    <p className="font-serif text-[18px] md:text-[20px] text-primary mb-6">Your cart is empty</p>
+                    <Link
+                      href="/shop"
+                      onClick={() => setCartOpen(false)}
+                      className="bg-black text-white px-8 md:px-10 py-3.5 text-[10px] uppercase tracking-widest hover:bg-secondary transition-colors font-medium"
+                    >
+                      LET'S SHOP
+                    </Link>
                   </div>
                 ) : (
                   <div className="px-5 md:px-6 py-4 space-y-6">

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { cancelOrder, OrderError } from '@/lib/services/order';
@@ -13,6 +14,13 @@ const TRANSITIONS: Record<string, string[]> = {
   CANCELLED: [],
 };
 
+// Column widths: Order.trackingNumber VarChar(100), Order.cancelReason VarChar(255).
+const patchSchema = z.object({
+  status: z.enum(['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']).optional(),
+  trackingNumber: z.string().trim().max(100, 'Tracking number is too long').nullable().optional(),
+  cancelReason: z.string().trim().max(255, 'Cancellation reason is too long').optional(),
+});
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -21,8 +29,17 @@ export async function PATCH(
   if (denied) return denied;
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { status, trackingNumber } = body;
+    const parsed = patchSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: parsed.error.issues[0]?.message ?? 'Invalid request',
+          fieldErrors: z.flattenError(parsed.error).fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+    const { status, trackingNumber, cancelReason } = parsed.data;
 
     const current = await prisma.order.findUnique({ where: { id }, select: { status: true } });
     if (!current) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -35,7 +52,7 @@ export async function PATCH(
 
     // Cancelling must refund redeemed points — route through the shared service, not a raw update.
     if (status === 'CANCELLED' && current.status !== 'CANCELLED') {
-      await cancelOrder(id, { reason: typeof body.cancelReason === 'string' ? body.cancelReason : undefined });
+      await cancelOrder(id, { reason: cancelReason });
       if (trackingNumber !== undefined) {
         await prisma.order.update({ where: { id }, data: { trackingNumber } });
       }

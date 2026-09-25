@@ -1,8 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCartPayload, loadShippingConfig, TAX_RATE } from "@/lib/services/cart";
 import { calculateShippingForMethod } from "@/lib/shipping";
 import { validateCoupon } from "@/lib/services/marketing";
-import { redeemPoints, refundPoints } from "@/lib/services/wallet";
+import { POINT_VALUE, getWalletView, redeemPoints, refundPoints } from "@/lib/services/wallet";
 import { getActiveMembership } from "@/lib/services/membership";
 
 export class OrderError extends Error {
@@ -38,15 +39,24 @@ export interface PlacedOrder {
   reference: string;
   totalAmount: number;
   pointsRedeemed: number;
+  /** True when there was nothing to pay, so the order is settled already (no gateway step). */
+  paid: boolean;
 }
 
 /**
- * Place an order for the authenticated user. Reads the user's SERVER cart (authoritative
- * prices — the client is never trusted), re-derives totals (shipping/tax/coupon matching the
- * checkout), then in ONE transaction creates the Order + OrderItems, atomically redeems any
- * points, and clears the cart. The order then appears in the admin panel.
+ * Create an order for the authenticated user, ready to be paid. Reads the user's SERVER cart
+ * (authoritative prices — the client is never trusted), re-derives totals (shipping/tax/coupon
+ * matching the checkout) and records the Order + OrderItems as UNPAID.
+ *
+ * NOTHING is spent here. The cart stays as it is, the points are not redeemed and the coupon is
+ * not consumed, because the customer has not paid yet — they are about to be sent to the
+ * gateway and may cancel, fail, or simply close the tab. All of that happens in one step, once,
+ * in applyPaidEffects(), when the payment has been verified with the gateway.
+ *
+ * The one exception is an order with nothing to pay (points/discount cover it): there is no
+ * gateway step, so it is settled inside this same transaction.
  */
-export async function placeOrder(userId: string, input: PlaceOrderInput): Promise<PlacedOrder> {
+export async function createPendingOrder(userId: string, input: PlaceOrderInput): Promise<PlacedOrder> {
   const pointsRequested = Math.max(0, Math.floor(input.pointsRedeemed ?? 0));
 
   /*
@@ -126,9 +136,17 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
   // How the customer paid.
   const paymentMethod = pointsRequested <= 0 ? "CARD" : pointsRequested >= total ? "POINTS" : "MIXED";
 
-  // Redeeming requires an active membership (checked before the transaction).
-  if (pointsRequested > 0 && !membership) {
-    throw new OrderError("An active membership is required to redeem points");
+  /*
+   * Redeeming requires an active membership. The balance is checked here too: the points are
+   * only actually deducted once the payment succeeds, so without this a customer could be sent
+   * to the gateway with a discount their wallet cannot cover.
+   */
+  if (pointsRequested > 0) {
+    if (!membership) throw new OrderError("An active membership is required to redeem points");
+    const wallet = await getWalletView(userId);
+    if (pointsRequested > wallet.availablePoints) {
+      throw new OrderError("You don't have enough points");
+    }
   }
 
   const order = await prisma.$transaction(async (tx) => {
@@ -140,7 +158,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
     const [locked] = await tx.$queryRaw<{ cart: unknown }[]>`
       SELECT "cart" FROM "User" WHERE "id" = ${userId}::uuid FOR UPDATE`;
     if (!Array.isArray(locked?.cart) || locked.cart.length === 0) {
-      throw new OrderError("This order has already been placed.", 409);
+      throw new OrderError("Your cart is empty");
     }
 
     const created = await tx.order.create({
@@ -153,7 +171,14 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         discount: couponDiscount,
         pointsRedeemed: pointsRequested,
         paymentMethod,
-        shippingInfo: (input.shippingInfo ?? {}) as object,
+        // Held, not spent: applied by applyPaidEffects() once the payment is verified.
+        couponId,
+        cartItemIds: cart.items.map((i) => i.id),
+        paymentStatus: "UNPAID",
+        paymentProvider: grandTotal > 0 ? "SKIPCASH" : "NONE",
+        // The delivery method travels with the snapshot, so the confirmation screen can be
+        // rebuilt from the order after the customer comes back from the payment gateway.
+        shippingInfo: { ...(input.shippingInfo ?? {}), shippingMethod: input.shippingMethod ?? "standard" } as object,
         status: "PENDING",
         items: {
           create: lineItems.map((i) => ({
@@ -168,44 +193,16 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
     });
 
     /*
-     * Record the coupon use against this order, atomically. validateCoupon above is read-only,
-     * so usage limits (global and per-customer) were never enforced: a single-use coupon worked
-     * on every order. Same steps as applyCoupon, inside this transaction so a failure here rolls
-     * the order back rather than leaving an order with an unrecorded discount.
+     * Nothing payable — points and discounts covered the whole order. There is no gateway step
+     * to wait for, so it is settled right here, in the same transaction that created it.
      */
-    if (couponId) {
-      const coupon = await tx.coupon.findUnique({
-        where: { id: couponId },
-        select: { usageLimit: true, usagePerCustomer: true },
+    if (grandTotal <= 0) {
+      await tx.order.update({
+        where: { id: created.id },
+        data: { paymentStatus: "PAID", paidAt: new Date() },
       });
-      const bumped = await tx.coupon.updateMany({
-        where:
-          coupon?.usageLimit == null
-            ? { id: couponId }
-            : { id: couponId, currentUsage: { lt: coupon.usageLimit } },
-        data: { currentUsage: { increment: 1 } },
-      });
-      if (bumped.count === 0) {
-        throw new OrderError("This coupon has just reached its usage limit. Please remove it and try again.", 409);
-      }
-      if (coupon?.usagePerCustomer != null) {
-        const used = await tx.couponUsage.count({ where: { couponId, userId } });
-        if (used >= coupon.usagePerCustomer) {
-          throw new OrderError("You have already used this coupon.", 409);
-        }
-      }
-      await tx.couponUsage.create({
-        data: { couponId, userId, orderId: created.id, discount: couponDiscount },
-      });
+      await applyPaidEffects(tx, created.id);
     }
-
-    // Deduct points atomically against this order (double-spend safe, ledgered).
-    if (pointsRequested > 0) {
-      await redeemPoints(userId, pointsRequested, total, { reason: "Redeemed at checkout", reference: created.id }, tx);
-    }
-
-    // Empty the cart so the same items can't be re-ordered.
-    await tx.user.update({ where: { id: userId }, data: { cart: [] } });
 
     return created;
   }, {
@@ -223,7 +220,139 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
     reference: order.id.slice(0, 8).toUpperCase(),
     totalAmount: grandTotal,
     pointsRedeemed: pointsRequested,
+    paid: grandTotal <= 0,
   };
+}
+
+/**
+ * Everything that is spent when an order is paid, and only then: the coupon usage is recorded,
+ * the points are redeemed, and the lines this order was built from leave the cart.
+ *
+ * Always called from inside the transaction that moved the order to PAID — that transition is
+ * what makes it run exactly once, however many webhooks or return calls arrive.
+ *
+ * The money has already been taken by the time this runs, so a coupon that has just hit its
+ * limit or a wallet that no longer holds the points does NOT fail the order: what the customer
+ * paid for is honoured and the discrepancy is logged for the shop to look at.
+ */
+async function applyPaidEffects(tx: Prisma.TransactionClient, orderId: string): Promise<void> {
+  const order = await tx.order.findUniqueOrThrow({
+    where: { id: orderId },
+    select: {
+      userId: true,
+      couponId: true,
+      discount: true,
+      pointsRedeemed: true,
+      totalAmount: true,
+      cartItemIds: true,
+    },
+  });
+
+  if (order.couponId) {
+    const coupon = await tx.coupon.findUnique({
+      where: { id: order.couponId },
+      select: { usageLimit: true },
+    });
+    const bumped = await tx.coupon.updateMany({
+      where:
+        coupon?.usageLimit == null
+          ? { id: order.couponId }
+          : { id: order.couponId, currentUsage: { lt: coupon.usageLimit } },
+      data: { currentUsage: { increment: 1 } },
+    });
+    if (bumped.count === 1) {
+      await tx.couponUsage.create({
+        data: { couponId: order.couponId, userId: order.userId, orderId, discount: Number(order.discount) },
+      });
+    } else {
+      console.warn(`[order] ${orderId}: coupon hit its usage limit before the payment completed; discount honoured, usage not recorded`);
+    }
+  }
+
+  if (order.pointsRedeemed > 0) {
+    const wallet = await tx.pointsWallet.findUnique({
+      where: { userId: order.userId },
+      select: { availablePoints: true },
+    });
+    const redeemable = Math.min(order.pointsRedeemed, wallet?.availablePoints ?? 0);
+    if (redeemable > 0) {
+      // totalAmount is already net of the redemption, so add it back for the cap check.
+      const orderValue = Number(order.totalAmount) + order.pointsRedeemed * POINT_VALUE;
+      await redeemPoints(order.userId, redeemable, orderValue, { reason: "Redeemed at checkout", reference: orderId }, tx);
+    }
+    if (redeemable < order.pointsRedeemed) {
+      console.warn(`[order] ${orderId}: only ${redeemable} of ${order.pointsRedeemed} points were still available at payment; discount honoured`);
+    }
+  }
+
+  /*
+   * Remove exactly the lines this order was built from. Anything the customer put in their cart
+   * while they were away on the payment page is left alone.
+   */
+  const purchased = new Set((Array.isArray(order.cartItemIds) ? order.cartItemIds : []).map(String));
+  if (purchased.size > 0) {
+    const [locked] = await tx.$queryRaw<{ cart: unknown }[]>`
+      SELECT "cart" FROM "User" WHERE "id" = ${order.userId}::uuid FOR UPDATE`;
+    const current = Array.isArray(locked?.cart) ? (locked.cart as { id?: string }[]) : [];
+    const remaining = current.filter((item) => !purchased.has(String(item?.id)));
+    if (remaining.length !== current.length) {
+      await tx.user.update({ where: { id: order.userId }, data: { cart: remaining } });
+    }
+  }
+}
+
+/**
+ * Record the gateway payment an order is waiting on. paymentId is unique across orders, so a
+ * webhook or a return can only ever resolve to the order that actually created that payment.
+ */
+export async function setOrderPayment(orderId: string, paymentId: string): Promise<void> {
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { paymentId, paymentStatus: "PENDING", paymentProvider: "SKIPCASH" },
+  });
+}
+
+/**
+ * Mark an order paid and apply its effects — ONCE. Returns true if this call was the one that
+ * did it, false if the order was already paid (a duplicate webhook, a refreshed return page, or
+ * the two racing each other). Safe to call any number of times, from anywhere.
+ */
+export async function confirmOrderPaid(
+  orderId: string,
+  payment: { provider?: string; paymentTxnId?: string | null } = {}
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    // The conditional update is the lock: only one caller can move the row out of "not paid".
+    const claimed = await tx.order.updateMany({
+      where: { id: orderId, paymentStatus: { not: "PAID" } },
+      data: {
+        paymentStatus: "PAID",
+        paidAt: new Date(),
+        paymentFailureReason: null,
+        ...(payment.provider ? { paymentProvider: payment.provider } : {}),
+        ...(payment.paymentTxnId ? { paymentTxnId: payment.paymentTxnId } : {}),
+      },
+    });
+    if (claimed.count !== 1) return false;
+
+    await applyPaidEffects(tx, orderId);
+    return true;
+  }, { maxWait: 10_000, timeout: 20_000 });
+}
+
+/**
+ * Record a non-paid payment outcome. A paid order is never demoted by a late or replayed
+ * callback — a refund is the only status that legitimately follows PAID.
+ */
+export async function setOrderPaymentStatus(
+  orderId: string,
+  status: "PENDING" | "FAILED" | "CANCELLED" | "REFUNDED",
+  reason?: string
+): Promise<void> {
+  await prisma.order.updateMany({
+    where: status === "REFUNDED" ? { id: orderId } : { id: orderId, paymentStatus: { not: "PAID" } },
+    data: { paymentStatus: status, paymentFailureReason: reason?.slice(0, 255) ?? null },
+  });
 }
 
 // Only pre-shipment orders can be cancelled; after that it's in transit/settled.
@@ -241,7 +370,7 @@ export async function cancelOrder(
 ): Promise<void> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, userId: true, status: true, pointsRedeemed: true },
+    select: { id: true, userId: true, status: true, pointsRedeemed: true, paymentStatus: true },
   });
   if (!order) throw new OrderError("Order not found", 404);
   if (opts.userId && order.userId !== opts.userId) throw new OrderError("Order not found", 404);
@@ -258,7 +387,11 @@ export async function cancelOrder(
     });
     if (res.count !== 1) throw new OrderError("Order can no longer be cancelled", 409);
 
-    if (order.pointsRedeemed > 0) {
+    /*
+     * Only refund what was actually spent. Points are redeemed when the payment is confirmed,
+     * so cancelling an order that was never paid must not credit points into the wallet.
+     */
+    if (order.pointsRedeemed > 0 && order.paymentStatus === "PAID") {
       await refundPoints(order.userId, order.pointsRedeemed, { reason: "Order cancelled", reference: orderId }, tx);
     }
   });

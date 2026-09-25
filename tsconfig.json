@@ -30,5 +30,14 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  /*
+   * `.next/dev` holds route types the dev server generates and rewrites continuously; a build
+   * running alongside `npm run dev` type-checked a half-written file and failed. The build's own
+   * route types (.next/types) are still checked.
+   *
+   * `tests` and `scripts` are not part of the application build — excluding them takes ~2s off
+   * every build's type check. They are still fully type-checked: `npm run typecheck` uses
+   * tsconfig.check.json, which puts them back.
+   */
+  "exclude": ["node_modules", ".next/dev", "tests", "scripts"]
 }

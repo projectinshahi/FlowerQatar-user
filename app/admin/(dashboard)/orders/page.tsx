@@ -186,6 +186,12 @@ export default function AdminOrders() {
                           {order.status}
                         </span>
                       )}
+                      {/* Money, not fulfilment: an order that is not PAID must not be shipped. */}
+                      {order.paymentStatus && order.paymentStatus !== 'PAID' && (
+                        <span className="ml-2 px-2 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
+                          {order.paymentStatus}
+                        </span>
+                      )}
                     </td>
 
                     {/* Tracking Column */}

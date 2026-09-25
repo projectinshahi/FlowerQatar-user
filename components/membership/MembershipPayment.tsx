@@ -21,14 +21,18 @@ function makeIdempotencyKey(): string {
     /* fall through */
   }
   const rand = () => Math.random().toString(36).slice(2, 12);
-  return `sim-${Date.now().toString(36)}-${rand()}-${rand()}`;
+  return `mem-${Date.now().toString(36)}-${rand()}-${rand()}`;
 }
 
 /**
- * Simulated payment controls for a membership purchase. "Complete Payment" calls the
- * subscribe API (SUCCESS) and routes to the success page; "Simulate failure" routes to the
- * failed page without writing anything. A stable idempotency key (generated once) makes a
- * double-click safe. Guests are prompted to sign in (the API enforces auth server-side).
+ * Payment control for a membership purchase.
+ *
+ * It asks the server to start the purchase and then hands the customer over to SkipCash's
+ * hosted card form. The amount is never sent from here — the server reads the plan's price —
+ * and nothing about the outcome is decided here either: the membership is activated only when
+ * the payment is verified with SkipCash (webhook or return URL). A stable idempotency key,
+ * generated once per visit, makes a double-click safe. Guests are prompted to sign in (the API
+ * enforces auth server-side regardless).
  */
 export default function MembershipPayment({
   planId,
@@ -48,12 +52,8 @@ export default function MembershipPayment({
 
   const priceLabel = formatNumber(price, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-  const pay = async (outcome: 'SUCCESS' | 'FAILED') => {
-    // Simulated failure never touches the server — route straight to the failed page.
-    if (outcome === 'FAILED') {
-      router.push(`/membership/failed?plan=${planId}`);
-      return;
-    }
+  const pay = async () => {
+    if (processing) return; // one payment per click, however fast the second one arrives
     if (!user) {
       addToast('Please sign in to subscribe.', 'info');
       setAccountOpen(true);
@@ -66,19 +66,29 @@ export default function MembershipPayment({
       const res = await fetch('/api/membership/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId, outcome: 'SUCCESS', idempotencyKey: keyRef.current }),
+        body: JSON.stringify({ planId, idempotencyKey: keyRef.current }),
       });
       const data = await res.json();
+
       if (res.status === 401) {
         addToast('Please sign in to subscribe.', 'info');
         setAccountOpen(true);
         return;
       }
-      if (res.ok && data?.success && data.membershipId) {
+
+      // Hand over to the gateway. Kept spinning: the browser is leaving this page.
+      if (res.ok && data?.payUrl) {
+        window.location.href = data.payUrl;
+        return;
+      }
+
+      // Nothing to pay (a free plan) — the server already settled it.
+      if (res.ok && data?.paid && data.membershipId) {
         router.push(`/membership/success?m=${data.membershipId}`);
         return;
       }
-      addToast(data?.error || 'Payment could not be completed.', 'error');
+
+      addToast(data?.error || 'Payment could not be started.', 'error');
       router.push(`/membership/failed?plan=${planId}`);
     } catch {
       addToast('Something went wrong. Please try again.', 'error');
@@ -97,7 +107,7 @@ export default function MembershipPayment({
 
       <button
         type="button"
-        onClick={() => pay('SUCCESS')}
+        onClick={pay}
         disabled={processing}
         className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-sm px-6 py-3 font-sans text-[12px] font-medium uppercase tracking-[0.18em] text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
         style={{ backgroundColor: accent }}
@@ -106,17 +116,9 @@ export default function MembershipPayment({
         {processing ? 'Processing…' : `Complete Payment · QAR ${priceLabel}`}
       </button>
 
-      <button
-        type="button"
-        onClick={() => pay('FAILED')}
-        disabled={processing}
-        className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-sm border border-divider px-6 py-2.5 font-sans text-[11px] uppercase tracking-[0.15em] text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-70"
-      >
-        Simulate payment failure
-      </button>
-
       <p className="mt-4 text-center text-[11px] text-muted">
-        Subscribing to <span className="font-medium text-primary">{planName}</span> — points are credited instantly on success.
+        Subscribing to <span className="font-medium text-primary">{planName}</span> — points are credited once
+        your payment is confirmed.
       </p>
     </div>
   );

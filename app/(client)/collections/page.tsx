@@ -18,7 +18,7 @@ export default async function CollectionsPage() {
   const list = withProducts.length > 0 ? withProducts : categories;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 font-sans text-primary">
+    <div className="max-w-7xl mx-auto px-6 md:px-12 pb-8 page-below-header font-sans text-primary">
       <Breadcrumbs items={[{ label: 'Collections', href: '/collections' }]} />
 
       <div className="text-center max-w-xl mx-auto mb-16 mt-4">

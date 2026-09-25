@@ -1,0 +1,17 @@
+/*
+ * Full type check: the application plus the files the production build does not need to compile
+ * (tests, maintenance scripts). Same compiler options as tsconfig.json — only the scope differs.
+ *
+ * Run with: npm run typecheck
+ */
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules", ".next/dev"]
+}

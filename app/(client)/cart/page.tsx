@@ -54,7 +54,7 @@ export default function CartPage() {
   const toFreeShipping = amountToFreeShipping(subtotal, shippingConfig);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 font-sans text-primary">
+    <div className="max-w-7xl mx-auto px-6 md:px-12 pb-8 page-below-header font-sans text-primary">
       {/* Breadcrumbs */}
       <Breadcrumbs items={[{ label: 'Shopping Cart', href: '/cart' }]} />
 

@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+
+// Shape only - never the password policy. An existing account whose password predates the
+// current rules must still be able to sign in; 72 is the bcrypt ceiling, not a strength rule.
+const loginSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Please enter a valid email address').max(254),
+  password: z.string().min(1, 'Password is required').max(72),
+  isAdminLogin: z.boolean().optional(),
+});
 
 export async function POST(req: Request) {
   try {
@@ -15,13 +24,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const { email, password, isAdminLogin } = await req.json();
-
-    if (!email || !password) {
+    const parsed = loginSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
-
-    const normalizedEmail = email.toLowerCase().trim();
+    const { email: normalizedEmail, password, isAdminLogin } = parsed.data;
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },

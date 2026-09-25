@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidDeliveryDate, isValidSlot } from "@/lib/delivery";
 
 /**
  * Selection carries the raw choices. For catalog products it's only used as a
@@ -61,6 +62,14 @@ export const cartSelectionSchema = z
     calculatedPrice: z.number().optional(),
   })
   .partial()
+  .refine((s) => !s?.deliveryDate || isValidDeliveryDate(s.deliveryDate), {
+    path: ["deliveryDate"],
+    message: "Choose an available delivery date",
+  })
+  .refine((s) => !s?.deliveryTime || (!!s.deliveryDate && isValidSlot(s.deliveryDate, s.deliveryTime)), {
+    path: ["deliveryTime"],
+    message: "Choose an available delivery time",
+  })
   .optional()
   .nullable();
 

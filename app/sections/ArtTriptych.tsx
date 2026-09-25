@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { AnimatedSection } from '../../components/AnimatedSection'
 
 const columns = [
-  { text: "OUR STORY", link: "#" },
-  { text: "FAQS", link: "#" }
+  { text: "OUR STORY", link: "/about" },
+  { text: "FAQS", link: "/faq" }
 ]
 
 export default function ArtTriptych() {

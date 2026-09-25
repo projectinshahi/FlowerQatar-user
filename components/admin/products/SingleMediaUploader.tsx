@@ -21,6 +21,7 @@ const CHUNK_BYTES = 6 * 1024 * 1024;
 /** Matches the ceiling VariantImageUploader already enforces for product gallery video. */
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /** Per-part ceiling. A stalled part fails with a message instead of spinning forever. */
 const PART_TIMEOUT_MS = 120_000;
@@ -95,6 +96,11 @@ export default function SingleMediaUploader({
     if (!file) return;
 
     const isVideo = file.type.startsWith("video/");
+    // The accept attribute is only a picker hint - a dropped or scripted file bypasses it.
+    if (!isVideo && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setUploadError("Use a JPG, PNG or WEBP image");
+      return;
+    }
     const limit = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
     if (file.size > limit) {
       setUploadError(`${isVideo ? "Video" : "Image"} must be under ${Math.round(limit / 1024 / 1024)}MB`);

@@ -9,7 +9,8 @@ import { mapDbProductToStore } from "@/lib/store-products";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
-  if (q.length < 1) return NextResponse.json({ success: true, data: [] });
+  // Each term drives five ILIKE %q% scans; nothing useful is longer than this.
+  if (q.length < 1 || q.length > 100) return NextResponse.json({ success: true, data: [] });
 
   try {
     const rows = await prisma.product.findMany({

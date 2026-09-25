@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Repeat, AlertCircle, Loader2, X } from "lucide-react";
+import { Plus, AlertCircle, Loader2, X } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { useSubscriptions, type Subscription } from "../../hooks/useSubscriptions";
 import SubscriptionCard from "./SubscriptionCard";
@@ -19,7 +20,12 @@ function Backdrop({ onClose }: { onClose: () => void }) {
   return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />;
 }
 
-export default function SubscriptionsManager() {
+export default function SubscriptionsManager({
+  membershipPanel,
+}: {
+  /** The customer's membership, rendered on the server and passed in (see the page). */
+  membershipPanel?: React.ReactNode;
+}) {
   const { addToast } = useApp();
   const { items, loading, error, reload, create, pause, resume, skip, cancel } = useSubscriptions();
 
@@ -55,12 +61,12 @@ export default function SubscriptionsManager() {
           <h2 className="font-serif text-[22px] text-primary">Subscriptions</h2>
           <p className="text-[13px] text-[#8A8A8A] mt-0.5">Subscribe &amp; save on the products you love.</p>
         </div>
-        {items.length > 0 && (
-          <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-2 border border-black px-4 py-2.5 rounded-lg text-[11px] uppercase tracking-[0.14em] hover:bg-black hover:text-white transition-colors">
-            <Plus size={15} /> New Subscription
-          </button>
-        )}
+        <Link href="/#membership" className="inline-flex items-center gap-2 border border-black px-4 py-2.5 rounded-lg text-[11px] uppercase tracking-[0.14em] hover:bg-black hover:text-white transition-colors">
+          <Plus size={15} /> New Subscription
+        </Link>
       </div>
+
+      {membershipPanel}
 
       {loading && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" aria-hidden="true">
@@ -73,17 +79,6 @@ export default function SubscriptionsManager() {
           <AlertCircle className="mx-auto mb-3 text-red-400" />
           <p className="text-sm text-red-600 mb-4">{error}</p>
           <button onClick={() => reload()} className="border border-black px-5 py-2 rounded-lg text-[11px] uppercase tracking-[0.12em] hover:bg-black hover:text-white transition-colors">Try Again</button>
-        </div>
-      )}
-
-      {!loading && !error && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-[#DDD] py-16 text-center">
-          <Repeat className="mx-auto mb-4 text-[#C9C2B5]" size={34} />
-          <p className="text-[15px] text-primary font-serif mb-1">No subscriptions yet</p>
-          <p className="text-[13px] text-[#999] mb-6">Set up a recurring delivery and never run out.</p>
-          <button onClick={() => setCreateOpen(true)} className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-lg text-[11px] uppercase tracking-[0.16em] hover:bg-secondary transition-colors">
-            <Plus size={15} /> New Subscription
-          </button>
         </div>
       )}
 

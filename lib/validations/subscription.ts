@@ -32,7 +32,6 @@ export const createSubscriptionSchema = z
     totalDeliveries: z.number().int().min(1).max(52).optional().nullable(),
     startDate: dateString,
     addressId: z.string().optional().nullable(),
-    discountPercent: z.number().int().min(0).max(90).optional().default(0),
   })
   .refine((d) => d.frequency !== "SPECIFIC_WEEKDAY" || d.weekday != null, {
     path: ["weekday"],

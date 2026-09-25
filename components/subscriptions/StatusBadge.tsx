@@ -3,6 +3,7 @@ const MAP: Record<string, { label: string; cls: string }> = {
   PAUSED: { label: "Paused", cls: "bg-amber-50 text-amber-700" },
   CANCELLED: { label: "Cancelled", cls: "bg-gray-100 text-gray-500" },
   COMPLETED: { label: "Completed", cls: "bg-blue-50 text-blue-700" },
+  EXPIRED: { label: "Expired", cls: "bg-gray-100 text-gray-500" },
 };
 
 export default function StatusBadge({ status }: { status: string }) {

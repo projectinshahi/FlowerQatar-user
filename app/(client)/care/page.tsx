@@ -38,7 +38,7 @@ export default function CareGuidePage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-6 md:px-12 py-8 font-sans text-primary">
+    <div className="max-w-5xl mx-auto px-6 md:px-12 pb-8 page-below-header font-sans text-primary">
       {/* Breadcrumbs */}
       <Breadcrumbs items={[{ label: 'Care Guide', href: '/care' }]} />
 
