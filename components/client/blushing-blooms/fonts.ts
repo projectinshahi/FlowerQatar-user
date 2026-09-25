@@ -15,6 +15,22 @@ import {
  * Everything here is self-hosted through next/font, so nothing is fetched from Google at
  * runtime and none of it is downloaded on another page: the variable classes are applied to
  * the Blushing Blooms page root, so the CSS variables resolve to a real family only inside it.
+ *
+ * Every face below sets `preload: false`, and that is load-bearing.
+ *
+ * next/font preloads a face on every route whose module graph reaches this file. /shop imports
+ * BlushingListingSkeleton and BlushingBloomsClient at the top level, and the product route
+ * imports BlushingProductDetail and BlushingProductSkeleton, so all eight of these were being
+ * emitted as <link rel="preload"> on /shop, /shop?category=..., /product/[slug] and /search —
+ * pages that never render a single character in any of them. Measured: 10 font files / 277KB on
+ * those routes against 2 files / 72KB everywhere else, fetched at the highest priority the
+ * browser has, competing with the LCP image for a narrow mobile connection.
+ *
+ * Turning preload off does not stop these loading where they are actually used: the browser
+ * still fetches a face as soon as a rendered element resolves to it, which on the Blushing
+ * pages is immediately. It only stops the browser being TOLD to fetch them in advance on pages
+ * that never will. Every face already declares `display: 'swap'`, so a face arriving a moment
+ * later was always the designed behaviour rather than a new one.
  */
 
 /** Display face for the Blushing Blooms hero headline. */
@@ -23,6 +39,7 @@ export const jedira = localFont({
   weight: '400',
   style: 'normal',
   display: 'swap',
+  preload: false,
   variable: '--font-jedira',
   // The headline is a short, known string; Cormorant is metrically close enough to swap cleanly.
   fallback: ['Cormorant Garamond', 'serif'],
@@ -37,13 +54,13 @@ export const jedira = localFont({
  * (it is a Hebrew display family with almost no Latin coverage). Montez stands in for it — the
  * nearest available script — and is labelled honestly rather than under the Figma name.
  */
-const montecarlo = MonteCarlo({ weight: '400', display: 'swap', subsets: ['latin'], variable: '--font-montecarlo' });
-const nothingYouCouldDo = Nothing_You_Could_Do({ weight: '400', display: 'swap', subsets: ['latin'], variable: '--font-nothing-you-could-do' });
-const marckScript = Marck_Script({ weight: '400', display: 'swap', subsets: ['latin'], variable: '--font-marck-script' });
-const poltawskiNowy = Poltawski_Nowy({ display: 'swap', subsets: ['latin'], variable: '--font-poltawski-nowy' });
-const montez = Montez({ weight: '400', display: 'swap', subsets: ['latin'], variable: '--font-montez' });
-const galada = Galada({ weight: '400', display: 'swap', subsets: ['latin'], variable: '--font-galada' });
-const gwendolyn = Gwendolyn({ weight: '700', display: 'swap', subsets: ['latin'], variable: '--font-gwendolyn' });
+const montecarlo = MonteCarlo({ weight: '400', display: 'swap', preload: false, subsets: ['latin'], variable: '--font-montecarlo' });
+const nothingYouCouldDo = Nothing_You_Could_Do({ weight: '400', display: 'swap', preload: false, subsets: ['latin'], variable: '--font-nothing-you-could-do' });
+const marckScript = Marck_Script({ weight: '400', display: 'swap', preload: false, subsets: ['latin'], variable: '--font-marck-script' });
+const poltawskiNowy = Poltawski_Nowy({ display: 'swap', preload: false, subsets: ['latin'], variable: '--font-poltawski-nowy' });
+const montez = Montez({ weight: '400', display: 'swap', preload: false, subsets: ['latin'], variable: '--font-montez' });
+const galada = Galada({ weight: '400', display: 'swap', preload: false, subsets: ['latin'], variable: '--font-galada' });
+const gwendolyn = Gwendolyn({ weight: '700', display: 'swap', preload: false, subsets: ['latin'], variable: '--font-gwendolyn' });
 
 /** Every font variable class the Blushing Blooms page root must carry. */
 export const blushingFontVars = [

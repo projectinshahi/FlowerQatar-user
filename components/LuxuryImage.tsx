@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import Image, { ImageProps } from 'next/image';
-import { isVideoMedia, videoPoster } from '@/lib/media';
+import { isVideoMedia, videoPoster, videoSrc, widthFromSizes } from '@/lib/media';
 
 // Cast Image to bypass React 19 TypeScript namespace discrepancy on next/image
 const NextImage = Image as any;
@@ -21,7 +21,7 @@ const NextImage = Image as any;
  * (object-cover, opacity transitions) applies to it unchanged.
  */
 export default function LuxuryImage(props: ImageProps) {
-  const { src, alt, fill, className, style, width, height } = props;
+  const { src, alt, fill, className, style, width, height, sizes } = props;
   const isVideo = typeof src === 'string' && isVideoMedia({ url: src });
   const ref = useRef<HTMLVideoElement>(null);
 
@@ -41,7 +41,7 @@ export default function LuxuryImage(props: ImageProps) {
   return (
     <video
       ref={ref}
-      src={src as string}
+      src={videoSrc(src as string, widthFromSizes(sizes))}
       poster={videoPoster(src as string)}
       muted
       loop

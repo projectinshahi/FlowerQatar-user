@@ -4,7 +4,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs';
 
 export default function ShippingReturnsPage() {
   return (
-    <div className="max-w-4xl mx-auto px-6 md:px-12 py-8 font-sans text-primary">
+    <div className="max-w-4xl mx-auto px-6 md:px-12 pb-8 page-below-header font-sans text-primary">
       {/* Breadcrumbs */}
       <Breadcrumbs items={[{ label: 'Shipping & Returns', href: '/shipping-returns' }]} />
 

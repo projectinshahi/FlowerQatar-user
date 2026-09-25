@@ -16,7 +16,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const displayName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email;
 
   return (
-    <div className="max-w-[1280px] mx-auto px-5 md:px-12 py-10 md:py-16">
+    <div className="max-w-[1280px] mx-auto px-5 md:px-12 pb-10 md:pb-16 page-below-header">
       <h1 className="font-serif text-[30px] md:text-[42px] text-primary font-light tracking-[0.02em] mb-8 md:mb-10">
         My Account
       </h1>

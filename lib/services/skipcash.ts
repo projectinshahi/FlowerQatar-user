@@ -92,12 +92,21 @@ function signRequest(fields: Record<string, string>, keySecret: string): string 
 
 const clean = (value: string | null | undefined, max = 80) => (value ?? "").trim().slice(0, max);
 
-/** SkipCash wants an international number; a local Qatari one is accepted and normalised. */
+/**
+ * SkipCash wants an international number; a local Qatari one is accepted and normalised.
+ *
+ * Anything that is NOT a valid number is dropped rather than sent as-is. The gateway
+ * validates this field and answers a bad one with a flat 400 "Invalid details!" naming
+ * nothing, so a customer who typed a number from another country (a 10-digit one, say,
+ * which is not a valid Qatari 8-digit number) could not pay at all - the entire payment
+ * was refused over an optional field. Phone is optional to SkipCash: omitting it creates
+ * the payment normally, and the number the customer gave is still recorded on the order.
+ */
 function normalizePhone(phone: string | null | undefined): string {
   const raw = clean(phone, 40);
   if (!raw) return "";
   const parsed = parsePhoneNumberFromString(raw, "QA");
-  return parsed?.isValid() ? parsed.number : raw.replace(/[^\d+]/g, "");
+  return parsed?.isValid() ? parsed.number : "";
 }
 
 export interface SkipCashPayment {

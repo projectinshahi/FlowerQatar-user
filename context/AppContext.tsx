@@ -159,6 +159,20 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const [customizer, setCustomizer] = useState<CustomArrangementState>(defaultCustomizer);
   const [user, setUser] = useState<any | null>(null);
 
+  /*
+   * Which identity the cart and wishlist currently hold, as opposed to which one React has
+   * rendered. `undefined` means nothing has been loaded yet.
+   *
+   * Both reads below used to be keyed on `user?.id`, which starts undefined and becomes the
+   * real id when /api/auth/me answers. That transition is not a change of shopper — the very
+   * first /api/cart and /api/wishlist requests already carried the session cookie, so the
+   * server had answered as the signed-in user all along — but it re-ran both effects, so every
+   * page load by a signed-in shopper made four requests and four database round trips where two
+   * would do. This ref is written the moment the probe resolves, before React re-renders, so
+   * that transition matches and is skipped while a real sign-in or sign-out still does not.
+   */
+  const loadedForUserId = useRef<string | null | undefined>(undefined);
+
   const addToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -181,11 +195,6 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       setCartLoading(false);
     }
   }, []);
-
-  // Hydrate cart on mount, and again when the user changes (login merges the guest cart server-side).
-  useEffect(() => {
-    refreshCart();
-  }, [refreshCart, user?.id]);
 
   const addToCart = (item: Omit<CartItem, 'id'>) => {
     // Cart requires a signed-in user — prompt guests to log in.
@@ -347,12 +356,19 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [applyServerWishlist]);
 
-  // Hydrate on mount and whenever the signed-in user changes (login/logout), like the cart.
+  /*
+   * Loads the cart and the wishlist, on mount and again whenever the shopper actually changes.
+   * Logging in merges the guest cart into the account server-side and swaps in that account's
+   * wishlist, so neither can be left as it was; the session probe merely resolving is not such
+   * a change, and `loadedForUserId` is what tells the two apart.
+   */
   useEffect(() => {
-    // State is only set after the fetch resolves, not synchronously.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    const id = user?.id ?? null;
+    if (loadedForUserId.current === id) return;
+    loadedForUserId.current = id;
+    refreshCart();
     refreshWishlist();
-  }, [refreshWishlist, user?.id]);
+  }, [user?.id, refreshCart, refreshWishlist]);
 
   /** Slugs with a request in flight; a click on one only updates `pendingWishlist`. */
   const inflightWishlist = useRef(new Set<string>());
@@ -417,6 +433,9 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+          // Synchronous, so it lands before the re-render this setUser schedules: the effect
+          // above then sees the id it already loaded and does not repeat the work.
+          loadedForUserId.current = data.user?.id ?? null;
         }
       } catch (err) {
         console.error('Failed to fetch session', err);

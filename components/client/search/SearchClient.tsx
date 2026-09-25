@@ -1,38 +1,57 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { Product } from '../../../types';
 import ProductCard from '../../../components/ProductCard';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 
-function SearchContent({ products }: { products: Product[] }) {
-  const searchParams = useSearchParams();
-  const queryParam = searchParams.get('q') || '';
-
+/**
+  * The query arrives as a prop from the server component, which reads ?q= itself.
+  *
+  * It used to come from useSearchParams(), which is only readable in the browser: this page
+  * prerendered to nothing but its "Searching Atelier..." Suspense fallback, and the entire
+  * result grid appeared after hydration, shoving the rest of the page down — a layout shift of
+  * 0.66 where 0.1 is the threshold for "good". Reading it on the server means the results are
+  * in the HTML, so there is nothing left to move. /shop already sources its filters this way.
+  */
+export default function SearchClient({ products, query: queryParam }: { products: Product[]; query: string }) {
   const [query, setQuery] = useState(queryParam);
-  const [results, setResults] = useState<Product[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
-    setQuery(queryParam);
-    if (queryParam.trim()) {
-      const q = queryParam.toLowerCase();
-      const match = products.filter((p) =>
+  /*
+   * Derived while rendering, not assigned from an effect.
+   *
+   * As an effect this component's first paint had no results in it at all — the grid appeared
+   * one render later and shoved everything under it down the page, measured as a layout shift
+   * of 0.66 (0.1 is the threshold for "good"). The filter is a pass over a catalogue of a few
+   * dozen products held in memory, so there was never a reason to defer it; computing it here
+   * means the results are in the very first paint and nothing moves.
+   */
+  const { results, hasSearched } = useMemo(() => {
+    const q = queryParam.trim().toLowerCase();
+    if (!q) return { results: [] as Product[], hasSearched: false };
+    return {
+      results: products.filter((p) =>
         p.name.toLowerCase().includes(q) ||
         (p.collectionName ?? '').toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
         p.colors.some((c) => c.name.toLowerCase().includes(q))
-      );
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setResults(match);
-      setHasSearched(true);
-    } else {
-      setResults([]);
-      setHasSearched(false);
-    }
+      ),
+      hasSearched: true,
+    };
   }, [queryParam, products]);
+
+  /*
+   * The input is a field the visitor types into, so it stays state — but it has to follow the
+   * URL when that changes under it (Back/Forward, or a link to another query). Adjusted here
+   * during rendering rather than from an effect: React re-runs this component immediately with
+   * the new value, before anything is painted, so there is no frame showing the old text.
+   */
+  const [seededFrom, setSeededFrom] = useState(queryParam);
+  if (seededFrom !== queryParam) {
+    setSeededFrom(queryParam);
+    setQuery(queryParam);
+  }
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +63,7 @@ function SearchContent({ products }: { products: Product[] }) {
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 4);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 font-sans text-primary">
+    <div className="max-w-7xl mx-auto px-6 md:px-12 pb-8 page-below-header font-sans text-primary">
       <Breadcrumbs items={[{ label: 'Search Results', href: '/search' }]} />
 
       <div className="max-w-xl mx-auto text-center my-12">
@@ -110,14 +129,3 @@ function SearchContent({ products }: { products: Product[] }) {
   );
 }
 
-export default function SearchClient({ products }: { products: Product[] }) {
-  return (
-    <Suspense fallback={
-      <div className="max-w-7xl mx-auto px-6 md:px-12 py-24 text-center font-sans text-muted">
-        Searching Atelier...
-      </div>
-    }>
-      <SearchContent products={products} />
-    </Suspense>
-  );
-}

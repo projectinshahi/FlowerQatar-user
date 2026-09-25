@@ -25,6 +25,16 @@
 }
 
 :root {
+  /*
+   * This storefront is a light design and has no dark theme. Saying so is not cosmetic: with no
+   * `color-scheme`, a phone in dark mode lets the browser restyle form controls on its own
+   * (Chrome on Android applies its automatic dark theme to pages that never declare one), which
+   * repainted the field text near-white while the `background-color: #FFFFFF !important` below
+   * kept the field white - so what you typed into checkout vanished. Desktop browsers in light
+   * mode never showed it, which is exactly how it was reported.
+   */
+  color-scheme: light;
+
   --background: #FFF6F0;
   --foreground: #4B4B4B;
 
@@ -194,6 +204,72 @@ html {
 input, textarea, select {
   background-color: #FFFFFF !important;
   border-color: var(--color-divider) !important;
+}
+
+/*
+ * What you type is always readable, whatever the device decides.
+ *
+ * The rule above forces a white field but set no colour, so the text was whatever happened to
+ * be inherited - checkout inherited the maroon `text-primary` of its wrapper - or whatever the
+ * browser chose for itself in dark mode. Declaring both ends of the contrast here is what makes
+ * the field legible on every device rather than by luck.
+ *
+ * `:not([data-bb-page] *)` keeps the Blushing Blooms subtree out: it owns a dark surface, its
+ * own controls are transparent over it, and dark-grey text there would be the same bug in
+ * reverse. Same exclusion the heading colour rule above uses.
+ */
+input:not([data-bb-page] *),
+textarea:not([data-bb-page] *),
+select:not([data-bb-page] *) {
+  color: var(--color-body);
+}
+
+/*
+ * Placeholders at --color-muted, which is the grey chosen for AA contrast. Several forms set
+ * theirs to a 30%-opacity maroon, which measured far under that and was the faint, half-there
+ * hint text in the checkout report.
+ */
+input:not([data-bb-page] *)::placeholder,
+textarea:not([data-bb-page] *)::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+/*
+ * Autofill. Chrome and Safari paint a filled field with their own background AND their own
+ * text colour, and neither respects `color` - only `-webkit-text-fill-color`. A saved address
+ * dropped into checkout is exactly where this bites, and on a phone in dark mode that text
+ * arrives pale on the white field. The inset shadow is the documented way to hold the
+ * background, since `background-color` is ignored while a field is autofilled.
+ */
+input:not([data-bb-page] *):-webkit-autofill,
+input:not([data-bb-page] *):-webkit-autofill:hover,
+input:not([data-bb-page] *):-webkit-autofill:focus,
+select:not([data-bb-page] *):-webkit-autofill {
+  -webkit-text-fill-color: var(--color-body);
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset;
+  caret-color: var(--color-body);
+}
+
+/*
+ * 16px in every text field on a phone.
+ *
+ * Below 16px, iOS Safari zooms the page in when the field takes focus and leaves it zoomed -
+ * the form then overflows sideways and the reader has to pinch back out between fields.
+ * Checkout asked for `text-xs` (12px), which is both the trigger and hard to read at arm's
+ * length. Only under 640px, so every desktop layout keeps the size it was designed with.
+ */
+@media (max-width: 640px) {
+  /*
+   * Text fields only. A <select> is not typed into - a tap opens the platform picker - so it
+   * never strands anyone mid-entry, and forcing 16px on it made inline sort controls tower over
+   * the 11px labels beside them (the shop listing's SORT BY row). Selects keep the size their
+   * design asks for at every width.
+   */
+  input:not([type="checkbox"]):not([type="radio"]):not([data-bb-page] *),
+  textarea:not([data-bb-page] *) {
+    font-size: 16px;
+  }
 }
 
 input:focus, textarea:focus, select:focus {
@@ -555,8 +631,19 @@ body:has([data-whatsapp-fab]) footer {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
+/*
+ * `backwards`, not `both`.
+ *
+ * `both` also fills FORWARDS, so when the animation finished the element kept the last
+ * keyframe as a computed value - `transform: none` resolved to the identity matrix rather
+ * than the keyword. A transform that is not `none` makes the element a containing block for
+ * fixed descendants, so every `position: fixed` thing rendered inside a page (the WhatsApp
+ * button, the shop's mobile filter drawer) anchored to this div and scrolled away with the
+ * content instead of staying put. Filling backwards alone still hides the first frame, and
+ * the end state is the element's natural one, so nothing needs to be held after it runs.
+ */
 .page-enter {
-  animation: page-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: page-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .page-enter { animation: none; }

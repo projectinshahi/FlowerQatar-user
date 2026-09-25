@@ -1,25 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from '../../../components/LuxuryImage';
 import Link from 'next/link';
 import { Clock, Calendar, ArrowRight } from 'lucide-react';
 import Breadcrumbs from '../../../components/Breadcrumbs';
-import { BlogPost } from '../../../types';
 import { BLOG_POSTS } from '../../../data/blog-posts';
 
 export default function JournalPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>(BLOG_POSTS);
 
-  // Apply category filtering
-  useEffect(() => {
-    if (selectedCategory === 'All') {
-      setFilteredPosts(BLOG_POSTS);
-    } else {
-      setFilteredPosts(BLOG_POSTS.filter((p) => p.category === selectedCategory));
-    }
-  }, [selectedCategory]);
+  // Derived, not stored: as state written from an effect, every tap on a category rendered the
+  // page twice — once with the old list, then again with the new one.
+  const filteredPosts = useMemo(
+    () => (selectedCategory === 'All' ? BLOG_POSTS : BLOG_POSTS.filter((p) => p.category === selectedCategory)),
+    [selectedCategory]
+  );
 
   const featuredPost = BLOG_POSTS[0]; // first post is featured
   const listPosts = filteredPosts.filter((p) => p.slug !== featuredPost.slug || selectedCategory !== 'All');

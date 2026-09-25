@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
+import { orderedItemImage } from "@/lib/media";
 import { createPendingOrder, setOrderPayment, setOrderPaymentStatus, OrderError } from "@/lib/services/order";
 import { createPayment, PaymentError } from "@/lib/services/skipcash";
 import { WalletError } from "@/lib/services/wallet";
@@ -42,10 +43,22 @@ export async function GET() {
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
     include: {
-      items: { include: { product: { select: { name: true, slug: true } } } },
+      items: { include: { product: { select: { name: true, slug: true, variants: true } } } },
     },
   });
-  return NextResponse.json({ success: true, orders });
+
+  // `variants` is read only to resolve the thumbnail and is dropped before the response.
+  return NextResponse.json({
+    success: true,
+    orders: orders.map((o) => ({
+      ...o,
+      items: o.items.map(({ product, ...item }) => ({
+        ...item,
+        product: product ? { name: product.name, slug: product.slug } : null,
+        image: orderedItemImage(product?.variants, item.colorName),
+      })),
+    })),
+  });
 }
 
 /**

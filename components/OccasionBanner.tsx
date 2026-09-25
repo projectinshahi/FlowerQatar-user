@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { isVideoMedia } from '@/lib/media';
+import { isVideoMedia, videoSrc } from '@/lib/media';
 
 /**
  * Occasion banner that renders either a still or a video clip.
@@ -27,7 +27,7 @@ export default function OccasionBanner({
   if (isVideoMedia({ url })) {
     return (
       <video
-        src={url}
+        src={videoSrc(url)}
         // A muted, inline, looping video is decorative; controls would invite interaction
         // with something that has no audio and no meaningful timeline.
         autoPlay
