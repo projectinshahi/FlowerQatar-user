@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, Maximize2, ImageOff, ArrowUp, ArrowDown, Film, Play } from "lucide-react";
-import { isVideoMedia, videoPoster } from "@/lib/media";
+import { isVideoMedia, videoPoster, videoSrc } from "@/lib/media";
 
 export interface GalleryImage {
   url: string;
@@ -189,7 +189,7 @@ export default function ProductGallery({
             <video
               ref={videoRef}
               key={current}
-              src={current}
+              src={videoSrc(current)}
               poster={videoPoster(current)}
               controls
               muted
@@ -322,7 +322,7 @@ export default function ProductGallery({
               >
                 {video ? (
                   <>
-                    <video src={item.url} poster={videoPoster(item.url)} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true" className="pointer-events-none h-full w-full object-cover" />
+                    <video src={videoSrc(item.url, 320)} poster={videoPoster(item.url)} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true" className="pointer-events-none h-full w-full object-cover" />
                     <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-black/25">
                       <Play size={14} className="fill-white text-white" />
                     </span>
@@ -379,7 +379,7 @@ export default function ProductGallery({
                 onClick={(e) => e.stopPropagation()}
               >
                 <video
-                  src={current}
+                  src={videoSrc(current)}
                   controls
                   autoPlay
                   playsInline

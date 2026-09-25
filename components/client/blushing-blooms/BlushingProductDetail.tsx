@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import LuxuryImage from '@/components/LuxuryImage';
-import { isVideoMedia, videoPoster } from '@/lib/media';
+import { isVideoMedia, videoPoster, videoSrc } from '@/lib/media';
 import { Skeleton } from '@/components/ui/Skeleton';
 import {
   useAddOns,
@@ -384,7 +384,7 @@ export default function BlushingProductDetail({
                         >
                           {video ? (
                             <>
-                              <video src={m.url} poster={videoPoster(m.url)} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true" className="pointer-events-none h-full w-full object-cover" />
+                              <video src={videoSrc(m.url, 320)} poster={videoPoster(m.url)} preload="metadata" muted playsInline tabIndex={-1} aria-hidden="true" className="pointer-events-none h-full w-full object-cover" />
                               <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-black/35">
                                 <Play size={16} className="fill-white text-white" />
                               </span>

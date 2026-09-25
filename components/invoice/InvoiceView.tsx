@@ -5,6 +5,7 @@ import { InvoiceData } from '@/lib/invoice/types';
 import { InvoiceDocument } from './InvoiceDocument';
 import { Printer, ArrowLeft, Download, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { downloadInvoicePdf } from '@/lib/invoice/download';
 
 interface InvoiceViewProps {
   data: InvoiceData;
@@ -28,63 +29,8 @@ export const InvoiceView: React.FC<InvoiceViewProps> = ({
     setIsDownloading(true);
     try {
       const element = document.getElementById('invoice-printable-document');
-      if (!element) {
-        window.print();
-        return;
-      }
-
-      const { toPng } = await import('html-to-image');
-      const { jsPDF } = await import('jspdf');
-
-      const dataUrl = await toPng(element, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        cacheBust: true,
-      });
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
-
-      const margin = 10; // 10mm margin
-      const imgWidth = pdfWidth - margin * 2;
-      const imgHeight = (img.height * imgWidth) / img.width;
-
-      if (imgHeight <= pdfHeight - margin * 2) {
-        pdf.addImage(dataUrl, 'PNG', margin, margin, imgWidth, imgHeight, undefined, 'FAST');
-      } else {
-        let heightLeft = imgHeight;
-        let position = margin;
-        const pageContentHeight = pdfHeight - margin * 2;
-
-        pdf.addImage(dataUrl, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageContentHeight;
-
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight + margin;
-          pdf.addPage();
-          pdf.addImage(dataUrl, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
-          heightLeft -= pageContentHeight;
-        }
-      }
-
-      const cleanInvoiceNumber = (data.invoiceNumber || data.orderNumber || 'INVOICE').replace(/[^a-zA-Z0-9-_]/g, '_');
-      const filename = `Invoice_${cleanInvoiceNumber}.pdf`;
-
-      pdf.save(filename);
+      if (!element) throw new Error('Invoice document is not on the page');
+      await downloadInvoicePdf(element, data.invoiceNumber || data.orderNumber || 'INVOICE');
     } catch (error) {
       console.error('PDF export error, falling back to window.print():', error);
       window.print();

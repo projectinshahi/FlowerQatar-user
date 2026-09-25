@@ -177,11 +177,17 @@ export default function AddressForm({
         Set as default address
       </label>
 
-      <div className="pt-1">
+      {/*
+        Pinned to the foot of the sheet instead of sitting at the end of a long scroll, so
+        the action is reachable the moment the dialog opens. It bleeds to the sheet edges
+        (-mx-6, matching the modal body's px-6) and carries the iOS home-indicator inset so
+        the button is never under it. On a phone it spans the width, the usual sheet shape.
+      */}
+      <div className="sticky bottom-0 -mx-6 -mb-5 mt-2 border-t border-[#EFEFEF] bg-white/95 px-6 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] backdrop-blur-sm">
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center gap-2 bg-black text-white px-7 py-3 rounded-lg text-[11px] uppercase tracking-[0.16em] hover:bg-secondary transition-colors disabled:bg-gray-300"
+          className="inline-flex w-full items-center justify-center gap-2 bg-black text-white px-7 py-3 rounded-lg text-[11px] uppercase tracking-[0.16em] hover:bg-secondary transition-colors disabled:bg-gray-300 sm:w-auto"
         >
           {saving && <Loader2 size={14} className="animate-spin" />}
           {saving ? "Saving…" : initial ? "Save Changes" : "Add Address"}

@@ -1,5 +1,5 @@
 import PromotionBar from "../../components/PromotionBar"
-import { videoPoster } from "@/lib/media"
+import { videoPoster, videoSrc } from "@/lib/media"
 import { PROMOTION_BAR_DEFAULTS, type PromotionBarTheme } from "@/lib/promotions"
 
 /** What each text element falls back to when the admin has not chosen a colour. */
@@ -55,7 +55,7 @@ export default function BannerSection({
             box, so the hero has something on screen while the video streams in behind it.
           */}
           <video
-            src={banner.videoUrl}
+            src={videoSrc(banner.videoUrl)}
             poster={videoPoster(banner.videoUrl)}
             autoPlay
             muted

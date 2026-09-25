@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { AnimatePresence } from "framer-motion";
 import { Package, AlertCircle, ChevronDown, FileText } from "lucide-react";
+import LuxuryImage from "@/components/LuxuryImage";
 import { Skeleton } from '@/components/ui/Skeleton';
 import { onLive, onResync } from '@/lib/live-client';
+
+// Pulls in the invoice document, html-to-image and jspdf only once a customer opens one.
+const InvoiceModal = dynamic(() => import("./InvoiceModal"));
 
 type OrderItem = {
   id: string;
@@ -12,6 +18,8 @@ type OrderItem = {
   price: number;
   variantSku: string | null;
   colorName: string | null;
+  /** Resolved server-side from the ordered colour (see app/api/orders/route.ts). */
+  image: string | null;
   product: { name: string; slug: string } | null;
 };
 
@@ -49,7 +57,7 @@ export default function OrdersHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [invoiceOrderId, setInvoiceOrderId] = useState<string | null>(null);
 
   /** `quiet`: a live refresh re-reads in place, without flashing the loading skeleton. */
   const load = async (quiet = false) => {
@@ -79,30 +87,6 @@ export default function OrdersHistory() {
       offResync();
     };
   }, []);
-
-  const cancel = async (id: string, refunded: number) => {
-    const msg = refunded > 0
-      ? `Cancel this order? Your ${refunded} redeemed point${refunded !== 1 ? "s" : ""} will be returned to your wallet.`
-      : "Cancel this order?";
-    if (!confirm(msg)) return;
-    setCancellingId(id);
-    try {
-      const res = await fetch(`/api/orders/${id}/cancel`, { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert(data.error || "Could not cancel the order.");
-        return;
-      }
-      await load();
-    } catch {
-      alert("Could not cancel the order.");
-    } finally {
-      setCancellingId(null);
-    }
-  };
-
-  // Pre-shipment orders can still be cancelled by the customer.
-  const cancellable = (s: string) => s === "PENDING" || s === "PROCESSING";
 
   return (
     <div>
@@ -191,12 +175,37 @@ export default function OrdersHistory() {
                       <p className="text-[11px] uppercase tracking-[0.12em] text-[#999] mb-2">Products</p>
                       <div className="divide-y divide-[#EEE]">
                         {o.items.map((it) => (
-                          <div key={it.id} className="flex items-center justify-between gap-3 py-2 text-[13px]">
-                            <span className="text-[#333] min-w-0">
-                              {it.product?.name ?? "Product"}
-                              {it.colorName ? <span className="text-[#999]"> · {it.colorName}</span> : null}
-                              <span className="text-[#999]"> × {it.quantity}</span>
-                            </span>
+                          <div key={it.id} className="flex items-center gap-3 py-3 text-[13px]">
+                            <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-cream">
+                              {it.image ? (
+                                <LuxuryImage
+                                  src={it.image}
+                                  alt={it.product?.name ?? "Product"}
+                                  fill
+                                  sizes="48px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <span className="absolute inset-0 flex items-center justify-center text-center text-[8px] uppercase tracking-widest text-secondary">
+                                  Preserved
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              {it.product?.slug ? (
+                                <Link
+                                  href={`/product/${it.product.slug}`}
+                                  className="text-[#333] hover:text-primary transition-colors"
+                                >
+                                  {it.product.name}
+                                </Link>
+                              ) : (
+                                <span className="text-[#333]">Product</span>
+                              )}
+                              <p className="text-[12px] text-[#999] mt-0.5">
+                                {it.colorName ? `${it.colorName} · ` : ""}Qty {it.quantity}
+                              </p>
+                            </div>
                             <span className="text-[#555] shrink-0">{money(it.price * it.quantity)}</span>
                           </div>
                         ))}
@@ -244,26 +253,16 @@ export default function OrdersHistory() {
                       )}
                     </div>
 
-                    {/* Actions: Invoice + Cancel */}
-                    <div className="pt-2 border-t border-[#EEE] flex flex-wrap items-center justify-between gap-3">
-                      <Link
-                        href={`/orders/${o.id}/invoice`}
-                        target="_blank"
+                    {/* Opens the invoice in a dialog rather than navigating to the standalone
+                        page, which renders inside the storefront chrome. */}
+                    <div className="pt-2 border-t border-[#EEE]">
+                      <button
+                        onClick={() => setInvoiceOrderId(o.id)}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-[#61000B] hover:bg-[#800010] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors shadow-2xs"
                       >
                         <FileText size={14} />
                         <span>Tax Invoice (فاتورة)</span>
-                      </Link>
-
-                      {cancellable(o.status) && (
-                        <button
-                          onClick={() => cancel(o.id, o.pointsRedeemed)}
-                          disabled={cancellingId === o.id}
-                          className="border border-red-300 text-red-600 px-4 py-2 rounded-lg text-[11px] uppercase tracking-[0.12em] hover:bg-red-50 transition-colors disabled:opacity-50"
-                        >
-                          {cancellingId === o.id ? "Cancelling…" : "Cancel Order"}
-                        </button>
-                      )}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -272,6 +271,12 @@ export default function OrdersHistory() {
           })}
         </div>
       )}
+
+      <AnimatePresence>
+        {invoiceOrderId && (
+          <InvoiceModal orderId={invoiceOrderId} onClose={() => setInvoiceOrderId(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

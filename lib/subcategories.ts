@@ -102,48 +102,68 @@ const NAV_VISIBLE = {
   OR: [{ showInNavigation: true }, { category: { name: { notIn: NAV_FLAG_CATEGORIES } } }],
 };
 
-export const getSubcategories = cache(
-  async (categoryType: CategoryType): Promise<StoreSubcategory[]> => {
+const emptyMenu = () =>
+  Object.fromEntries(CATEGORY_ORDER.map((key) => [key, []])) as unknown as Record<
+    CategoryType,
+    StoreSubcategory[]
+  >;
+
+/**
+ * Every nav-visible subcategory, grouped by category. Throws.
+ *
+ * Kept separate from the fallback below so the cache wraps the read and not the "return an
+ * empty menu" catch — unstable_cache stores whatever its function returns, so one unreachable
+ * moment would otherwise pin an empty navigation and empty listing filters in place for an
+ * hour. A thrown result is never stored, so the next request just tries again.
+ */
+async function readMenuData(): Promise<Record<CategoryType, StoreSubcategory[]>> {
+  const grouped = emptyMenu();
+  for (const row of await prisma.subcategory.findMany({
+    where: { ...NAV_VISIBLE, category: { isActive: true } },
+    orderBy: [...NAV_ORDER],
+    select,
+  })) {
+    const item = shape(row);
+    if (item.categoryType in grouped) {
+      grouped[item.categoryType].push(item);
+    }
+  }
+  return grouped;
+}
+
+/*
+ * Cached across requests, on the same tag the navigation menu uses — an admin's subcategory
+ * write already purges it with expire: 0, so an edit is still live on the very next request.
+ */
+const loadMenuData = unstable_cache(readMenuData, ['nav-subcategories-v1'], {
+  tags: [NAV_MENU_TAG],
+  revalidate: 3600,
+});
+
+export const getMenuData = cache(
+  async (): Promise<Record<CategoryType, StoreSubcategory[]>> => {
     try {
-      return (
-        await prisma.subcategory.findMany({
-          where: {
-            ...NAV_VISIBLE,
-            category: { name: categoryType, isActive: true },
-          },
-          orderBy: [...NAV_ORDER],
-          select,
-        })
-      ).map(shape);
+      return await loadMenuData();
     } catch (error) {
-      logDbError('getSubcategories', error);
-      return [];
+      logDbError('getMenuData', error);
+      return emptyMenu();
     }
   }
 );
 
-export const getMenuData = cache(
-  async (): Promise<Record<CategoryType, StoreSubcategory[]>> => {
-    const empty = Object.fromEntries(
-      CATEGORY_ORDER.map((key) => [key, []])
-    ) as unknown as Record<CategoryType, StoreSubcategory[]>;
-
-    try {
-      for (const row of await prisma.subcategory.findMany({
-        where: { ...NAV_VISIBLE, category: { isActive: true } },
-        orderBy: [...NAV_ORDER],
-        select,
-      })) {
-        const item = shape(row);
-        if (item.categoryType in empty) {
-          empty[item.categoryType].push(item);
-        }
-      }
-    } catch (error) {
-      logDbError('getMenuData', error);
-    }
-    return empty;
-  }
+/**
+ * One category's subcategories, sliced out of that same cached read.
+ *
+ * This used to be its own findMany, uncached, and it is awaited before /shop?category=... can
+ * send any HTML: measured at 1.46s — the round trip to a database in another region, not the
+ * query — which held back the whole listing, its hero and every product image behind it. The
+ * rows are the ones the navigation has already loaded and cached on every page of the site,
+ * filtered by exactly the same conditions and ordered the same way, so reading them from there
+ * returns precisely what the query did.
+ */
+export const getSubcategories = cache(
+  async (categoryType: CategoryType): Promise<StoreSubcategory[]> =>
+    (await getMenuData())[categoryType] ?? []
 );
 
 export const getExploreFlowers = cache(async () => getSubcategories('FLOWER'));

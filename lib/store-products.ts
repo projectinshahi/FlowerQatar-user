@@ -5,6 +5,7 @@ import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
 import type { CategoryType } from "@prisma/client";
 import { subcategoryHref, type ProductFlag } from "@/lib/category-config";
+import { NAV_MENU_TAG } from "@/lib/subcategories";
 import { galleryMedia, imagesOnly } from "@/lib/media";
 
 /**
@@ -133,6 +134,30 @@ const STORE_PRODUCT_SELECT = {
   subcategory: { select: { id: true, name: true } },
 } as const;
 
+/**
+ * Every published product's slug — i.e. which /product/[slug] pages actually exist.
+ *
+ * Used only by generateStaticParams, to decide what to pre-render. It deliberately does NOT go
+ * through the cached catalogue: this runs at build time, it is wanted fresh, and it needs two
+ * columns rather than the whole variants tree.
+ *
+ * Returns [] when the database cannot be reached, which is what keeps a build from failing over
+ * a network blip — Next then pre-renders nothing and every page is generated on first request,
+ * exactly as it behaved before this existed.
+ */
+export async function getPublishedProductSlugs(): Promise<string[]> {
+  try {
+    const rows = await prisma.product.findMany({
+      where: { status: "PUBLISHED" },
+      select: { slug: true },
+    });
+    return rows.map((r) => r.slug).filter((slug): slug is string => Boolean(slug));
+  } catch (e) {
+    logDbError("getPublishedProductSlugs", e);
+    return [];
+  }
+}
+
 export const STORE_PRODUCTS_TAG = "store-products";
 
 /**
@@ -187,20 +212,40 @@ export const getStoreProducts = cache(async (): Promise<Product[]> => {
  * back to `hoverImage` when none is set. Returns null for an unknown id so the caller can fall
  * back to the default hero.
  */
+type SubcategoryBanner = { name: string; image: string | null; categoryType: CategoryType };
+
+/*
+ * The read, throwing, cached per subcategory id (unstable_cache folds the arguments into the
+ * key). Tagged with the navigation menu's tag, which an admin's subcategory write already
+ * purges with expire: 0 — so renaming a subcategory or replacing its art still shows on the
+ * next request. The catch stays outside, or a database blip would pin "no banner" in place.
+ *
+ * Worth caching because /shop is dynamic — it reads searchParams — so the page itself is never
+ * cached, and every visit through the mega menu (?category=...&subcategory=...) awaited this
+ * before it could send any HTML.
+ */
+const loadSubcategoryBanner = unstable_cache(
+  async (id: string): Promise<SubcategoryBanner | null> => {
+    const row = await prisma.subcategory.findFirst({
+      where: { id, isActive: true, category: { isActive: true } },
+      select: { name: true, bannerImage: true, hoverImage: true, category: { select: { name: true } } },
+    });
+    // Dedicated banner first; hoverImage is the fallback so a subcategory without a banner
+    // still gets its own art rather than the generic marketing shot.
+    // `categoryType` is the admin-owned parent, which the shop uses to scope a bare
+    // ?subcategory= link to its own category.
+    return row
+      ? { name: row.name, image: row.bannerImage || row.hoverImage, categoryType: row.category.name as CategoryType }
+      : null;
+  },
+  ["subcategory-banner-v1"],
+  { tags: [NAV_MENU_TAG], revalidate: 3600 }
+);
+
 export const getSubcategoryBanner = cache(
-  async (id: string): Promise<{ name: string; image: string | null; categoryType: CategoryType } | null> => {
+  async (id: string): Promise<SubcategoryBanner | null> => {
     try {
-      const row = await prisma.subcategory.findFirst({
-        where: { id, isActive: true, category: { isActive: true } },
-        select: { name: true, bannerImage: true, hoverImage: true, category: { select: { name: true } } },
-      });
-      // Dedicated banner first; hoverImage is the fallback so a subcategory without a banner
-      // still gets its own art rather than the generic marketing shot.
-      // `categoryType` is the admin-owned parent, which the shop uses to scope a bare
-      // ?subcategory= link to its own category.
-      return row
-        ? { name: row.name, image: row.bannerImage || row.hoverImage, categoryType: row.category.name as CategoryType }
-        : null;
+      return await loadSubcategoryBanner(id);
     } catch (e) {
       logDbError(`getSubcategoryBanner(${id})`, e);
       return null;

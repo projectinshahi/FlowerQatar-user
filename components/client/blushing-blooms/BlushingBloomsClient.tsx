@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image';
 import Link from 'next/link';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Flower2, Gem, Gift, Heart, SlidersHorizontal, X } from 'lucide-react';
-import { isVideoMedia } from '@/lib/media';
+import { isVideoMedia, videoPoster, videoSrc, widthFromSizes } from '@/lib/media';
 import { paginateListing } from '@/lib/shop-facets';
 import BlushingQuickView from './BlushingQuickView';
 import BlushingNav from './BlushingNav';
@@ -106,7 +106,9 @@ function SectionMedia({
   if (isVideoMedia({ url: src })) {
     return (
       <video
-        src={src}
+        src={videoSrc(src, widthFromSizes(sizes))}
+        poster={videoPoster(src)}
+        preload="metadata"
         autoPlay
         muted
         loop

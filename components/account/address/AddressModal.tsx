@@ -79,7 +79,13 @@ export default function AddressModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 48, scale: 0.98 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="relative w-full sm:max-w-lg bg-white/95 backdrop-blur-xl shadow-2xl max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-2xl border border-white/60"
+            /*
+              `dvh` where it exists, `vh` as the fallback. `vh` is pinned to the viewport
+              with the browser chrome HIDDEN, so on a phone with the address bar showing a
+              92vh sheet is taller than the screen and its footer - the Save button - sits
+              below the fold with nothing to scroll it into view.
+            */
+            className="relative w-full sm:max-w-lg bg-white/95 backdrop-blur-xl shadow-2xl max-h-[92vh] supports-[max-height:92dvh]:max-h-[92dvh] flex flex-col rounded-t-3xl sm:rounded-2xl border border-white/60"
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#EFEFEF] shrink-0">
               <h3 className="font-serif text-[20px] text-primary">{title}</h3>

@@ -26,6 +26,14 @@ export default function WhatsAppButton({
 
   const href = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 
+  /*
+   * z-40 puts this above the page and below anything modal (drawers and dialogs start at z-50).
+   *
+   * At z-[60] it floated over all of them: measured on a 390px screen the bubble spans x318-370
+   * against a filter-drawer Apply button that ends at x326, and it sits on the cart drawer's
+   * Checkout button the same way. Nothing else moves — it is bottom-right and the only other
+   * z-50 element, the header, is at the top of the page.
+   */
   return (
     <a
       href={href}
@@ -33,7 +41,7 @@ export default function WhatsAppButton({
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp (opens WhatsApp in a new tab)"
       data-whatsapp-fab=""
-      className="group fixed bottom-5 right-5 z-[60] flex items-center gap-0 rounded-full bg-primary p-3.5 text-cream shadow-[0_10px_30px_-8px_rgba(97,0,11,0.55)] outline-none transition-[background-color,gap,padding,box-shadow] duration-300 ease-out hover:bg-secondary hover:gap-2 hover:pr-5 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 md:bottom-8 md:right-8 motion-reduce:transition-none"
+      className="group fixed bottom-5 right-5 z-40 flex items-center gap-0 rounded-full bg-primary p-3.5 text-cream shadow-[0_10px_30px_-8px_rgba(97,0,11,0.55)] outline-none transition-[background-color,gap,padding,box-shadow] duration-300 ease-out hover:bg-secondary hover:gap-2 hover:pr-5 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 md:bottom-8 md:right-8 motion-reduce:transition-none"
     >
       {/*
         WhatsApp glyph as inline SVG — lucide-react dropped brand icons, and this avoids

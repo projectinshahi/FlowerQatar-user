@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/admin-guard";
 import type { AddItemInput, CartSelection } from "@/lib/validations/cart";
+import { unstable_cache } from "next/cache";
 import { NO_SHIPPING, calculateShipping, type ShippingConfig } from "@/lib/shipping";
 import { logDbError } from "@/lib/prisma-error";
 import { resolveExtraPrices } from "@/lib/gifts";
@@ -217,18 +218,63 @@ export function priceExtras(
  */
 export async function loadShippingConfig(): Promise<ShippingConfig> {
   try {
-    const row = await prisma.deliveryCharge.findFirst({
-      select: { isActive: true, chargeType: true, value: true, freeAbove: true },
-    });
-    if (!row) return NO_SHIPPING;
-    return {
-      isActive: row.isActive,
-      chargeType: row.chargeType as ShippingConfig["chargeType"],
-      value: Number(row.value),
-      freeAbove: Number(row.freeAbove),
-    };
+    return await readShippingConfig();
   } catch (error) {
     logDbError("loadShippingConfig", error);
+    return NO_SHIPPING;
+  }
+}
+
+/**
+ * The read itself, which throws.
+ *
+ * Split out so the cached variant below wraps this and not the fallback: unstable_cache stores
+ * whatever its function returns, so caching the catch above would pin "delivery is off" in
+ * place for an hour after one unreachable moment — every shopper in that hour quoted free
+ * delivery on a store that charges for it. A thrown result is never stored, so the next request
+ * simply tries again.
+ */
+async function readShippingConfig(): Promise<ShippingConfig> {
+  const row = await prisma.deliveryCharge.findFirst({
+    select: { isActive: true, chargeType: true, value: true, freeAbove: true },
+  });
+  if (!row) return NO_SHIPPING;
+  return {
+    isActive: row.isActive,
+    chargeType: row.chargeType as ShippingConfig["chargeType"],
+    value: Number(row.value),
+    freeAbove: Number(row.freeAbove),
+  };
+}
+
+export const DELIVERY_CONFIG_TAG = "delivery-config";
+
+/**
+ * The same row, for the public quote endpoint only.
+ *
+ * /api/shipping is a lone request with nothing to overlap — measured at 1.45s, a full round
+ * trip to the database in us-east-1 — and the cart and checkout pages both block their
+ * delivery line on it. Everywhere else this row is read it is already inside a Promise.all
+ * beside other queries, so it costs nothing extra and stays a live read.
+ *
+ * Deliberately NOT used by order placement: what a customer is actually charged is still read
+ * fresh, in lib/services/order.ts, so no cache can sit between the admin's fee and the money.
+ *
+ * Staleness is covered twice over. The admin's save calls publishChange('delivery.updated'),
+ * which purges this tag with expire: 0 before the response is even sent; the same event also
+ * reaches every open cart and checkout over Socket.IO, and both already re-read on it. The
+ * hour is only a backstop for a process that somehow missed the write.
+ */
+const loadCachedShippingConfig = unstable_cache(readShippingConfig, ["delivery-config-v1"], {
+  tags: [DELIVERY_CONFIG_TAG],
+  revalidate: 3600,
+});
+
+export async function getShippingQuoteConfig(): Promise<ShippingConfig> {
+  try {
+    return await loadCachedShippingConfig();
+  } catch (error) {
+    logDbError("getShippingQuoteConfig", error);
     return NO_SHIPPING;
   }
 }

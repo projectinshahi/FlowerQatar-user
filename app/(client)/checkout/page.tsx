@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import Link from 'next/link';
-import { ChevronRight, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag, Eye, EyeOff } from 'lucide-react';
+import { ChevronRight, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag, Eye, EyeOff, Check } from 'lucide-react';
 import Image from '../../../components/LuxuryImage';
 import CouponBox from '../../../components/checkout/CouponBox';
 import RedeemPointsBox from '../../../components/checkout/RedeemPointsBox';
@@ -16,9 +16,16 @@ import { isValidPostalCode } from '../../../lib/postal';
 import { qar, formatNumber } from '../../../lib/utils';
 import { onLive, onResync } from '../../../lib/live-client';
 
-// The store delivers within Qatar and this form has no country picker. lib/postal.ts lists QA
-// as a country that operates no postal-code system, so the field is optional here.
 const STORE_COUNTRY = 'QA';
+
+const isValidQatarMobile = (phone: string): boolean => {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('974')) {
+    const afterCode = digits.slice(3);
+    return afterCode.length === 8 && /^[3-79]\d{7}$/.test(afterCode);
+  }
+  return digits.length === 8 && /^[3-79]\d{7}$/.test(digits);
+};
 
 interface FormErrors {
   [key: string]: string;
@@ -58,15 +65,28 @@ export default function CheckoutPage() {
 
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // Pre-fill the form with the signed-in user's saved details (without overwriting typed input).
-  useEffect(() => {
-    if (!user) return;
+  /*
+   * Pre-fill from the signed-in user, never overwriting anything already typed.
+   *
+   * Adjusted DURING RENDER rather than in an effect. `user` arrives from the context after the
+   * first paint, and an effect that sets five pieces of state for it renders the empty form,
+   * commits it, then immediately renders again - the cascading render react-hooks flags, and a
+   * visible flash of blank fields on a slow connection. React re-runs this component before
+   * touching the DOM, so the filled fields are what actually paint.
+   *
+   * Guarded on the user's id, so it runs once per account rather than on every render, and runs
+   * again if a different account signs in. The functional updates keep a visitor's own typing:
+   * only an empty field takes the saved value.
+   */
+  const [prefilledFor, setPrefilledFor] = useState<string | null>(null);
+  if (user && prefilledFor !== user.id) {
+    setPrefilledFor(user.id);
     setEmail((v) => v || user.email || '');
     setFirstName((v) => v || user.firstName || '');
     setLastName((v) => v || user.lastName || '');
     setPhone((v) => v || user.phone || '');
     setCity((v) => v || user.city || '');
-  }, [user]);
+  }
 
   /*
    * Delivery rules come from the admin, not from constants here. Until they load, price at
@@ -139,11 +159,8 @@ export default function CheckoutPage() {
       if (!isValidPostalCode(STORE_COUNTRY, zip)) {
         tempErrors.zip = 'Enter a valid postal code';
       }
-      // Digits, not characters: a Qatari number is 8 digits locally and 11 with the +974 code,
-      // so the old 10-character minimum rejected the local form outright.
-      const phoneDigits = phone.replace(/\D/g, '');
-      if (!/^\+?[\d\s-]+$/.test(phone.trim()) || phoneDigits.length < 8 || phoneDigits.length > 15) {
-        tempErrors.phone = 'Enter a valid phone number';
+      if (!isValidQatarMobile(phone)) {
+        tempErrors.phone = 'Enter a valid Qatar mobile number (e.g. 30123456 or +97430123456)';
       }
     }
 
@@ -256,7 +273,7 @@ export default function CheckoutPage() {
   if (orderPlaced) {
     const invoiceTargetId = createdOrderId || orderRef;
     return (
-      <div className="max-w-xl mx-auto px-6 py-20 text-center font-sans text-primary space-y-6">
+      <div className="max-w-xl mx-auto px-6 pb-20 page-below-header text-center font-sans text-primary space-y-6">
         <div className="flex justify-center text-secondary">
           <CheckCircle2 size={64} className="stroke-[1.5]" />
         </div>
@@ -301,7 +318,7 @@ export default function CheckoutPage() {
 
   if (cart.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-24 text-center font-sans">
+      <div className="max-w-7xl mx-auto px-6 pb-24 page-below-header text-center font-sans">
         <h2 className="font-serif text-2xl mb-4">Your Cart is empty</h2>
         <Link href="/shop" className="text-secondary underline uppercase tracking-widest text-xs">
           Return to Shop
@@ -311,7 +328,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 md:px-12 py-8 font-sans text-primary">
+    <div className="max-w-7xl mx-auto px-6 md:px-12 pb-8 page-below-header font-sans text-primary">
       {/* Step Indicators */}
       <div className="max-w-2xl mx-auto mb-10">
         <div className="flex items-center justify-between text-xs uppercase tracking-widest text-muted font-medium">
@@ -429,14 +446,25 @@ export default function CheckoutPage() {
                   <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
                     Phone Number
                   </label>
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    id="co-phone" aria-label="Phone number" autoComplete="tel" inputMode="tel" aria-invalid={!!errors.phone || undefined} aria-describedby={errors.phone ? "co-phone-err" : undefined} onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                    placeholder="e.g. 212-555-0199"
-                  />
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      id="co-phone" aria-label="Phone number" autoComplete="tel" inputMode="tel" aria-invalid={!!errors.phone || undefined} aria-describedby={errors.phone ? "co-phone-err" : undefined} onChange={(e) => setPhone(e.target.value)}
+                      className={`w-full px-4 py-2.5 bg-cream/30 border focus:outline-none text-xs rounded-none transition-colors ${
+                        errors.phone
+                          ? 'border-red-500 focus:border-red-500'
+                          : phone && isValidQatarMobile(phone)
+                          ? 'border-green-500 focus:border-green-500'
+                          : 'border-divider focus:border-secondary'
+                      }`}
+                      placeholder="e.g. 30123456 or +97430123456"
+                    />
+                    {phone && isValidQatarMobile(phone) && !errors.phone && (
+                      <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+                    )}
+                  </div>
                   {errors.phone && <p id="co-phone-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
                 </div>
               </div>
@@ -596,7 +624,7 @@ export default function CheckoutPage() {
               </div>
 
               <p className="text-[11px] text-muted italic">
-                By clicking "Place Order", {grandTotal > 0
+                By clicking &quot;Place Order&quot;, {grandTotal > 0
                   ? `you will be taken to SkipCash to pay QAR ${grandTotal} by card.`
                   : `this order will be paid in full with ${formatNumber(pointsDiscount)} membership points.`} All arrangements are final sale due to customized preserved biological makeup.
               </p>

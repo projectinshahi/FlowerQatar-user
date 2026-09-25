@@ -13,7 +13,7 @@ export default async function MembershipFailedPage({
   const retryHref = plan ? `/membership/checkout?plan=${plan}` : '/#membership';
 
   return (
-    <div className="mx-auto w-full max-w-[520px] px-6 py-12 text-center font-sans text-primary md:py-20">
+    <div className="mx-auto w-full max-w-[520px] px-6 pb-12 page-below-header text-center font-sans text-primary md:pb-20">
       <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-50 text-red-500">
         <XCircle size={56} className="stroke-[1.5]" />
       </div>

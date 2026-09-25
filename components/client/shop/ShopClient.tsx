@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
+import { useDialogA11y } from '../../../hooks/useDialogA11y';
+import LuxuryImage from '../../../components/LuxuryImage';
 import ProductCard from '../../../components/ProductCard';
 import QuickViewModal from '../../../components/QuickViewModal';
 import Breadcrumbs from '../../../components/Breadcrumbs';
@@ -147,6 +150,27 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
   };
 
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  // Plain function, not useCallback: useDialogA11y keeps onClose in a ref it refreshes every
+  // render and only re-runs on `open`, so a stable identity buys nothing here.
+  const closeFilterDrawer = () => setIsFilterDrawerOpen(false);
+  // Escape to close, focus moved into the panel and trapped, focus restored on close —
+  // the same hook the cart, account and search drawers already use.
+  const filterDialogRef = useDialogA11y<HTMLDivElement>(isFilterDrawerOpen, closeFilterDrawer);
+
+  /*
+   * Hold the page still while the drawer is open.
+   *
+   * Without this the listing behind the drawer scrolled with the gesture — measured at 600px of
+   * travel on a single flick — so closing it dropped the shopper somewhere they had never
+   * navigated to. Restores whatever overflow the body had rather than assuming it was "".
+   */
+  useEffect(() => {
+    if (!isFilterDrawerOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [isFilterDrawerOpen]);
+
   const [showFilters, setShowFilters] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -183,9 +207,24 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
         the maroon heading can otherwise land on a light area and become unreadable.
       */}
       <div className="relative w-full overflow-hidden border-y border-divider/60 py-20 md:py-32 px-8 text-center mb-12">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('${heroImage || DEFAULT_HERO_IMAGE}')` }}
+        {/*
+          A CSS background is fetched whole, at whatever size it was uploaded, and only after
+          the stylesheet has been parsed and the element laid out — so this, the largest thing
+          on the most visited listing page, was arriving at 2.25s and at 531KB. Rendering it as
+          an image instead lets Next serve AVIF/WebP at the viewport's width and lets `priority`
+          preload it from the HTML. object-cover/center is exactly what bg-cover/bg-center did,
+          and it still sits behind the scrim, so the banner is unchanged.
+
+          LuxuryImage rather than next/image because `heroImage` is an admin upload and the
+          subcategory art may be a clip, which as a CSS background simply rendered nothing.
+        */}
+        <LuxuryImage
+          src={heroImage || DEFAULT_HERO_IMAGE}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
         />
         <div className={`absolute inset-0 ${heroImage ? 'bg-black/45' : 'bg-black/20'}`} />
         <div className="relative z-10">
@@ -205,26 +244,48 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-b border-divider/40 pb-6 mb-8 mt-4 px-6 md:px-12">
+      {/*
+        Filter / sort row.
+         
+        A select is as wide as its LONGEST option ("PRICE: LOW TO HIGH"), not as wide as the one
+        on show, so on a phone it claimed 222px of a 390px row and squeezed "SHOW FILTERS" into
+        two lines. Three things keep it honest: the button refuses to shrink or wrap, the select
+        is capped below sm so the longest option cannot set the row's width, and the row may wrap
+        rather than compress if a translation ever runs long.
+      */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-divider/40 pb-6 mb-8 mt-4 px-6 md:px-12">
         <button
           onClick={() => { setShowFilters(!showFilters); setIsFilterDrawerOpen(true); }}
-          className="flex items-center space-x-2 text-[11px] uppercase tracking-widest text-primary hover:text-secondary transition-colors font-sans font-medium"
+          className="flex shrink-0 items-center space-x-2 whitespace-nowrap text-[11px] uppercase tracking-widest text-primary hover:text-secondary transition-colors font-sans font-medium"
         >
-          <span>{showFilters ? 'HIDE FILTERS' : 'SHOW FILTERS'}</span>
-          <SlidersHorizontal size={14} />
+          {/*
+            Two labels, chosen by breakpoint, because the control does two different jobs.
+
+            On desktop it toggles the inline sidebar, so it reports that sidebar's state. On
+            mobile it only ever opens the drawer — the drawer is dismissed from inside it
+            (Apply, Clear, the X, Escape, or a tap on the backdrop), none of which run through
+            this button. Sharing one `showFilters` label meant that after closing the drawer the
+            button still read "HIDE FILTERS" with nothing on screen to hide, and the next tap
+            opened it while flipping the label to "SHOW FILTERS" — exactly inverted.
+          */}
+          <span className="lg:hidden">SHOW FILTERS</span>
+          <span className="hidden lg:inline">{showFilters ? 'HIDE FILTERS' : 'SHOW FILTERS'}</span>
+          <SlidersHorizontal size={14} className="shrink-0" />
         </button>
 
         <div className="text-[10px] uppercase tracking-widest text-primary font-medium hidden md:block">
           {products.length} PRODUCTS
         </div>
 
-        <div className="flex items-center space-x-2">
-          <div className="relative flex items-center gap-2 text-[11px] uppercase tracking-widest text-primary font-medium">
-            <span>SORT BY:</span>
+        <div className="flex min-w-0 items-center space-x-2">
+          <div className="relative flex min-w-0 items-center gap-2 text-[11px] uppercase tracking-widest text-primary font-medium">
+            {/* Hidden rather than dropped below sm: the row has no room for it on a phone, and
+                keeping the element means the control is still announced as the sort control. */}
+            <span className="sr-only sm:not-sr-only whitespace-nowrap">SORT BY:</span>
             <select aria-label="Sort products"
               value={filters.sort}
               onChange={(e) => setFilter({ sort: e.target.value === DEFAULT_SORT ? null : e.target.value })}
-              className="appearance-none bg-transparent border-none pr-5 text-[11px] uppercase tracking-widest text-primary focus:outline-none focus:ring-0 cursor-pointer"
+              className="w-[150px] min-w-0 appearance-none bg-transparent border-none pr-5 text-[11px] uppercase tracking-widest text-primary focus:outline-none focus:ring-0 cursor-pointer sm:w-auto"
               suppressHydrationWarning
             >
               <option value="featured">FEATURED</option>
@@ -356,67 +417,127 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
         </div>
       </div>
 
-      {/* Mobile Filter Drawer */}
-      {isFilterDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
-          <div onClick={() => setIsFilterDrawerOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
-          <div className="relative w-full max-w-sm bg-white shadow-2xl p-6 flex flex-col justify-between z-10 overflow-y-auto">
-            <div>
-              <div className="flex justify-between items-center pb-4 border-b border-divider mb-6">
-                <h3 className="text-sm uppercase tracking-[0.2em] font-medium text-primary">Filter Arrangements</h3>
-                <button aria-label="Close filters" onClick={() => setIsFilterDrawerOpen(false)} className="text-muted hover:text-primary"><X size={20} /></button>
-              </div>
-              {facets.subcategories.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Subcategory</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setFilter({ subcategory: null, collection: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!filters.subcategory ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
-                    {facets.subcategories.map((c) => (
-                      <button key={c.value} onClick={() => setFilter({ subcategory: c.value, collection: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${filters.subcategory === c.value ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.label} ({c.count})</button>
-                    ))}
-                  </div>
+      {/*
+        Mobile filter drawer.
+
+        The panel is pinned to the viewport (`absolute inset-y-0`) and split into three rows: a
+        fixed header, a scrolling middle, and a fixed footer. That structure is the fix.
+
+        Previously the panel was `flex flex-col justify-between` with `overflow-y-auto` but no
+        height constraint, so it grew to the height of its own content — measured at 2,508px
+        inside an 844px viewport. Three things followed. `justify-between` spread the header and
+        the footer across those 2,500px and left the blank gap in the middle; the Clear/Apply
+        buttons sat at y=2,416 where nobody could reach them; and scrollHeight equalled
+        clientHeight, so `overflow-y-auto` never actually scrolled and the listing behind the
+        drawer moved instead. `min-h-0` on the middle row is what lets a flex child shrink below
+        its own content and become the scroll container — without it the panel grows again.
+
+        Slides in from the left on the same spring the cart drawer uses, so the two feel like one
+        component. Colours, type, chip styling and spacing are unchanged.
+      */}
+      <AnimatePresence>
+        {isFilterDrawerOpen && (
+          <div
+            ref={filterDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filter arrangements"
+            className="fixed inset-0 z-50 overflow-hidden lg:hidden"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeFilterDrawer}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            />
+
+            {/*
+              pr-10 leaves a strip of backdrop to tap on: at 390px the panel covered all but 6px
+              of the screen, so "tap outside to dismiss" was not reachable in practice.
+
+              pointer-events-none is what makes that strip actually work. This wrapper spans the
+              full width (panel + padding), so without it the padding swallowed the tap and the
+              drawer stayed open — a dismiss target that looked right and did nothing. The panel
+              takes pointer events back so everything inside it still responds.
+            */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex max-w-full pr-10">
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                className="pointer-events-auto flex w-screen max-w-sm flex-col bg-white shadow-2xl"
+              >
+                <div className="flex shrink-0 items-center justify-between border-b border-divider px-6 py-4">
+                  <h3 className="text-sm uppercase tracking-[0.2em] font-medium text-primary">Filter Arrangements</h3>
+                  <button aria-label="Close filters" onClick={closeFilterDrawer} className="text-muted hover:text-primary"><X size={20} /></button>
                 </div>
-              )}
-              {facets.countries.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Country of Origin</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setFilter({ country: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!filters.country ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
-                    {facets.countries.map((c) => (
-                      <button key={c.value} onClick={() => setFilter({ country: c.value })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${filters.country === c.value ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.label} ({c.count})</button>
-                    ))}
-                  </div>
+
+                {/* The only scrolling region. overscroll-contain stops a flick that reaches the
+                    end of this list from carrying on into the page underneath. */}
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6">
+                  {facets.subcategories.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Subcategory</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => setFilter({ subcategory: null, collection: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!filters.subcategory ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
+                        {facets.subcategories.map((c) => (
+                          <button key={c.value} onClick={() => setFilter({ subcategory: c.value, collection: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${filters.subcategory === c.value ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.label} ({c.count})</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {facets.countries.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-[10px] uppercase tracking-widest font-semibold text-primary mb-3">Country of Origin</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => setFilter({ country: null })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase ${!filters.country ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>All</button>
+                        {facets.countries.map((c) => (
+                          <button key={c.value} onClick={() => setFilter({ country: c.value })} className={`px-3 py-1.5 text-[10px] border tracking-wider uppercase capitalize ${filters.country === c.value ? 'bg-primary text-white border-primary' : 'border-divider text-muted'}`}>{c.label} ({c.count})</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {facets.price && priceMax > priceMin && (
+                    <div className="mb-2">
+                      {/* gap-3 plus a non-shrinking amount: "QAR 1,250" was colliding with its
+                          own label on a narrow phone, where justify-between alone gives no floor. */}
+                      <div className="flex items-baseline justify-between gap-3 text-[10px] uppercase tracking-widest font-semibold mb-3">
+                        <span>Price Cap</span>
+                        <span className="shrink-0 whitespace-nowrap text-secondary font-bold">QAR {priceCeiling}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={priceMin}
+                        max={priceMax}
+                        step="1"
+                        value={priceCeiling}
+                        onChange={(e) => setPriceDraft(Number(e.target.value))}
+                        onPointerUp={commitPrice}
+                        onKeyUp={commitPrice}
+                        onBlur={commitPrice}
+                        className="w-full accent-gold h-1 bg-divider"
+                        aria-label="Maximum price"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-              {facets.price && priceMax > priceMin && (
-                <div className="mb-6">
-                  <div className="flex justify-between text-[10px] uppercase tracking-widest font-semibold mb-3">
-                    <span>Price Cap</span>
-                    <span className="text-secondary font-bold">QAR {priceCeiling}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={priceMin}
-                    max={priceMax}
-                    step="1"
-                    value={priceCeiling}
-                    onChange={(e) => setPriceDraft(Number(e.target.value))}
-                    onPointerUp={commitPrice}
-                    onKeyUp={commitPrice}
-                    onBlur={commitPrice}
-                    className="w-full accent-gold h-1 bg-divider"
-                    aria-label="Maximum price"
-                  />
+
+                {/* Always on screen. The inline padding clears the home indicator on phones that
+                    have one and resolves to 0 everywhere else. */}
+                <div
+                  className="shrink-0 border-t border-divider px-6 pt-4 flex gap-3"
+                  style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+                >
+                  <button onClick={clearFilters} className="flex-grow py-3 border border-divider hover:border-primary text-[10px] uppercase tracking-widest transition-colors font-medium text-center">Clear</button>
+                  <button onClick={closeFilterDrawer} className="flex-grow py-3 bg-primary hover:bg-secondary text-white text-[10px] uppercase tracking-widest font-semibold transition-colors text-center">Apply</button>
                 </div>
-              )}
-            </div>
-            <div className="pt-6 border-t border-divider flex gap-3">
-              <button onClick={clearFilters} className="flex-grow py-3 border border-divider hover:border-primary text-[10px] uppercase tracking-widest transition-colors font-medium text-center">Clear</button>
-              <button onClick={() => setIsFilterDrawerOpen(false)} className="flex-grow py-3 bg-primary hover:bg-secondary text-white text-[10px] uppercase tracking-widest font-semibold transition-colors text-center">Apply</button>
+              </motion.div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       <QuickViewModal product={selectedProduct} isOpen={isQuickViewOpen} onClose={() => setIsQuickViewOpen(false)} />
     </div>

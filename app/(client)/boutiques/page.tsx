@@ -46,9 +46,19 @@ export default function BoutiquesPage() {
 
       {/* Hero Section */}
       <div className="relative w-full overflow-hidden border-y border-divider/60 py-24 md:py-32 px-8 text-center mb-16">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/images/explore_stores_1782905783786.png')" }}
+        {/*
+          A CSS background is fetched as-is: this is a 925KB PNG, served in full to every
+          visitor on every device. next/image serves the same art as AVIF/WebP at the width the
+          viewport actually needs. object-cover/center is exactly what bg-cover/bg-center did,
+          and the element still sits behind the overlay, so the hero looks unchanged.
+        */}
+        <Image
+          src="/images/explore_stores_1782905783786.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
         />
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
         

@@ -17,6 +17,7 @@ import Analytics from "../../components/analytics/Analytics";
 import GoogleTranslate from "../../components/GoogleTranslate";
 import TranslateSync from "../../components/TranslateSync";
 import MotionPreferences from "../../components/MotionPreferences";
+import WhatsAppButton from "../../components/WhatsAppButton";
 import ScrollToTop from "../../components/ScrollToTop";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
@@ -130,18 +131,19 @@ export default async function RootLayout({
         <ScrollToTop />
         <AppContextProvider>
           <MotionPreferences>
-          {/* Keyboard users jump past the navigation; invisible until focused. */}
-          <a
-            href="#main"
-            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-full focus:bg-white focus:px-5 focus:py-2.5 focus:text-xs focus:uppercase focus:tracking-widest focus:text-primary focus:shadow-lg"
-          >
-            Skip to content
-          </a>
           <Navbar menu={navMenu} />
           <main id="main" className="flex-grow">
             {children}
           </main>
           <Footer />
+          {/*
+            Outside <main>, deliberately. The page itself is wrapped by template.tsx in
+            .page-enter, whose animation leaves a transform on the element - and a
+            transformed ancestor makes `position: fixed` resolve against THAT box instead of
+            the viewport, so the button scrolled away with the page. Here it has no
+            transformed ancestor, and it reaches every route rather than just the home page.
+          */}
+          <WhatsAppButton />
           <CartDrawer />
           <AccountDrawer />
           <SearchDrawer />

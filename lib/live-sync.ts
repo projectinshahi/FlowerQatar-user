@@ -2,6 +2,9 @@ import { after } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { revalidateStoreProducts } from '@/lib/store-products';
 import { NAV_MENU_TAG } from '@/lib/subcategories';
+import { DELIVERY_CONFIG_TAG } from '@/lib/services/cart';
+import { WELCOME_POPUP_TAG } from '@/lib/welcome-popup';
+import { BLUSHING_BLOOMS_TAG } from '@/lib/blushing-blooms';
 import { entityOf, type LiveChange, type LiveEntity } from '@/lib/live-events';
 
 /**
@@ -42,7 +45,11 @@ const publisher = () => (globalThis as Record<symbol, unknown>)[PUBLISHER_KEY] a
  * - promotion, banner, occasion, subscriptionPlan, welcomePopup: rendered on the home page
  *   (occasion detail pages are dynamic and always fresh).
  * - blushingBlooms: its page content renders on /shop?category=blushing-blooms.
- * - delivery, order: read live on every request (cart, checkout, account); nothing cached.
+ * - welcomePopup: the home page renders nothing from it, but the storefront dialog fetches it
+ *   from /api/welcome-popup, which caches the row behind its tag.
+ * - delivery: what a customer is charged is always read live, but the public quote endpoint
+ *   (/api/shipping, which the cart and checkout block on) caches the row behind its tag.
+ * - order: read live on every request (account, order detail); nothing cached.
  */
 const INVALIDATE: Record<LiveEntity, (change: LiveChange) => void> = {
   product: () => {
@@ -61,9 +68,15 @@ const INVALIDATE: Record<LiveEntity, (change: LiveChange) => void> = {
   banner: () => revalidatePath('/'),
   occasion: () => revalidatePath('/'),
   subscriptionPlan: () => revalidatePath('/'),
-  welcomePopup: () => revalidatePath('/'),
-  blushingBlooms: () => revalidatePath('/shop'),
-  delivery: () => {},
+  welcomePopup: () => {
+    revalidateTag(WELCOME_POPUP_TAG, { expire: 0 });
+    revalidatePath('/');
+  },
+  blushingBlooms: () => {
+    revalidateTag(BLUSHING_BLOOMS_TAG, { expire: 0 });
+    revalidatePath('/shop');
+  },
+  delivery: () => revalidateTag(DELIVERY_CONFIG_TAG, { expire: 0 }),
   order: () => {},
 };
 
