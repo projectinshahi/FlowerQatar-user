@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
 import type { CategoryType } from "@prisma/client";
-import { subcategoryHref, type ProductFlag } from "@/lib/category-config";
+import { subcategoryHref } from "@/lib/category-config";
 import { NAV_MENU_TAG } from "@/lib/subcategories";
 import { galleryMedia, imagesOnly } from "@/lib/media";
 
@@ -258,8 +258,8 @@ export const getSubcategoryBanner = cache(
  * fixed category when the subcategory is thin. Never returns unrelated products, and never
  * the product being viewed.
  *
- * One indexed query (subcategoryId / categoryType are both indexed), taken on the server so
- * the product page makes no extra client request.
+ * Taken from the cached catalogue (already newest first), so it costs no query; the direct
+ * read below is only the fallback for when the catalogue could not be loaded.
  */
 export const getRelatedProducts = cache(
   async (
@@ -270,6 +270,14 @@ export const getRelatedProducts = cache(
   ): Promise<Product[]> => {
     // No category information at all → nothing is genuinely "related", so show nothing.
     if (!subcategoryId && !categoryType) return [];
+    const catalogue = await getStoreProducts();
+    if (catalogue.length) {
+      const others = catalogue.filter((p) => p.id !== productId);
+      const pick = (match: (p: Product) => boolean) => others.filter(match).slice(0, limit);
+      // Prefer the narrower subcategory match; fall back to the parent category.
+      const rows = subcategoryId ? pick((p) => p.collection === subcategoryId) : pick((p) => p.categoryType === categoryType);
+      return rows.length === 0 && subcategoryId && categoryType ? pick((p) => p.categoryType === categoryType) : rows;
+    }
     try {
       const rows = await prisma.product.findMany({
         where: {
@@ -297,32 +305,6 @@ export const getRelatedProducts = cache(
       return rows.map(mapDbProductToStore);
     } catch (e) {
       logDbError(`getRelatedProducts(${productId})`, e);
-      return [];
-    }
-  }
-);
-
-/**
- * Published products in a fixed category, optionally narrowed to one subcategory and/or
- * a "collection" flag (best sellers / trending / new arrivals / featured). Powers the SEO
- * category/subcategory listing pages and their tab filters. cache() dedupes per request.
- */
-export const getProductsByCategory = cache(
-  async (categoryType: CategoryType, subcategoryId?: string, flag?: ProductFlag): Promise<Product[]> => {
-    try {
-      const rows = await prisma.product.findMany({
-        where: {
-          status: "PUBLISHED",
-          categoryType,
-          ...(subcategoryId ? { subcategoryId } : {}),
-          ...(flag ? { [flag]: true } : {}),
-        },
-        orderBy: { createdAt: "desc" },
-        include: { subcategory: true },
-      });
-      return rows.map(mapDbProductToStore);
-    } catch (e) {
-      logDbError(`getProductsByCategory(${categoryType})`, e);
       return [];
     }
   }

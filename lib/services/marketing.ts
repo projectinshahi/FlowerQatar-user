@@ -130,9 +130,11 @@ export async function validateCoupon(
   items: CartItemDTO[],
   userId: string | null
 ): Promise<CouponResult> {
-  const coupon = await prisma.coupon.findUnique({
-    where: { code: code.trim().toUpperCase() },
-  });
+  // The cart context does not depend on the coupon, so both reads go out together.
+  const [coupon, ctx] = await Promise.all([
+    prisma.coupon.findUnique({ where: { code: code.trim().toUpperCase() } }),
+    buildCartContext(items),
+  ]);
 
   if (!coupon) return { valid: false, reason: "Invalid coupon code" };
   if (coupon.status !== "ACTIVE") return { valid: false, reason: "This coupon is not active" };
@@ -152,8 +154,6 @@ export async function validateCoupon(
       return { valid: false, reason: "You have already used this coupon" };
     }
   }
-
-  const ctx = await buildCartContext(items);
 
   if (ctx.subtotal < Number(coupon.minOrderAmount)) {
     const needed = round2(Number(coupon.minOrderAmount) - ctx.subtotal);

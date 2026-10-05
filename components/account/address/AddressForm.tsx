@@ -4,22 +4,17 @@ import { useMemo, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus } from "lucide-react";
-import { addressSchema, type Address, type AddressInput } from "@/lib/validations/address";
-import { postalExample, isPostalRequired } from "@/lib/postal";
-import CountrySelect from "./CountrySelect";
+import { ADDRESS_COUNTRY, addressSchema, type Address, type AddressInput } from "@/lib/validations/address";
 import AddressLabelDialog from "./AddressLabelDialog";
 import LabelGlyph from "./LabelGlyph";
+import Flag from "./Flag";
 
 type FormValues = {
   label: string;
-  countryCode: string;
-  countryName: string;
-  stateCode: string;
-  stateName: string;
-  city: string;
-  postalCode: string;
-  addressLine1: string;
-  addressLine2: string;
+  zone: string;
+  street: string;
+  building: string;
+  unit: string;
   isDefault: boolean;
 };
 
@@ -49,34 +44,18 @@ export default function AddressForm({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(addressSchema) as unknown as Resolver<FormValues>,
-    defaultValues: initial
-      ? {
-          label: initial.label,
-          countryCode: initial.countryCode,
-          countryName: initial.countryName,
-          stateCode: initial.stateCode ?? "",
-          stateName: initial.stateName ?? "",
-          city: initial.city,
-          postalCode: initial.postalCode ?? "",
-          addressLine1: initial.addressLine1,
-          addressLine2: initial.addressLine2 ?? "",
-          isDefault: initial.isDefault,
-        }
-      : {
-          label: "Home",
-          countryCode: "",
-          countryName: "",
-          stateCode: "",
-          stateName: "",
-          city: "",
-          postalCode: "",
-          addressLine1: "",
-          addressLine2: "",
-          isDefault: false,
-        },
+    // An address saved before the Qatar format has no zone/street/building, so editing it
+    // starts those fields empty and the customer fills them in once.
+    defaultValues: {
+      label: initial?.label ?? "Home",
+      zone: initial?.zone ?? "",
+      street: initial?.street ?? "",
+      building: initial?.building ?? "",
+      unit: initial?.unit ?? "",
+      isDefault: initial?.isDefault ?? false,
+    },
   });
 
-  const countryCode = watch("countryCode");
   const label = watch("label");
   const isDefault = watch("isDefault");
 
@@ -126,51 +105,38 @@ export default function AddressForm({
         {errors.label && <p className="text-[11px] text-red-500 mt-1">{errors.label.message}</p>}
       </div>
 
-      {/* Country (searchable, all countries) */}
+      {/* Country — fixed: we deliver within Qatar only */}
       <div>
-        <label className={labelCls}>Country *</label>
-        <CountrySelect
-          value={countryCode}
-          invalid={!!errors.countryName || !!errors.countryCode}
-          onChange={({ code, name }) => {
-            set("countryCode", code);
-            set("countryName", name);
-          }}
-        />
-        {(errors.countryName || errors.countryCode) && <p className="text-[11px] text-red-500 mt-1">Country is required</p>}
+        <span className={labelCls}>Country</span>
+        <div aria-readonly="true" className={`${inputCls(false)} flex items-center gap-2 bg-[#F7F5F1] text-[#555] cursor-not-allowed`}>
+          <Flag code={ADDRESS_COUNTRY.code} /> {ADDRESS_COUNTRY.name}
+        </div>
       </div>
 
-      {/* State / City — typed manually */}
+      {/* Qatar national address — the numbers on the building's blue plate */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={labelCls}>State / Province</label>
-          <input {...register("stateName")} autoComplete="address-level1" aria-invalid={!!errors.stateName} placeholder="State / Province" className={inputCls(!!errors.stateName)} />
-          {errors.stateName && <p className="text-[11px] text-red-500 mt-1">{errors.stateName.message}</p>}
+          <label htmlFor="addr-zone" className={labelCls}>Zone *</label>
+          <input id="addr-zone" {...register("zone")} inputMode="numeric" maxLength={3} aria-invalid={!!errors.zone} placeholder="e.g. 66" className={inputCls(!!errors.zone)} />
+          {errors.zone && <p className="text-[11px] text-red-500 mt-1">{errors.zone.message}</p>}
         </div>
         <div>
-          <label className={labelCls}>City *</label>
-          <input {...register("city")} autoComplete="address-level2" aria-invalid={!!errors.city} placeholder="City" className={inputCls(!!errors.city)} />
-          {errors.city && <p className="text-[11px] text-red-500 mt-1">{errors.city.message}</p>}
+          <label htmlFor="addr-street" className={labelCls}>Street *</label>
+          <input id="addr-street" {...register("street")} autoComplete="address-line1" aria-invalid={!!errors.street} placeholder="e.g. 920" className={inputCls(!!errors.street)} />
+          {errors.street && <p className="text-[11px] text-red-500 mt-1">{errors.street.message}</p>}
+        </div>
+        <div>
+          <label htmlFor="addr-building" className={labelCls}>Building *</label>
+          <input id="addr-building" {...register("building")} aria-invalid={!!errors.building} placeholder="e.g. 12" className={inputCls(!!errors.building)} />
+          {errors.building && <p className="text-[11px] text-red-500 mt-1">{errors.building.message}</p>}
+        </div>
+        <div>
+          <label htmlFor="addr-unit" className={labelCls}>Unit</label>
+          <input id="addr-unit" {...register("unit")} autoComplete="address-line2" aria-invalid={!!errors.unit} placeholder="Apartment / villa no. (optional)" className={inputCls(!!errors.unit)} />
+          {errors.unit && <p className="text-[11px] text-red-500 mt-1">{errors.unit.message}</p>}
         </div>
       </div>
-
-      {/* Postal */}
-      <div className="sm:w-1/2 sm:pr-2">
-        <label className={labelCls}>Postal Code{isPostalRequired(countryCode) ? " *" : " (optional)"}</label>
-        <input {...register("postalCode")} autoComplete="postal-code" aria-invalid={!!errors.postalCode} placeholder={postalExample(countryCode)} className={inputCls(!!errors.postalCode)} />
-        {errors.postalCode && <p className="text-[11px] text-red-500 mt-1">{errors.postalCode.message}</p>}
-      </div>
-
-      {/* Address lines */}
-      <div>
-        <label className={labelCls}>Address Line 1 *</label>
-        <input {...register("addressLine1")} autoComplete="address-line1" aria-invalid={!!errors.addressLine1} placeholder="House / building, street" className={inputCls(!!errors.addressLine1)} />
-        {errors.addressLine1 && <p className="text-[11px] text-red-500 mt-1">{errors.addressLine1.message}</p>}
-      </div>
-      <div>
-        <label className={labelCls}>Address Line 2</label>
-        <input {...register("addressLine2")} autoComplete="address-line2" placeholder="Apartment, floor, landmark (optional)" className={inputCls(false)} />
-      </div>
+      <p className="-mt-2 text-[11px] text-[#8A8A8A]">You&apos;ll find these numbers on the blue plate outside your building.</p>
 
       <label className="flex items-center gap-2 text-[13px] text-[#555] cursor-pointer select-none">
         <input type="checkbox" checked={!!isDefault} onChange={(e) => set("isDefault", e.target.checked)} className="accent-black w-4 h-4" />

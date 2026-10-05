@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { publishChange } from '@/lib/live-sync';
-import { reviewListQuerySchema, reviewSchema } from '@/lib/reviews';
+import { reviewListQuerySchema, reviewSchema } from '@/lib/validations/review';
 import { isDbUnreachable, logDbError } from '@/lib/prisma-error';
 
 function fail(context: string, error: unknown) {

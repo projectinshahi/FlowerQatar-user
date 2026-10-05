@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/admin-guard";
-import { mapDbProductToStore } from "@/lib/store-products";
+import { getStoreProducts, mapDbProductToStore } from "@/lib/store-products";
 import type { Product } from "@/types";
 
 /*
@@ -12,15 +12,24 @@ import type { Product } from "@/types";
 
 /** The user's wishlist as storefront products, newest first. Unpublished products are hidden. */
 async function wishlistPayload(userId: string): Promise<{ items: Product[] }> {
-  const rows = await prisma.$queryRaw<{ productId: string }[]>`
-    SELECT "productId" FROM "WishlistItem" WHERE "userId" = ${userId}::uuid ORDER BY "createdAt" DESC`;
+  // The products come from the cached published catalogue (same mapper, purged on every product
+  // write), so only the wishlist ids are read from the database.
+  const [rows, catalogue] = await Promise.all([
+    prisma.$queryRaw<{ productId: string }[]>`
+      SELECT "productId" FROM "WishlistItem" WHERE "userId" = ${userId}::uuid ORDER BY "createdAt" DESC`,
+    getStoreProducts(),
+  ]);
   if (!rows.length) return { items: [] };
-  const products = await prisma.product.findMany({
-    where: { id: { in: rows.map((r) => r.productId) }, status: "PUBLISHED" },
-    include: { subcategory: true },
-  });
-  const byId = new Map(products.map((p) => [p.id, p]));
-  return { items: rows.flatMap((r) => (byId.has(r.productId) ? [mapDbProductToStore(byId.get(r.productId))] : [])) };
+  let byId = new Map<string, Product>(catalogue.map((p) => [p.id, p]));
+  // getStoreProducts returns [] when its read fails; read these products directly instead.
+  if (!catalogue.length) {
+    const products = await prisma.product.findMany({
+      where: { id: { in: rows.map((r) => r.productId) }, status: "PUBLISHED" },
+      include: { subcategory: true },
+    });
+    byId = new Map(products.map((p) => [p.id, mapDbProductToStore(p)]));
+  }
+  return { items: rows.flatMap((r) => byId.get(r.productId) ?? []) };
 }
 
 function fail(e: unknown, fallback: string) {
@@ -44,16 +53,19 @@ export async function GET() {
 // out-of-order requests converge on what the user last asked for. Returns the full wishlist.
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
+    const body = await req.json().catch(() => null);
+    const slug = typeof body?.slug === "string" ? body.slug.trim() : "";
+    // Independent reads, issued together; the checks below keep their original order.
+    const [user, product] = await Promise.all([
+      getCurrentUser(),
+      slug ? prisma.product.findUnique({ where: { slug }, select: { id: true } }) : null,
+    ]);
     if (!user) {
       return NextResponse.json({ success: false, error: "Please sign in to use your wishlist." }, { status: 401 });
     }
-    const body = await req.json().catch(() => null);
-    const slug = typeof body?.slug === "string" ? body.slug.trim() : "";
     if (!slug || typeof body?.wishlisted !== "boolean") {
       return NextResponse.json({ success: false, error: "Invalid wishlist request" }, { status: 400 });
     }
-    const product = await prisma.product.findUnique({ where: { slug }, select: { id: true } });
     if (!product) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
     }

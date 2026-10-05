@@ -65,10 +65,11 @@ export async function createPendingOrder(userId: string, input: PlaceOrderInput)
    * turn, on the path where a customer is waiting to see their order confirmed. The checks
    * below still run in their original order, so the error a customer sees is unchanged.
    */
-  const [cart, shippingConfig, membership] = await Promise.all([
+  const [cart, shippingConfig, membership, wallet] = await Promise.all([
     getCartPayload(userId),
     loadShippingConfig(),
     pointsRequested > 0 ? getActiveMembership(userId) : null,
+    pointsRequested > 0 ? getWalletView(userId) : null,
   ]);
   if (cart.items.length === 0) throw new OrderError("Your cart is empty");
 
@@ -81,39 +82,38 @@ export async function createPendingOrder(userId: string, input: PlaceOrderInput)
    * still prices such a line from its stored selection, so without this check the order was
    * placed anyway (an unpublished product sold, or a foreign-key failure for a deleted one).
    * The live notice on the product page is only a courtesy; this is the enforcement.
+   *
+   * Read alongside the coupon check, which is read-only and needs only the same cart lines.
    */
   const productIds = [...new Set(lineItems.map((i) => i.productId as string))];
-  if (productIds.length) {
-    const available = await prisma.product.findMany({
-      where: { id: { in: productIds }, status: "PUBLISHED" },
-      select: { id: true },
-    });
-    const ok = new Set(available.map((p) => p.id));
-    const gone = lineItems.find((i) => !ok.has(i.productId as string));
-    if (gone) {
-      throw new OrderError(
-        `"${gone.product.name}" is no longer available. Please remove it from your cart to continue.`,
-        409
-      );
-    }
+  const couponItems = lineItems.map((i) => ({
+    productId: i.productId as string,
+    quantity: i.quantity,
+    price: i.unitPrice,
+  }));
+  const [available, couponResult] = await Promise.all([
+    productIds.length
+      ? prisma.product.findMany({ where: { id: { in: productIds }, status: "PUBLISHED" }, select: { id: true } })
+      : [],
+    input.couponCode ? validateCoupon(input.couponCode, couponItems, userId) : null,
+  ]);
+  const ok = new Set(available.map((p) => p.id));
+  const gone = lineItems.find((i) => !ok.has(i.productId as string));
+  if (gone) {
+    throw new OrderError(
+      `"${gone.product.name}" is no longer available. Please remove it from your cart to continue.`,
+      409
+    );
   }
 
   // Coupon — re-validated server-side; ignored if no longer valid (order still proceeds).
   let couponDiscount = 0;
   let freeDelivery = false;
   let couponId: string | null = null;
-  if (input.couponCode) {
-    const couponItems = lineItems.map((i) => ({
-      productId: i.productId as string,
-      quantity: i.quantity,
-      price: i.unitPrice,
-    }));
-    const result = await validateCoupon(input.couponCode, couponItems, userId);
-    if (result.valid) {
-      couponDiscount = result.discount;
-      freeDelivery = result.freeDelivery;
-      couponId = result.couponId;
-    }
+  if (couponResult?.valid) {
+    couponDiscount = couponResult.discount;
+    freeDelivery = couponResult.freeDelivery;
+    couponId = couponResult.couponId;
   }
 
   /*
@@ -143,8 +143,7 @@ export async function createPendingOrder(userId: string, input: PlaceOrderInput)
    */
   if (pointsRequested > 0) {
     if (!membership) throw new OrderError("An active membership is required to redeem points");
-    const wallet = await getWalletView(userId);
-    if (pointsRequested > wallet.availablePoints) {
+    if (pointsRequested > (wallet?.availablePoints ?? 0)) {
       throw new OrderError("You don't have enough points");
     }
   }

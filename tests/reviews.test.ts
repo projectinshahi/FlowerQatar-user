@@ -8,15 +8,8 @@
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  REVIEW_SORTS,
-  filledStars,
-  relativeTime,
-  reviewPatchSchema,
-  reviewSchema,
-  sortReviews,
-  summarise,
-} from '../lib/reviews';
+import { REVIEW_SORTS, filledStars, relativeTime, sortReviews, summarise } from '../lib/reviews';
+import { reviewPatchSchema, reviewSchema } from '../lib/validations/review';
 
 const PRODUCT = '0b3f5c2e-1a4d-4f8b-9c1e-2d3a4b5c6d7e';
 const base = { productId: PRODUCT, authorName: 'Sarah L.', rating: 5, content: 'Lovely.' };

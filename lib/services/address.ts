@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api";
-import { MAX_ADDRESSES, type AddressInput, type Address } from "@/lib/validations/address";
+import { ADDRESS_COUNTRY, MAX_ADDRESSES, type AddressInput, type Address } from "@/lib/validations/address";
 
 /**
  * Address business logic. Addresses are stored as a JSON array on `User.addresses`
@@ -47,14 +47,12 @@ function toRecord(id: string, data: AddressInput, isDefault: boolean, createdAt?
   return {
     id,
     label: data.label,
-    countryCode: data.countryCode,
-    countryName: data.countryName,
-    stateCode: data.stateCode ?? null,
-    stateName: data.stateName ?? null,
-    city: data.city,
-    postalCode: data.postalCode ?? "",
-    addressLine1: data.addressLine1,
-    addressLine2: data.addressLine2 ?? null,
+    countryCode: ADDRESS_COUNTRY.code,
+    countryName: ADDRESS_COUNTRY.name,
+    zone: data.zone,
+    street: data.street,
+    building: data.building,
+    unit: data.unit ?? null,
     isDefault,
     createdAt: createdAt ?? now,
     updatedAt: now,

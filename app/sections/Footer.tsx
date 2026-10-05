@@ -1,4 +1,3 @@
-'use client'
 import Link from 'next/link'
 import Image from 'next/image'
 import { shopCategoryHref } from '@/lib/category-config'

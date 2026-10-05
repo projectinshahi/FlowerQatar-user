@@ -25,12 +25,17 @@ export async function expireStaleMemberships(userId: string): Promise<void> {
 
 /** The user's current ACTIVE membership (with plan), or null. Expires stale ones first. */
 export async function getActiveMembership(userId: string) {
-  await expireStaleMemberships(userId);
-  return prisma.membership.findFirst({
-    where: { userId, status: "ACTIVE", expiresAt: { gt: new Date() } },
-    include: { plan: true },
-    orderBy: { expiresAt: "desc" },
-  });
+  // Run together: the read only matches rows that have not expired, which the update never
+  // touches, so the result is the same as expiring first.
+  const [, membership] = await Promise.all([
+    expireStaleMemberships(userId),
+    prisma.membership.findFirst({
+      where: { userId, status: "ACTIVE", expiresAt: { gt: new Date() } },
+      include: { plan: true },
+      orderBy: { expiresAt: "desc" },
+    }),
+  ]);
+  return membership;
 }
 
 /**

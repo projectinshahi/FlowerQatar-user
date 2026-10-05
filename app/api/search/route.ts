@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { mapDbProductToStore } from "@/lib/store-products";
+import { getStoreProducts, mapDbProductToStore } from "@/lib/store-products";
 
 /**
  * GET /api/search?q=...  — searches published products by name, description and
@@ -13,23 +13,33 @@ export async function GET(req: Request) {
   if (q.length < 1 || q.length > 100) return NextResponse.json({ success: true, data: [] });
 
   try {
-    const rows = await prisma.product.findMany({
+    const query = {
       where: {
-        status: "PUBLISHED",
+        status: "PUBLISHED" as const,
         OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { shortDescription: { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } },
-          { sku: { contains: q, mode: "insensitive" } },
-          { subcategory: { name: { contains: q, mode: "insensitive" } } },
+          { name: { contains: q, mode: "insensitive" as const } },
+          { shortDescription: { contains: q, mode: "insensitive" as const } },
+          { description: { contains: q, mode: "insensitive" as const } },
+          { sku: { contains: q, mode: "insensitive" as const } },
+          { subcategory: { name: { contains: q, mode: "insensitive" as const } } },
         ],
       },
-      include: { subcategory: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" as const },
       take: 12,
-    });
-
-    return NextResponse.json({ success: true, data: rows.map(mapDbProductToStore) });
+    };
+    // The database only picks the matching ids; the products themselves come from the cached
+    // catalogue (same mapper), so each keystroke is one small query instead of full rows.
+    const [hits, catalogue] = await Promise.all([
+      prisma.product.findMany({ ...query, select: { id: true } }),
+      getStoreProducts(),
+    ]);
+    // getStoreProducts returns [] when its read fails; fall back to reading the rows.
+    if (!catalogue.length && hits.length) {
+      const rows = await prisma.product.findMany({ ...query, include: { subcategory: true } });
+      return NextResponse.json({ success: true, data: rows.map(mapDbProductToStore) });
+    }
+    const byId = new Map(catalogue.map((p) => [p.id, p]));
+    return NextResponse.json({ success: true, data: hits.flatMap((h) => byId.get(h.id) ?? []) });
   } catch (e) {
     console.error("[api/search]", e);
     return NextResponse.json({ success: false, error: "Search failed" }, { status: 500 });

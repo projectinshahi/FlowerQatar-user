@@ -49,8 +49,8 @@ model User {
   // Shape: { id, productId, variant, quantity, unitPrice, meta }[]
   cart                Json                       @default("[]")
   // Saved addresses stored as a JSON array on the user (no separate table).
-  // Shape: { id, addressType, fullName, addressLine1, addressLine2?, city, state,
-  //   postalCode, country, isDefault }[] — exactly one item has isDefault=true.
+  // Shape: { id, label, countryCode: "QA", countryName, zone, street, building, unit?,
+  //   isDefault }[] — exactly one item has isDefault=true. See lib/validations/address.ts.
   addresses           Json                       @default("[]")
   // GDPR consent flags: { marketingEmails, promotionalNotifications, analyticsCookies, personalization }.
   // Missing keys fall back to defaults in lib/gdpr.ts.

@@ -42,18 +42,6 @@ export async function getReportStats(preset?: string): Promise<ActionResult<Repo
     const inRange = { gte: range.start, lt: range.end };
     const notCancelled = { not: "CANCELLED" as const };
 
-    // Orders in range (minimal columns) — drives KPIs, trend, delivery, repeat rate.
-    const orders = await prisma.order.findMany({
-      where: { createdAt: inRange },
-      select: { totalAmount: true, status: true, createdAt: true, userId: true },
-    });
-
-    // Line items in range (non-cancelled) — product performance + units sold.
-    const items = await prisma.orderItem.findMany({
-      where: { order: { createdAt: inRange, status: notCancelled } },
-      select: { productId: true, quantity: true, price: true, product: { select: { name: true } } },
-    });
-
     // Fixed period figures (independent of the selected range).
     const now = new Date();
     const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -62,7 +50,26 @@ export async function getReportStats(preset?: string): Promise<ActionResult<Repo
     const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
     const sumSince = async (since: Date) =>
       n((await prisma.order.aggregate({ _sum: { totalAmount: true }, where: { status: notCancelled, createdAt: { gte: since } } }))._sum.totalAmount);
-    const [today, week, month, year] = await Promise.all([sumSince(startOfDay), sumSince(weekAgo), sumSince(startOfMonth), sumSince(startOfYear)]);
+
+    // Every read below is independent, so they go out together; only the repeat-rate groupBy
+    // further down has to wait for the orders.
+    const [orders, items, today, week, month, year, newCustomers] = await Promise.all([
+      // Orders in range (minimal columns) — drives KPIs, trend, delivery, repeat rate.
+      prisma.order.findMany({
+        where: { createdAt: inRange },
+        select: { totalAmount: true, status: true, createdAt: true, userId: true },
+      }),
+      // Line items in range (non-cancelled) — product performance + units sold.
+      prisma.orderItem.findMany({
+        where: { order: { createdAt: inRange, status: notCancelled } },
+        select: { productId: true, quantity: true, price: true, product: { select: { name: true } } },
+      }),
+      sumSince(startOfDay),
+      sumSince(weekAgo),
+      sumSince(startOfMonth),
+      sumSince(startOfYear),
+      prisma.user.count({ where: { createdAt: inRange } }),
+    ]);
 
     // KPIs.
     const live = orders.filter((o) => o.status !== "CANCELLED");
@@ -121,7 +128,6 @@ export async function getReportStats(preset?: string): Promise<ActionResult<Repo
       ? await prisma.order.groupBy({ by: ["userId"], where: { userId: { in: idList }, status: notCancelled }, _count: { _all: true } })
       : [];
     const returning = allTime.filter((g) => g._count._all > 1).length;
-    const newCustomers = await prisma.user.count({ where: { createdAt: inRange } });
     const customers = {
       total: custIds.size,
       new: newCustomers,

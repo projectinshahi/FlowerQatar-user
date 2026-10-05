@@ -7,9 +7,9 @@ import { errMsg } from "@/lib/error";
 import { FREQUENCIES } from "@/lib/validations/subscription";
 import { generateDeliveryDates, frequencyLabel } from "@/lib/services/subscription/schedule";
 import { formatNumber, formatUtcDate } from "@/lib/utils";
+import { formatAddress, type Address as AddressItem } from "@/lib/validations/address";
 
 interface CatalogItem { id: string; name: string; price: number; image: string | null }
-interface AddressItem { id: string; label: string; city: string; countryName: string; isDefault: boolean }
 
 const FREQ_LABEL: Record<string, string> = {
   DAILY: "Every day",
@@ -224,7 +224,7 @@ export default function CreateSubscriptionModal({
                     <div>
                       <label className={labelCls}>Deliver to</label>
                       <select className={inputCls} value={addressId} onChange={(e) => setAddressId(e.target.value)}>
-                        {addresses.map((a) => <option key={a.id} value={a.id}>{a.label} — {a.city}, {a.countryName}{a.isDefault ? " (default)" : ""}</option>)}
+                        {addresses.map((a) => <option key={a.id} value={a.id}>{a.label} — {formatAddress(a)}{a.isDefault ? " (default)" : ""}</option>)}
                       </select>
                     </div>
                   )}
