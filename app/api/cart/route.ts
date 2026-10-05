@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActiveUserId, getCartPayload, clearCart, emptyCart, CartError } from "@/lib/services/cart";
+import { getActiveUserId, getSessionCart, clearCart, emptyCart, CartError } from "@/lib/services/cart";
 
 function fail(e: any, fallback: string) {
   const status = e instanceof CartError ? e.status : 500;
@@ -11,9 +11,7 @@ function fail(e: any, fallback: string) {
 // so the storefront can load a guest cart state without console/network errors.
 export async function GET() {
   try {
-    const userId = await getActiveUserId();
-    const data = userId ? await getCartPayload(userId) : emptyCart();
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: await getSessionCart() });
   } catch (e) {
     return fail(e, "Failed to load cart");
   }

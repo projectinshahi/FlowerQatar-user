@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Heart, Minus, Plus, ShoppingCart, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import LuxuryImage from '@/components/LuxuryImage';
-import { MAX_CART_QUANTITY } from '@/lib/validations/cart';
+import { MAX_CART_QUANTITY } from '@/lib/cart-limits';
 import type { Product } from '@/types';
 import { blushingFontVars } from './fonts';
 import { ColorSwatch, GoldButton, SOFT_GOLD, StarRating } from './ui';

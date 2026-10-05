@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Pencil, Trash2, Star } from "lucide-react";
-import type { Address } from "@/lib/validations/address";
+import { formatAddress, type Address } from "@/lib/validations/address";
 import Flag from "./Flag";
 import DefaultBadge from "./DefaultBadge";
 import LabelGlyph from "./LabelGlyph";
@@ -20,8 +20,6 @@ export default function AddressCard({
   onDelete: () => void;
   onSetDefault: () => void;
 }) {
-  const line2 = [address.city, address.stateName].filter(Boolean).join(", ");
-
   return (
     <motion.div
       layout
@@ -39,12 +37,7 @@ export default function AddressCard({
         {address.isDefault && <DefaultBadge />}
       </div>
 
-      <p className="text-[13px] text-[#555] leading-relaxed">
-        {address.addressLine1}
-        {address.addressLine2 ? `, ${address.addressLine2}` : ""}
-        <br />
-        {line2} {address.postalCode}
-      </p>
+      <p className="text-[13px] text-[#555] leading-relaxed">{formatAddress(address)}</p>
       <p className="flex items-center gap-2 text-[13px] text-primary font-medium mt-2">
         <Flag code={address.countryCode} /> {address.countryName}
       </p>

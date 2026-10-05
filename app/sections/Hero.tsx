@@ -45,7 +45,7 @@ export default function Hero() {
   const slide = slides[currentIndex]
 
   return (
-    <section className="relative h-[75vh] md:h-[95vh] lg:h-screen min-h-[600px] overflow-hidden">
+    <section className="sticky top-0 h-[75vh] md:h-[95vh] lg:h-screen min-h-[600px] overflow-hidden z-10">
       {/* Background Video Container */}
       <div className="absolute inset-0 overflow-hidden bg-secondary z-0">
           <iframe

@@ -7,6 +7,7 @@ import { Product } from '../types';
 import { ROSE_COLORS, BOX_COLORS } from '../data/products';
 import { track } from '../lib/analytics';
 import { syncToggle } from '../lib/wishlist';
+import { addToast } from '../lib/toasts';
 import type { GreetingFont } from '../lib/validations/cart';
 
 export interface CartItem {
@@ -32,12 +33,6 @@ export interface CartItem {
   calculatedPrice?: number;
 }
 
-export interface Toast {
-  id: string;
-  message: string;
-  type: 'success' | 'info' | 'error';
-}
-
 export interface CustomArrangementState {
   step: number;
   boxShape: 'Round' | 'Square' | 'Heart';
@@ -58,7 +53,6 @@ interface AppContextType {
   isWishlistOpen: boolean;
   isAccountOpen: boolean;
   isSearchOpen: boolean;
-  toasts: Toast[];
   customizer: CustomArrangementState;
   user: any | null;
 
@@ -84,8 +78,8 @@ interface AppContextType {
   updateCustomizer: (updates: Partial<CustomArrangementState>) => void;
   resetCustomizer: () => void;
 
+  /** Lives in lib/toasts; exposed here so components keep calling useApp().addToast. */
   addToast: (message: string, type?: 'success' | 'info' | 'error') => void;
-  removeToast: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -101,12 +95,6 @@ const defaultCustomizer: CustomArrangementState = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * How long a toast stays up before it dismisses itself. One value for every surface — the
- * cream storefront and the Blushing Blooms pages share this provider and its ToastContainer.
- */
-export const TOAST_DURATION_MS = 3000;
 
 /** Stable key for de-duping identical selections in the optimistic UI. */
 const dedupKey = (i: Omit<CartItem, 'id'>) => {
@@ -155,7 +143,6 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const [isWishlistOpen, setWishlistOpen] = useState(false);
   const [isAccountOpen, setAccountOpen] = useState(false);
   const [isSearchOpen, setSearchOpen] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [customizer, setCustomizer] = useState<CustomArrangementState>(defaultCustomizer);
   const [user, setUser] = useState<any | null>(null);
 
@@ -172,14 +159,6 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
    * that transition matches and is skipped while a real sign-in or sign-out still does not.
    */
   const loadedForUserId = useRef<string | null | undefined>(undefined);
-
-  const addToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'success') => {
-    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), TOAST_DURATION_MS);
-  }, []);
-
-  const removeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
   /* ─────────────── Cart: server-backed ─────────────── */
   const refreshCart = useCallback(async () => {
@@ -458,7 +437,6 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         isWishlistOpen,
         isAccountOpen,
         isSearchOpen,
-        toasts,
         customizer,
         user,
         setUser,
@@ -478,7 +456,6 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
         updateCustomizer,
         resetCustomizer,
         addToast,
-        removeToast,
       }}
     >
       {children}

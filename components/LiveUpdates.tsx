@@ -2,7 +2,6 @@
 
 import { startTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { onLive, onResync } from '@/lib/live-client';
 import { shouldRefresh } from '@/lib/live-events';
 
 /**
@@ -15,12 +14,17 @@ import { shouldRefresh } from '@/lib/live-events';
  *
  * A hidden tab does no work: it remembers that it is behind and refreshes once when it is
  * shown again. Renders nothing.
+ *
+ * The Socket.IO client is imported on mount rather than at the top of the file: this
+ * component is on every page, so a static import put it in every page's first download.
  */
 export default function LiveUpdates() {
   const router = useRouter();
 
   useEffect(() => {
     let behind = false;
+    let unsubscribe: (() => void) | null = null;
+    let disposed = false;
 
     const refresh = () => {
       if (document.hidden) {
@@ -31,19 +35,26 @@ export default function LiveUpdates() {
       startTransition(() => router.refresh());
     };
 
-    const offLive = onLive((event) => {
-      if (shouldRefresh(event, window.location.pathname, window.location.search)) refresh();
+    import('@/lib/live-client').then(({ onLive, onResync }) => {
+      if (disposed) return;
+      const offLive = onLive((event) => {
+        if (shouldRefresh(event, window.location.pathname, window.location.search)) refresh();
+      });
+      // Missed events while disconnected: bring the page up to date once.
+      const offResync = onResync(refresh);
+      unsubscribe = () => {
+        offLive();
+        offResync();
+      };
     });
-    // Missed events while disconnected: bring the page up to date once.
-    const offResync = onResync(refresh);
     const onVisible = () => {
       if (!document.hidden && behind) refresh();
     };
     document.addEventListener('visibilitychange', onVisible);
 
     return () => {
-      offLive();
-      offResync();
+      disposed = true;
+      unsubscribe?.();
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [router]);

@@ -55,7 +55,7 @@ function NewArrivalCard({ product }: { product: Product }) {
             alt={`${product.name} alternate view`}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100 scale-105"
+            className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100 scale-105 [@media(hover:none)]:hidden"
           />
         </Link>
         {product.badge && (
@@ -137,11 +137,14 @@ export default function NewArrivals({ items }: { items?: Product[] }) {
   const measure = useCallback((track: HTMLDivElement | null) => {
     if (!track) return
     const max = track.scrollWidth - track.clientWidth
-    setEdges({
-      canScrollLeft: track.scrollLeft > 2,
-      // `max <= 2` means everything already fits, so there is nothing to scroll to.
-      canScrollRight: max > 2 && track.scrollLeft < max - 2,
-    })
+    const canScrollLeft = track.scrollLeft > 2
+    // `max <= 2` means everything already fits, so there is nothing to scroll to.
+    const canScrollRight = max > 2 && track.scrollLeft < max - 2
+    // Runs on every scroll event: keep the same object unless an edge changed, so React skips
+    // the re-render while the row is being swiped.
+    setEdges((p) =>
+      p.canScrollLeft === canScrollLeft && p.canScrollRight === canScrollRight ? p : { canScrollLeft, canScrollRight }
+    )
   }, [])
 
   /** Callback ref: measures as soon as the row is in the DOM. */

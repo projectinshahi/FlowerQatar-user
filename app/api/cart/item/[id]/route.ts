@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateItemSchema } from "@/lib/validations/cart";
-import { resolveActiveUserId, updateItemQuantity, removeItem, CartError } from "@/lib/services/cart";
+import { resolveSessionUserId, updateItemQuantity, removeItem, CartError } from "@/lib/services/cart";
 
 function fail(e: any, fallback: string) {
   const status = e instanceof CartError ? e.status : 500;
@@ -17,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const cartId = await resolveActiveUserId();
+    const cartId = await resolveSessionUserId();
     const data = await updateItemQuantity(cartId, id, parsed.data.quantity);
     return NextResponse.json({ success: true, data });
   } catch (e) {
@@ -29,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const cartId = await resolveActiveUserId();
+    const cartId = await resolveSessionUserId();
     const data = await removeItem(cartId, id);
     return NextResponse.json({ success: true, data });
   } catch (e) {

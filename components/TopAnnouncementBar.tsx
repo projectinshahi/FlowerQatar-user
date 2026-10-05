@@ -27,18 +27,21 @@ export default function TopAnnouncementBar() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const pathname = usePathname()
 
+  const hidden = pathname === '/'
   useEffect(() => {
+    // No ticking while the bar is not shown: on the home page it would re-render for nothing.
+    if (hidden) return
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % slides.length)
     }, 4000)
     return () => clearInterval(timer)
-  }, [])
+  }, [hidden])
 
   const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % slides.length)
   const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length)
 
   // Hide on homepage where the Hero section already has this bar at the bottom
-  if (pathname === '/') {
+  if (hidden) {
     return null
   }
 

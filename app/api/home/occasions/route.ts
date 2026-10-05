@@ -4,9 +4,8 @@ import { getActiveOccasions } from '@/lib/occasions';
 /**
  * Public: active occasions in display order, each with a trimmed product payload.
  *
- * The home page reads `getActiveOccasions()` directly in a Server Component (no HTTP
- * hop); this endpoint exists for client/3rd-party consumers and returns only the
- * fields a listing needs.
+ * Not called by the storefront itself; it exists for client/3rd-party consumers and returns
+ * only the fields a listing needs.
  *
  * `price` is always the list price and `salePrice` is the discounted one (or null) —
  * the store mapper collapses those into price/originalPrice, so we invert it here.

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isValidDeliveryDate, isValidSlot } from "@/lib/delivery";
+import { MAX_CART_QUANTITY } from "@/lib/cart-limits";
 
 /**
  * Selection carries the raw choices. For catalog products it's only used as a
@@ -73,8 +74,6 @@ export const cartSelectionSchema = z
   .optional()
   .nullable();
 
-/** Per-line quantity ceiling. Exported so the UI's stepper cannot drift from the server bound. */
-export const MAX_CART_QUANTITY = 99;
 
 export const addItemSchema = z.object({
   productId: z.string().uuid().optional().nullable(),

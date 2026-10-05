@@ -10,7 +10,6 @@ import LuxuryImage from './LuxuryImage';
 interface ProductCardProps {
   product: Product;
   onQuickView?: (product: Product) => void;
-  priority?: boolean;
   className?: string;
   /** Wishlist page: a quick add moves the product to the cart, so drop the heart too. */
   moveToCart?: boolean;
@@ -21,7 +20,7 @@ interface ProductCardProps {
   showColors?: boolean;
 }
 
-export default function ProductCard({ product, onQuickView, priority = false, className = '', moveToCart = false, showColors }: ProductCardProps) {
+export default function ProductCard({ product, onQuickView, className = '', moveToCart = false, showColors }: ProductCardProps) {
   const { wishlist, toggleWishlist, addToCart, user } = useApp();
   const [hovered, setHovered] = useState(false);
 
@@ -78,20 +77,21 @@ export default function ProductCard({ product, onQuickView, priority = false, cl
               alt={product.name}
               fill
               className={`object-cover transition-opacity duration-700 ${hoverImage && hovered ? 'opacity-0' : 'opacity-100'}`}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              priority={priority}
+              // Every grid using this card is 2 columns below lg and 3 from lg up.
+              sizes="(max-width: 1023px) 50vw, 33vw"
             />
           </div>
 
-          {/* Alternate Image on Hover */}
+          {/* Alternate Image on Hover. Not rendered on touch screens, which cannot hover — so
+              phones do not download a second image per card. */}
           {hoverImage && (
-            <div className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${hovered ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`absolute inset-0 transition-opacity duration-700 ease-in-out [@media(hover:none)]:hidden ${hovered ? 'opacity-100' : 'opacity-0'}`}>
               <LuxuryImage
                 src={hoverImage}
                 alt={`${product.name} alternate`}
                 fill
                 className="object-cover"
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                sizes="(max-width: 1023px) 50vw, 33vw"
               />
             </div>
           )}

@@ -175,11 +175,14 @@ export default function ProductDetailClient({
   const measureRelated = React.useCallback((track: HTMLDivElement | null) => {
     if (!track) return
     const max = track.scrollWidth - track.clientWidth
-    setRelatedEdges({
-      canScrollLeft: track.scrollLeft > 2,
-      // `max <= 2` means everything already fits, so there is nothing to scroll to.
-      canScrollRight: max > 2 && track.scrollLeft < max - 2,
-    })
+    const canScrollLeft = track.scrollLeft > 2
+    // `max <= 2` means everything already fits, so there is nothing to scroll to.
+    const canScrollRight = max > 2 && track.scrollLeft < max - 2
+    // Runs on every scroll event: keep the same object unless an edge changed, so React skips
+    // re-rendering this whole page while the row is being swiped.
+    setRelatedEdges((p) =>
+      p.canScrollLeft === canScrollLeft && p.canScrollRight === canScrollRight ? p : { canScrollLeft, canScrollRight }
+    )
   }, [])
 
   /**
@@ -825,7 +828,7 @@ export default function ProductDetailClient({
                         alt={`${item.name} alternate view`}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-                        className="object-cover scale-105 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                        className="object-cover scale-105 opacity-0 transition-opacity duration-500 group-hover:opacity-100 [@media(hover:none)]:hidden"
                       />
                     )}
                   </div>

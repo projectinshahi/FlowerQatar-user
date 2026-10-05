@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { ACTIVE_USER, getCurrentUser, getSessionUserId } from "@/lib/admin-guard";
+import { MAX_CART_QUANTITY } from "@/lib/cart-limits";
 import type { AddItemInput, CartSelection } from "@/lib/validations/cart";
 import { unstable_cache } from "next/cache";
 import { NO_SHIPPING, calculateShipping, type ShippingConfig } from "@/lib/shipping";
@@ -14,7 +15,6 @@ import { resolveExtraPrices } from "@/lib/gifts";
 // screen had no effect on what customers were actually charged.
 /** Qatar has no default sales tax. Shared with order placement so cart and order agree. */
 export const TAX_RATE = 0;
-const MAX_QTY = 99;
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -130,9 +130,10 @@ function resolvePrice(product: any, item: { variantId?: string | null; colorId?:
 
 /* ───────────────────── User.cart read / write ───────────────────── */
 
+/** Doubles as the auth check: an inactive, blocked or deleted account reads as signed out. */
 async function readCart(userId: string): Promise<StoredItem[]> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { cart: true } });
-  if (!user) throw new CartError("User not found", 404);
+  const user = await prisma.user.findFirst({ where: { id: userId, ...ACTIVE_USER }, select: { cart: true } });
+  if (!user) throw new CartError("Please sign in to use your cart.", 401);
   return normalize(user.cart);
 }
 
@@ -375,10 +376,26 @@ async function saveAndPrice(userId: string, items: StoredItem[]): Promise<CartPa
 
 /* ───────────────────── Auth ───────────────────── */
 
-export async function resolveActiveUserId(): Promise<string> {
-  const user = await getCurrentUser();
-  if (!user) throw new CartError("Please sign in to use your cart.", 401);
-  return user.id;
+/**
+ * The session's user id, without a database read. Only for operations that go on to call
+ * readCart, which rejects inactive accounts — so the auth check and the cart load are one query.
+ */
+export async function resolveSessionUserId(): Promise<string> {
+  const userId = await getSessionUserId();
+  if (!userId) throw new CartError("Please sign in to use your cart.", 401);
+  return userId;
+}
+
+/** The signed-in user's cart, or an empty one for guests and inactive accounts. One read. */
+export async function getSessionCart(): Promise<CartPayload> {
+  const userId = await getSessionUserId();
+  if (!userId) return emptyCart();
+  try {
+    return await getCartPayload(userId);
+  } catch (e) {
+    if (e instanceof CartError && e.status === 401) return emptyCart();
+    throw e;
+  }
 }
 
 /** Non-throwing variant: the current user's id, or null for guests. */
@@ -437,7 +454,7 @@ export async function addItem(userId: string, dto: AddItemInput): Promise<CartPa
     productId: dto.productId ?? null,
     variantId: dto.variantId ?? null,
     colorId: dto.colorId ?? null,
-    quantity: Math.min(MAX_QTY, dto.quantity),
+    quantity: Math.min(MAX_CART_QUANTITY, dto.quantity),
     unitPrice,
     // Store the gifts with DB names/prices, so the saved cart never holds client figures.
     selection: dto.selection
@@ -445,7 +462,7 @@ export async function addItem(userId: string, dto: AddItemInput): Promise<CartPa
       : null,
   };
   const idx = items.findIndex((i) => dedupKey(i) === dedupKey(incoming));
-  if (idx > -1) items[idx].quantity = Math.min(MAX_QTY, items[idx].quantity + dto.quantity);
+  if (idx > -1) items[idx].quantity = Math.min(MAX_CART_QUANTITY, items[idx].quantity + dto.quantity);
   else items.push(incoming);
 
   return saveAndPrice(userId, items);
@@ -456,7 +473,7 @@ export async function updateItemQuantity(userId: string, itemId: string, quantit
   const item = items.find((i) => i.id === itemId);
   if (!item) throw new CartError("Cart item not found", 404);
   if (quantity <= 0) items = items.filter((i) => i.id !== itemId);
-  else item.quantity = Math.min(MAX_QTY, quantity);
+  else item.quantity = Math.min(MAX_CART_QUANTITY, quantity);
   return saveAndPrice(userId, items);
 }
 

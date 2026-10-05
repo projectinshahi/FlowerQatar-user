@@ -29,6 +29,19 @@ export interface AuthUser {
  */
 export const getCurrentUser = cache(loadCurrentUser);
 
+/** Prisma filter for an account that may use the site. Mirrors the check in loadCurrentUser. */
+export const ACTIVE_USER = { isActive: true, isBlocked: false, isDeleted: false } as const;
+
+/**
+ * The user id from the signed session cookie — no database read, so NOT proof the account is
+ * still active. Callers must filter their own query with ACTIVE_USER, which lets one read do
+ * both the auth check and the fetch.
+ */
+export async function getSessionUserId(): Promise<string | null> {
+  const token = (await cookies()).get("session")?.value;
+  return (token && verifyToken(token)?.userId) || null;
+}
+
 /**
  * The uncached read. Every call site goes through the cache() wrapper above, which dedupes
  * within a single request — a layout, its page, and a server action asking "who is signed in?"
@@ -36,12 +49,8 @@ export const getCurrentUser = cache(loadCurrentUser);
  * per authenticated page.
  */
 async function loadCurrentUser(): Promise<AuthUser | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
-
-  const payload = verifyToken(token);
-  if (!payload?.userId) return null;
+  const userId = await getSessionUserId();
+  if (!userId) return null;
 
   /*
    * Retried on connection failure only. This one read gates every admin route, so a suspended
@@ -51,7 +60,7 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
    */
   const user = await retryOnUnreachable(() =>
     prisma.user.findUnique({
-    where: { id: payload.userId },
+    where: { id: userId },
     select: {
       id: true,
       role: true,

@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useApp } from '../context/AppContext';
+import { getServerToasts, getToasts, removeToast, subscribeToasts } from '../lib/toasts';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 /**
@@ -15,7 +15,7 @@ import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
  * the shared header and footer, since this container is mounted outside the page's subtree.
  */
 export default function ToastContainer() {
-  const { toasts, removeToast } = useApp();
+  const toasts = useSyncExternalStore(subscribeToasts, getToasts, getServerToasts);
 
   const getIcon = (type: string) => {
     switch (type) {

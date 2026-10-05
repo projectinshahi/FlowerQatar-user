@@ -7,7 +7,11 @@ import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 import { useDialogA11y } from '../../../hooks/useDialogA11y';
 import LuxuryImage from '../../../components/LuxuryImage';
 import ProductCard from '../../../components/ProductCard';
-import QuickViewModal from '../../../components/QuickViewModal';
+import dynamic from 'next/dynamic';
+
+// Renders nothing until a product is picked; loaded after the page starts so the dialog
+// library is not part of the listing's first download.
+const QuickViewModal = dynamic(() => import('../../../components/QuickViewModal'), { ssr: false });
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import { Product } from '../../../types';
 import {
@@ -31,6 +35,9 @@ const DEFAULT_HERO_IMAGE = '/images/hero_background_1782286769476.png';
  * page stays light as the catalogue grows.
  */
 const PAGE_SIZE = 48;
+
+/** Tailwind's `lg`: the sidebar shows from here up, the drawer below it. */
+const DESKTOP_QUERY = '(min-width: 64rem)';
 
 interface ShopViewProps {
   /** Already scoped, filtered and sorted on the server. The client never re-filters. */
@@ -168,7 +175,14 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
     if (!isFilterDrawerOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
+    // Rotating a tablet past lg hides the drawer; close it so the lock goes with it.
+    const desktop = window.matchMedia(DESKTOP_QUERY);
+    const closeOnDesktop = () => { if (desktop.matches) setIsFilterDrawerOpen(false); };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => {
+      desktop.removeEventListener('change', closeOnDesktop);
+      document.body.style.overflow = previous;
+    };
   }, [isFilterDrawerOpen]);
 
   const [showFilters, setShowFilters] = useState(false);
@@ -255,7 +269,11 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
       */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-divider/40 pb-6 mb-8 mt-4 px-6 md:px-12">
         <button
-          onClick={() => { setShowFilters(!showFilters); setIsFilterDrawerOpen(true); }}
+          onClick={() => {
+            // The drawer is lg:hidden, so opening it on desktop locked the page with nothing visible.
+            if (window.matchMedia(DESKTOP_QUERY).matches) setShowFilters((v) => !v);
+            else setIsFilterDrawerOpen(true);
+          }}
           className="flex shrink-0 items-center space-x-2 whitespace-nowrap text-[11px] uppercase tracking-widest text-primary hover:text-secondary transition-colors font-sans font-medium"
         >
           {/*
@@ -397,8 +415,8 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
           ) : (
             <div className="space-y-12">
               <div className="grid gap-0 border-l border-t border-divider/40 grid-cols-2 lg:grid-cols-3">
-                {products.slice(0, shown).map((product, i) => (
-                  <ProductCard key={product.slug} product={product} onQuickView={openQuickView} priority={i < 3} showColors={false} />
+                {products.slice(0, shown).map((product) => (
+                  <ProductCard key={product.slug} product={product} onQuickView={openQuickView} showColors={false} />
                 ))}
               </div>
 

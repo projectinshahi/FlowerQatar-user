@@ -140,21 +140,19 @@ export default function AboutPage() {
         <section className="py-12 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="space-y-6">
             <span className="text-xs uppercase tracking-[0.25em] text-secondary font-semibold block">
-              The Beginning
+              Our Story
             </span>
             <h2 className="font-serif text-3xl md:text-4xl font-medium tracking-wide text-primary leading-tight">
-              A year of bloom, not a week
+              Flowers that carry your feelings
             </h2>
             <p className="text-muted text-sm md:text-base leading-relaxed">
-              A fresh bouquet gives you a few days. It is handed over, admired, photographed, and
-              then quietly cleared away. We wanted the opposite: an arrangement still sitting in
-              the room months later, looking as it did the morning it arrived.
+              In Qatar, every beautiful moment is worth celebrating. A warm welcome for a guest, a family gathering, a special occasion, a new beginning, or simply saying "I'm thinking of you" — these moments are often expressed not only through words, but through thoughtful gestures.
             </p>
             <p className="text-muted text-sm leading-relaxed">
-              That is what preservation gives us. Real roses, cut at their peak and treated so the
-              petal keeps its softness, its shape and its colour for a full year — no water, no
-              stems to trim, no wilting on the fifth day. It asks more of the flower and far more
-              of the people arranging it, which is why every box is put together by hand.
+              Since 2019, LEBAMI has been part of those moments through the timeless beauty of flowers. We believe a flower is more than something beautiful. It carries a feeling — love, respect, gratitude, happiness, remembrance, and care. Inspired by Qatar's culture of generosity and hospitality, we carefully select premium flowers and create elegant arrangements that help people express what words sometimes cannot.
+            </p>
+            <p className="text-muted text-sm leading-relaxed">
+              From a single flower to a beautiful arrangement, every LEBAMI creation is prepared with care and delivered with one purpose: to turn a simple moment into a memorable emotion.
             </p>
             <Link
               href="/care"
@@ -327,6 +325,23 @@ export default function AboutPage() {
                   the other end.
                 </p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Our Commitment */}
+        <section className="py-16 border-t border-divider">
+          <div className="max-w-2xl mx-auto text-center space-y-6">
+            <h2 className="font-serif text-3xl md:text-4xl font-medium tracking-wide text-primary">
+              Our Commitment
+            </h2>
+            <p className="text-muted text-sm md:text-base leading-relaxed">
+              As we continue our journey, we remain committed to bringing premium flowers, thoughtful designs, and heartfelt experiences to homes, families, businesses, and celebrations across Qatar.
+            </p>
+            <div className="pt-6 border-t border-divider">
+              <p className="font-serif text-xl md:text-2xl font-medium tracking-wide text-secondary italic">
+                "Flowers that carry your feelings"
+              </p>
             </div>
           </div>
         </section>

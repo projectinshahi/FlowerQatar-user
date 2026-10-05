@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { addItemSchema } from "@/lib/validations/cart";
-import { resolveActiveUserId, addItem, CartError } from "@/lib/services/cart";
+import { resolveSessionUserId, addItem, CartError } from "@/lib/services/cart";
 
 // POST /api/cart/add — add a product (or increase quantity if it already exists)
 export async function POST(req: Request) {
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const cartId = await resolveActiveUserId();
+    const cartId = await resolveSessionUserId();
     const data = await addItem(cartId, parsed.data);
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (e: any) {

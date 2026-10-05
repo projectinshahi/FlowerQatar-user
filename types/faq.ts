@@ -1,11 +1,12 @@
 export type FAQCategory =
-  | 'General Orders'
-  | 'Subscription Membership'
+  | 'General'
+  | 'Orders'
   | 'Products'
   | 'Delivery'
-  | 'Payments'
-  | 'Changes, Returns & Refunds'
-  | 'Customer Support';
+  | 'Payment'
+  | 'Returns & Refunds'
+  | 'Customer Support'
+  | 'Subscription';
 
 export interface FAQItem {
   id: number;

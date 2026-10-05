@@ -5,8 +5,7 @@ import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "../../lib/site";
 import JsonLd from "../../components/seo/JsonLd";
 import { AppContextProvider } from "../../context/AppContext";
 import CartDrawer from "../../components/CartDrawer";
-import AccountDrawer from "../../components/AccountDrawer";
-import SearchDrawer from "../../components/SearchDrawer";
+import DeferredOverlays from "../../components/DeferredOverlays";
 import ToastContainer from "../../components/ToastContainer";
 import Navbar from "../sections/Navbar";
 import Footer from "../sections/Footer";
@@ -19,10 +18,10 @@ import TranslateSync from "../../components/TranslateSync";
 import MotionPreferences from "../../components/MotionPreferences";
 import WhatsAppButton from "../../components/WhatsAppButton";
 import ScrollToTop from "../../components/ScrollToTop";
+import LiveUpdates from "../../components/LiveUpdates";
 
 // Lazy, client-only — it self-fetches and only renders when configured + first session view.
 const WelcomePopup = dynamic(() => import("../../components/WelcomePopup"));
-const LiveUpdates = dynamic(() => import("../../components/LiveUpdates"));
 
 const cormorant = Cormorant_Garamond({
   weight: ["300", "400", "500", "600", "700"],
@@ -145,10 +144,10 @@ export default async function RootLayout({
           */}
           <WhatsAppButton />
           <CartDrawer />
-          <AccountDrawer />
-          <SearchDrawer />
           <ToastContainer />
           <WelcomePopup />
+          {/* Account and search drawers: loaded after the page starts. */}
+          <DeferredOverlays />
           {/* Re-renders the page when an admin changes what it shows (Socket.IO, server.mjs). */}
           <LiveUpdates />
           <GoogleTranslate />

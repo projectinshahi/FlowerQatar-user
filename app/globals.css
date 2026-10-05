@@ -310,50 +310,6 @@ input[type="checkbox"], input[type="radio"] {
   color: #9a9a9a;
 }
 
-/* Country picker (react-country-state-city) — match the account form's input styling. */
-.account-country .stdropdown-container {
-  border: 1px solid #E2E2E2 !important;
-  border-radius: 0.5rem !important;
-  padding: 4px 6px !important;
-  background: #fff;
-  transition: border-color 0.15s;
-}
-.account-country .stdropdown-container:focus-within {
-  border-color: var(--color-primary) !important;
-}
-.account-country--invalid .stdropdown-container {
-  border-color: #f87171 !important;
-}
-.account-country .stdropdown-input,
-.account-country .stsearch-box input,
-.account-country input {
-  font-size: 0.875rem;
-  color: var(--color-primary);
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-.account-country input:focus {
-  outline: none !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-.account-country .stdropdown-menu {
-  border-radius: 0.75rem;
-  border: 1px solid #E8E8E8;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  z-index: 60;
-  margin-top: 4px;
-}
-.account-country .stdropdown-item:hover,
-.account-country .stdropdown-item.selected {
-  background: #F7F4EF !important;
-  color: var(--color-primary);
-}
-.account-country .stdropdown-tools svg {
-  color: #9a9a9a;
-}
-
 /*
  * Google Translate.
  *

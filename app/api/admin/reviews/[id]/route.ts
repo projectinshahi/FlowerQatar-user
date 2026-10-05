@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { publishChange } from '@/lib/live-sync';
 import type { LiveAction } from '@/lib/live-events';
-import { reviewPatchSchema, reviewSchema } from '@/lib/reviews';
+import { reviewPatchSchema, reviewSchema } from '@/lib/validations/review';
 import { isDbUnreachable, logDbError } from '@/lib/prisma-error';
 
 type Context = { params: Promise<{ id: string }> };

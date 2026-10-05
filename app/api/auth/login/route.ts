@@ -30,8 +30,13 @@ export async function POST(req: Request) {
     }
     const { email: normalizedEmail, password, isAdminLogin } = parsed.data;
 
+    // Only the columns login uses — the row also carries the cart and address JSON.
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
+      select: {
+        id: true, password: true, lockUntil: true, failedLoginAttempts: true, isActive: true, isBlocked: true,
+        isDeleted: true, role: true, isEmailVerified: true, firstName: true, lastName: true, email: true, profileImage: true,
+      },
     });
 
     if (!user || !user.password) {

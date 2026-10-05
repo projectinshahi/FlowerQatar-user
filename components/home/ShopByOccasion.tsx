@@ -6,9 +6,10 @@ import OccasionBanner from '@/components/OccasionBanner';
  * "Shop by Occasion" — the admin's featured collection, shown between the hero and
  * New Arrivals.
  *
- * A Server Component: it's static copy + an image + a link, so it ships zero client JS
- * and keeps this above-the-fold slot cheap. The image sits in a fixed aspect box with
- * `priority`, so it reserves its space (no CLS) and doesn't lose the LCP race.
+ * A Server Component: it's static copy + an image + a link, so it ships zero client JS.
+ * The image sits in a fixed aspect box, so it reserves its space (no CLS). Not `priority`:
+ * the hero above is at least 75% of the screen, so this is never the largest paint and a
+ * preload here only competed with the hero's.
  * Renders nothing when no collection is featured.
  */
 export default function ShopByOccasion({ occasion }: { occasion: FeaturedOccasion | null }) {
@@ -59,7 +60,6 @@ export default function ShopByOccasion({ occasion }: { occasion: FeaturedOccasio
                 url={occasion.bannerImage}
                 title={occasion.title}
                 sizes="(max-width: 1024px) 100vw, 50vw"
-                priority
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center">

@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import ProductCard from '@/components/ProductCard';
-import QuickViewModal from '@/components/QuickViewModal';
 import type { Product } from '@/types';
+
+// Renders nothing until a product is picked; loaded after the page starts.
+const QuickViewModal = dynamic(() => import('@/components/QuickViewModal'), { ssr: false });
 
 /**
  * Product grid for /occasion/[slug].
@@ -34,13 +37,8 @@ export default function OccasionProducts({ products }: { products: Product[] }) 
     <>
       {/* Same grid treatment as the shop listing. */}
       <div className="grid grid-cols-2 gap-0 border-l border-t border-divider/40 lg:grid-cols-3">
-        {products.map((product, i) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            onQuickView={openQuickView}
-            priority={i < 3}
-          />
+        {products.map((product) => (
+          <ProductCard key={product.id} product={product} onQuickView={openQuickView} />
         ))}
       </div>
 

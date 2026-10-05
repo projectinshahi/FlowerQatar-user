@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FAQS, FAQ_CATEGORIES, FAQ_CATEGORY_META } from '@/data/faq';
 import type { FAQCategory } from '@/types/faq';
-import ScrollProgress from '@/components/faq/ScrollProgress';
-import ScrollTopButton from '@/components/faq/ScrollTopButton';
 import FAQHero from '@/components/faq/FAQHero';
 import FAQSearch from '@/components/faq/FAQSearch';
 import FAQCategoryTabs from '@/components/faq/FAQCategoryTabs';
@@ -114,7 +112,6 @@ export default function FaqPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-cream via-[#FBF6EF] to-cream">
-      <ScrollProgress />
 
       {/* Faint floral watermarks */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -127,7 +124,7 @@ export default function FaqPage() {
 
         {/* Sticky search + category nav */}
         <div ref={stickyRef} style={{ top: offsets.nav }} className="sticky z-40 -mx-6 mt-12 bg-cream/85 px-6 py-4 backdrop-blur-md sm:-mx-8 sm:px-8 md:-mx-10 md:px-10">
-          <FAQSearch value={query} onChange={setQuery} />
+          {/* <FAQSearch value={query} onChange={setQuery} /> */}
           {visibleCategories.length > 0 && (
             <div className="mt-4">
               <FAQCategoryTabs categories={visibleCategories} active={active} onSelect={scrollToCategory} />
@@ -151,8 +148,8 @@ export default function FaqPage() {
                 registerRef={registerRef(section.category)}
                 scrollMt={scrollMt}
                 intro={
-                  section.category === 'Subscription Membership' ? (
-                    <MembershipPlans onLearnMore={() => scrollToCategory('Subscription Membership')} />
+                  section.category === 'Subscription' ? (
+                    <MembershipPlans onLearnMore={() => scrollToCategory('Subscription')} />
                   ) : undefined
                 }
               />
@@ -166,7 +163,6 @@ export default function FaqPage() {
         </div>
       </div>
 
-      <ScrollTopButton />
     </div>
   );
 }

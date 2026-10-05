@@ -12,6 +12,7 @@ import {
   writeLang,
   type Lang,
 } from '@/lib/translate';
+import { loadTranslator } from './GoogleTranslate';
 
 const LANGS: { code: Lang; label: string; full: string }[] = [
   { code: 'en', label: 'EN', full: 'English' },
@@ -66,6 +67,9 @@ export default function LanguageToggle({ className = '' }: { className?: string 
       data-translate-toggle=""
       // Keeps Google from translating the switch's own labels.
       translate="no"
+      // The translator loads lazily; start it as soon as someone reaches for the switch.
+      onPointerEnter={loadTranslator}
+      onFocus={loadTranslator}
     >
       {LANGS.map((l) => {
         const active = lang === l.code;
