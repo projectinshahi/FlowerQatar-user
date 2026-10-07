@@ -9,10 +9,21 @@ import {
   deleteCampaign,
   bulkDeleteCampaigns,
   bulkSetCampaignStatus,
+  type getCampaigns,
 } from "@/lib/actions/marketing.actions";
 import { StateBadge, formatMoney, formatDate } from "./ui";
 
-export default function CampaignsClient({ campaigns, pagination, params }: { campaigns: any[]; pagination: any; params: Record<string, string> }) {
+type ListData = Extract<Awaited<ReturnType<typeof getCampaigns>>, { success: true }>["data"];
+
+export default function CampaignsClient({
+  campaigns,
+  pagination,
+  params,
+}: {
+  campaigns: ListData["campaigns"];
+  pagination: ListData["pagination"];
+  params: Record<string, string>;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -38,7 +49,7 @@ export default function CampaignsClient({ campaigns, pagination, params }: { cam
   const toggleAll = () => setSelected(selected.length === campaigns.length ? [] : campaigns.map((c) => c.id));
   const toggleOne = (id: string) => setSelected((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
-  const run = (fn: () => Promise<any>, okMsg: string) =>
+  const run = (fn: () => Promise<{ success: boolean; error?: string }>, okMsg: string) =>
     startTransition(async () => {
       const res = await fn();
       if (res?.success === false) toast.error(res.error);

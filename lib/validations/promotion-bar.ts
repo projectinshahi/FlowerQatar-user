@@ -10,4 +10,14 @@ export const promotionBarSchema = z.object({
   textColor: hexColor,
 });
 
-export type PromotionBarFormData = z.infer<typeof promotionBarSchema>;
+export type PromotionBarTheme = z.infer<typeof promotionBarSchema>;
+
+/**
+ * Colours the promotion ticker was hardcoded with before the admin could set them. They are
+ * the DB column defaults too, so an unsaved config and a freshly-created row look identical.
+ * Lives here, not in lib/promotions.ts, so client components can import it without Prisma.
+ */
+export const PROMOTION_BAR_DEFAULTS: PromotionBarTheme = {
+  barColor: '#b0aca7',
+  textColor: '#ffffff',
+};

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, Truck, BarChart3, Film, CalendarHeart, Plus, LayoutGrid, Wallet, Sparkles, FolderTree, Mail, Star, Gift } from 'lucide-react';
+import { Package, ShoppingCart, LayoutDashboard, LogOut, Menu, X, Users, Ticket, Megaphone, BarChart3, Film, CalendarHeart, LayoutGrid, Wallet, Sparkles, FolderTree, Mail, Star, Gift, type LucideIcon } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   const navSections: {
     heading?: string;
-    items: { name: string; href: string; icon: any; exact?: boolean }[];
+    items: { name: string; href: string; icon: LucideIcon; exact?: boolean }[];
   }[] = [
     {
       items: [
@@ -50,7 +50,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     {
       heading: 'Marketing',
       items: [
-        // { name: 'Marketing Dashboard', href: '/admin/marketing', icon: BarChart3, exact: true },
         { name: 'Coupons', href: '/admin/marketing/coupons', icon: Ticket },
         { name: 'Promotions', href: '/admin/marketing/promotions', icon: Megaphone },
         // { name: 'Free Delivery', href: '/admin/marketing/free-delivery', icon: Truck },

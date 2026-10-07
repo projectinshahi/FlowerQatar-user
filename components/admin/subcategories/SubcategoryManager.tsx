@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Reorder, useDragControls } from 'framer-motion';
 import {
-  Loader2, Pencil, Plus, Search, Trash2, ImageOff, GripVertical, ArrowUpDown, X,
+  Pencil, Plus, Search, Trash2, ImageOff, GripVertical, ArrowUpDown, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SubcategoryFormModal from './SubcategoryFormModal';
@@ -164,13 +164,12 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  useEffect(() => {
-    if (!fixedCategoryName || categories.length === 0) return;
-    const match = categories.find((c) => c.name === fixedCategoryName);
-    if (match && categoryId !== match.id) {
-      setCategoryId(match.id);
-    }
-  }, [categories, fixedCategoryName, categoryId]);
+  // In a fixed category view, pin the filter to that category once the categories have loaded.
+  // Adjusted during render (it converges: once set, the ids match).
+  const fixedMatch = fixedCategoryName ? categories.find((c) => c.name === fixedCategoryName) : undefined;
+  if (fixedMatch && categoryId !== fixedMatch.id) {
+    setCategoryId(fixedMatch.id);
+  }
 
   // Positions are per parent category, so reordering only makes sense inside one of them.
   const canReorder = Boolean(categoryId);

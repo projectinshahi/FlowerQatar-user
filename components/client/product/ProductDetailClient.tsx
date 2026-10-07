@@ -8,10 +8,9 @@ import { Star, Minus, Plus, ChevronDown, ChevronLeft, ChevronRight } from 'lucid
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '@/context/AppContext'
 import ProductGallery from './ProductGallery'
-import AddOnsSelector from './AddOnsSelector'
 import GiftSection from './GiftSection'
 import DeliveryScheduler from './DeliveryScheduler'
-import GreetingCardSelector, { DEFAULT_GREETING_STYLE, type GreetingStyle } from './GreetingCardSelector'
+import GreetingCardSelector, { DEFAULT_GREETING_STYLE } from './GreetingCardSelector'
 import PriceSummary from './PriceSummary'
 import { ProductUnavailableNotice, useProductAvailable } from './ProductAvailability'
 import { usePriceCalculator, type AddOn } from '@/hooks/useProductOptions'
@@ -78,9 +77,9 @@ export default function ProductDetailClient({
 
   const defaultVariant = product.variants?.[0]
   const defaultColor = defaultVariant?.colorVariants?.[0]
-  const [selectedVariantId, setSelectedVariantId] = useState<string>(defaultVariant?.id || '')
-  const [selectedColorId, setSelectedColorId] = useState<string>(defaultColor?.id || '')
-  const [colorView, setColorView] = useState<'Grid' | 'List'>('Grid')
+  // No size/colour picker is rendered, so the page always sells the first variant and colour.
+  const selectedVariantId = defaultVariant?.id || ''
+  const selectedColorId = defaultColor?.id || ''
   const [filtersOpen, setFiltersOpen] = useState(false)
   // Review controls. These existed as buttons that did nothing; they now drive real state.
   const [ratingFilter, setRatingFilter] = useState<number | null>(null)
@@ -90,7 +89,7 @@ export default function ProductDetailClient({
   // Both false until measured; the row starts at the left, so only "right" becomes true.
   const [relatedEdges, setRelatedEdges] = useState({ canScrollLeft: false, canScrollRight: false })
 
-  const [quantity, setQuantity] = useState(1)
+  const quantity = 1
   // 'details' because the description panel moved up into the buying column.
   const [openSection, setOpenSection] = useState<string | null>('details');
 
@@ -100,7 +99,7 @@ export default function ProductDetailClient({
   const [deliveryTime, setDeliveryTime] = useState<string | null>(null)
   const [greetingTemplateId, setGreetingTemplateId] = useState<string | null>(null)
   const [greetingMessage, setGreetingMessage] = useState('')
-  const [greetingStyle, setGreetingStyle] = useState<GreetingStyle>(DEFAULT_GREETING_STYLE)
+  const greetingStyle = DEFAULT_GREETING_STYLE
 
   const selectedVariant = product.variants?.find((v: ProductVariant) => v.id === selectedVariantId) || defaultVariant
   const selectedColor = selectedVariant?.colorVariants?.find((c: ProductColorVariant) => c.id === selectedColorId) || selectedVariant?.colorVariants?.[0]
@@ -376,120 +375,6 @@ export default function ProductDetailClient({
 
           <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
 
-          {/* Arrangement Size Selector */}
-          {/* <div className="mb-8">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-widest mb-4 block" style={{ color: PALETTE.textPrimary }}>
-              <span style={{ color: PALETTE.textSecondary }}>SIZE : </span>
-              {selectedVariant?.variantName}
-            </span>
-            <div className="border border-[#EBEBEB] p-6 flex flex-wrap gap-8 items-start">
-              {product.variants?.map((variant: any) => (
-                <button
-                  key={variant.id}
-                  onClick={() => {
-                    setSelectedVariantId(variant.id)
-                    const newColor = variant.colorVariants?.find((c: any) => c.colorName === selectedColor?.colorName) || variant.colorVariants?.[0]
-                    if (newColor) setSelectedColorId(newColor.id)
-                  }}
-                  className="flex flex-col items-center gap-3 group"
-                >
-                  <div
-                    className="relative w-[70px] h-[70px] rounded-full flex items-center justify-center transition-all"
-                    style={{
-                      border: selectedVariantId === variant.id ? `1px solid ${PALETTE.gold}` : `1px solid transparent`
-                    }}
-                  >
-                    <div className="relative w-[60px] h-[60px] rounded-full overflow-hidden">
-                      <Image
-                        src="/images/category_bouquets_1782290106325.png"
-                        alt={variant.variantName}
-                        fill sizes="60px"
-                        className="object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                    </div>
-                  </div>
-                  <span className="font-serif text-[12px] tracking-[0.05em]" style={{ color: PALETTE.textPrimary }}>
-                    {variant.variantName}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div> */}
-
-          {/* <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
-
-          {/* Color Selector */}
-          {/* <div className="mb-10">
-            <div className="flex justify-between items-center mb-4">
-              <span className="font-sans text-[11px] font-semibold uppercase tracking-widest block" style={{ color: PALETTE.textPrimary }}>
-                <span style={{ color: PALETTE.textSecondary }}>COLOR : </span>
-                {selectedColor?.colorName || 'Default'}
-              </span>
-
-              <div className="flex bg-[#FAFAFA] rounded-full p-[2px]">
-                <button
-                  onClick={() => setColorView('Grid')}
-                  className="px-4 py-1 rounded-full font-serif text-[11px] transition-all"
-                  style={{
-                    backgroundColor: colorView === 'Grid' ? '#FFFFFF' : 'transparent',
-                    border: colorView === 'Grid' ? `1px solid ${PALETTE.gold}` : '1px solid transparent',
-                    color: PALETTE.textPrimary
-                  }}
-                >
-                  Grid
-                </button>
-                <button
-                  onClick={() => setColorView('List')}
-                  className="px-4 py-1 rounded-full font-serif text-[11px] transition-all"
-                  style={{
-                    backgroundColor: colorView === 'List' ? '#FFFFFF' : 'transparent',
-                    border: colorView === 'List' ? `1px solid ${PALETTE.gold}` : '1px solid transparent',
-                    color: PALETTE.textPrimary
-                  }}
-                >
-                  List
-                </button>
-              </div>
-            </div>
-
-            <div className={`border border-[#EBEBEB] p-6 flex ${colorView === 'Grid' ? 'flex-wrap gap-8 items-start' : 'flex-col gap-4'}`}>
-              {selectedVariant?.colorVariants?.map((cv: any) => {
-                const displayColor = cv.colorCode || '#CCCCCC';
-                const imageUrl = cv.swatchImage || cv.hoverImage || cv.galleryImages?.[0]?.url;
-
-                return (
-                  <div key={cv.id} className={`${colorView === 'Grid' ? 'flex flex-col items-center' : 'w-full'}`}>
-                    <button
-                      onClick={() => {
-                        setSelectedColorId(cv.id)
-                      }}
-                      className={`group flex ${colorView === 'Grid' ? 'flex-col items-center gap-3 w-16' : 'items-center gap-4 w-full'}`}
-                      title={cv.colorName}
-                    >
-                      <div
-                        className="relative w-[70px] h-[70px] flex items-center justify-center rounded-full transition-all flex-shrink-0"
-                        style={{
-                          border: selectedColorId === cv.id ? `1px solid ${PALETTE.gold}` : `1px solid transparent`
-                        }}
-                      >
-                        <div
-                          className="relative w-[60px] h-[60px] rounded-full overflow-hidden border border-gray-200"
-                          style={{ backgroundColor: displayColor }}
-                        >
-                          {imageUrl && <LuxuryImage src={imageUrl} alt={cv.colorName || 'Color swatch'} fill sizes="60px" className="object-cover" />}
-                        </div>
-                      </div>
-
-                      <span className={`font-serif text-[12px] leading-tight tracking-[0.05em] capitalize ${colorView === 'Grid' ? 'text-center' : 'text-left'}`} style={{ color: PALETTE.textPrimary }}>
-                        {cv.colorName}
-                      </span>
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </div> */} 
-
           <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
 
           {/* M05: Gift Add-ons */}
@@ -521,7 +406,6 @@ export default function ProductDetailClient({
               style={greetingStyle}
               onTemplate={(id) => { setGreetingTemplateId(id); if (!id) setGreetingMessage('') }}
               onMessage={setGreetingMessage}
-              onStyle={setGreetingStyle}
             />
           </div>
 

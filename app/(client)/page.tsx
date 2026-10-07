@@ -1,11 +1,10 @@
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
-import Hero from '../sections/Hero'
 import BannerSection from '../sections/BannerSection'
 import { getNewArrivalItems, getExploreGardenItems } from '../../lib/store-products'
 import { getActiveBanners } from '../../lib/actions/banner.actions'
 import { getFeaturedOccasion } from '../../lib/occasions'
-import { getActivePromotions, getPromotionBarTheme } from '../../lib/promotions'
+import { getPromotionBar } from '../../lib/promotions'
 import { getSubscriptionPlans } from '../../lib/subscription-plans'
 import ShopByOccasion from '../../components/home/ShopByOccasion'
 import SubscriptionPlans from '../../components/home/SubscriptionPlans'
@@ -39,21 +38,9 @@ export const metadata = { alternates: { canonical: '/' } }
  */
 
 async function BannerSlot() {
-  const [banners, promotions, promotionTheme] = await Promise.all([
-    getActiveBanners(),
-    getActivePromotions(),
-    getPromotionBarTheme(),
-  ])
-  // Admin-managed banner is the hero. Falls back to the marketing Hero when no active banner exists.
-  return banners.length > 0 ? (
-    <BannerSection
-      banners={banners}
-      promotions={promotions.map((p) => p.title)}
-      promotionTheme={promotionTheme}
-    />
-  ) : (
-    <Hero />
-  )
+  const [banners, promotionBar] = await Promise.all([getActiveBanners(), getPromotionBar()])
+  // The admin-managed banner is the hero; BannerSection shows a still poster when none is active.
+  return <BannerSection banners={banners} promotionBar={promotionBar} />
 }
 
 async function OccasionSlot() {

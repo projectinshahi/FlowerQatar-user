@@ -67,7 +67,7 @@ export default function ShippingReturnsPage() {
             Please note that all Lebami preserved arrangements are final sale. Because each box is custom handcrafted with natural preserved vegetation, they cannot be returned or restocked once assembled.
           </p>
           <p>
-            In the rare event that your shipment arrives damaged during transit, contact our Customer Care concierge within 48 hours of receipt at <span className="font-semibold text-primary">concierge@venusetfleur-clone.com</span> with details and photographs. We will happily dispatch a replacement.
+            In the rare event that your shipment arrives damaged during transit, contact our Customer Care concierge within 48 hours of receipt at <span className="font-semibold text-primary">admin@lebami.com</span> with details and photographs. We will happily dispatch a replacement.
           </p>
         </section>
       </div>

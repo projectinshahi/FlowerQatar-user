@@ -100,19 +100,6 @@ body {
   color: var(--color-primary);
 }
 
-/* Gradients */
-.bg-gradient-premium {
-  background: linear-gradient(135deg, #61000B 0%, #941A2F 50%, #C45878 100%);
-}
-
-.bg-gradient-romantic {
-  background: linear-gradient(135deg, #FFF6F0 0%, #FCECEF 100%);
-}
-
-.bg-premium-highlight {
-  background: linear-gradient(135deg, #61000B, #941A2F);
-}
-
 /* Card styles */
 .luxury-card {
   background-color: #FFFFFF;
@@ -150,19 +137,6 @@ body {
 
 .btn-primary:hover {
   background-color: var(--color-secondary);
-  transform: scale(1.02);
-}
-
-.btn-secondary {
-  background-color: transparent;
-  color: var(--color-primary);
-  border: 1.5px solid var(--color-primary);
-  border-radius: 12px;
-}
-
-.btn-secondary:hover {
-  background-color: var(--color-primary);
-  color: #FFFFFF;
   transform: scale(1.02);
 }
 
@@ -342,45 +316,6 @@ input[type="checkbox"], input[type="radio"] {
 body {
   top: 0 !important;
   position: static !important;
-}
-
-/*
- * Language-switch transition.
- *
- * Without this the switch reads as a hard reload: white flash, then a beat of English text
- * that snaps to Arabic once Google's pass lands. `[data-translating]` is set on <html> by a
- * blocking inline script before first paint, so the untranslated frame is never shown; it is
- * cleared once Google stamps `translated-*` on <html>, and the content fades in.
- *
- * 'boot' masks fully (a fresh document). 'nav' only dims, because a client-side navigation
- * re-translates in place and hiding the whole page for that would be heavier than the problem.
- */
-body {
-  opacity: 1;
-  transition: opacity 260ms ease;
-}
-
-html[data-translating='boot'] body {
-  opacity: 0;
-}
-
-html[data-translating='nav'] body {
-  opacity: 0.55;
-}
-
-/* The switch itself must never fade out from under the pointer. */
-html[data-translating] [data-translate-toggle] {
-  opacity: 1 !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body {
-    transition: none;
-  }
-  /* No fade to hide behind, so never blank the page — accept the text swap instead. */
-  html[data-translating] body {
-    opacity: 1;
-  }
 }
 
 /* Google marks translated text with a highlight/underline — strip it so the type stays clean. */

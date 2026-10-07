@@ -1,57 +1,77 @@
-import type { Product } from '@/types';
-import type { CategoryType } from '@prisma/client';
-
 /**
- * Fallback catalogue for the Blushing Blooms page.
+ * Content for the Blushing Blooms category page (/shop?category=blushing-blooms).
  *
- * Mirrors the convention app/(client)/shop/page.tsx already uses (`dbProducts.length > 0 ?
- * dbProducts : PRODUCTS`): when the database holds no PUBLISHED Blushing Blooms products the
- * page still renders the designed grid instead of an empty one. As soon as an admin publishes
- * a real Blushing Blooms product these disappear entirely.
+ * Prisma-free, so client components (nav, footer, admin form) can import it; the database
+ * read that merges the admin row over these defaults lives in lib/blushing-blooms.ts.
  *
- * The art is the six shipped stills. Paths are percent-encoded because the filenames contain
- * spaces and parentheses.
+ * The admin row is OPTIONAL. Everything below has a code default taken from the approved
+ * design, and `getBlushingBloomsContent()` merges the row over it field by field. Three
+ * consequences, all deliberate:
+ *
+ *  - the page's COPY reads correctly before an admin has ever opened the form,
+ *  - clearing a text field restores the designed wording instead of blanking a section,
+ *  - a database outage degrades to the designed copy rather than an empty page.
+ *
+ * Media is the exception: hero, banner and video default to EMPTY, never to stock art. An
+ * unconfigured slot renders nothing at all, so the storefront can never show a picture nobody
+ * chose to publish.
+ *
+ * Media paths are pre-encoded because the shipped filenames contain spaces and parentheses.
  */
 
-/** The five swatch tones shown on every card in the design. */
-const SWATCHES = [
-  { name: 'Velvet Red', hex: '#A81E1E' },
-  { name: 'Olive', hex: '#A9B02B' },
-  { name: 'Fuchsia', hex: '#E0479B' },
-  { name: 'Blush', hex: '#F2A6D2' },
-  { name: 'Peach', hex: '#F3CBA9' },
-];
+/**
+ * The shipped Blushing Blooms artwork, percent-encoded once here so no caller has to remember
+ * the filenames contain spaces.
+ *
+ * Only `logo` is applied automatically (it is the brand mark, not content). The hero, banner and
+ * video files are kept for reference — paste a path into the admin form to use one — but are NOT
+ * defaulted in: an empty media field must render an empty slot, not stock art.
+ */
+export const BB_ASSETS = {
+  hero: '/images/image%2026%20(2).png',
+  banner: '/images/image%2037.png',
+  logo: '/images/image%2028%20(2).png',
+  video: '/images/lebami-blushing-blooms-banner-image.mp4',
+} as const;
 
-const item = (
-  id: string,
-  name: string,
-  image: string,
-  price: number,
-  badge?: string
-): Product => ({
-  id,
-  slug: '',
-  name,
-  price,
-  collection: 'blushing-blooms',
-  collectionName: 'Blushing Blooms',
-  colors: SWATCHES.map((c) => ({ ...c, image, hoverImage: image })),
-  image,
-  hoverImage: image,
-  images: [image],
-  badge,
-  rating: 5,
-  reviewCount: 0,
-  description: '',
-  isBestSeller: !!badge,
-  categoryType: 'BLUSHING_BLOOMS' as CategoryType,
-});
+export interface BlushingBloomsContent {
+  heroMedia: string;
+  heroTitle: string;
+  heroSubtitle: string;
 
-export const BLUSHING_BLOOMS_FALLBACK: Product[] = [
-  item('bb-preview-1', 'Creme Chantilly', '/images/image%2039%20(1).png', 560, 'Best Seller'),
-  item('bb-preview-2', 'Rose Reverie', '/images/image%2042.png', 560, 'Best Seller'),
-  item('bb-preview-3', 'Amber Bloom', '/images/image%2045.png', 560, 'Best Seller'),
-  item('bb-preview-4', 'Ivory Orchid', '/images/image%2043.png', 560, 'Best Seller'),
-  item('bb-preview-5', 'Blush Garden', '/images/image%2041.png', 560, 'Best Seller'),
-  item('bb-preview-6', 'Wild Petal', '/images/image%2044.png', 560, 'Best Seller'),
-];
+  bannerMedia: string;
+  bannerEyebrow: string;
+  bannerTitle: string;
+  bannerTitleAccent: string;
+  bannerDescription: string;
+  bannerCtaLabel: string;
+  bannerCtaHref: string;
+
+  videoMedia: string;
+  videoTitle: string;
+  videoTitleAccent: string;
+  videoDescription: string;
+}
+
+export const BLUSHING_BLOOMS_DEFAULTS: BlushingBloomsContent = {
+  // Empty by design — see BB_ASSETS above. No media until an admin uploads one.
+  heroMedia: '',
+  heroTitle: 'Blushing Blooms',
+  heroSubtitle:
+    'Explore our signature boxes of preserved Eternity® Roses. Handcrafted to order and designed to bloom in your space for a full year.',
+
+  bannerMedia: '',
+  bannerEyebrow: 'CURATED WITH LOVE',
+  bannerTitle: 'Gifts That',
+  bannerTitleAccent: 'Speak From The Heart',
+  bannerDescription:
+    'From timeless blooms to indulgent treats, each gift is thoughtfully curated to create moments that last forever.',
+  bannerCtaLabel: 'SHOP NOW',
+  bannerCtaHref: '#blushing-blooms-products',
+
+  videoMedia: '',
+  videoTitle: "From A Little Gestures To Life's",
+  videoTitleAccent: 'Biggest Moments',
+  videoDescription:
+    'Explore our signature boxes of preserved Eternity® Roses. Handcrafted to order and designed to bloom in your space for a full year.',
+};

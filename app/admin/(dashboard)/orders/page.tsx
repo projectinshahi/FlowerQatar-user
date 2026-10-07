@@ -6,35 +6,71 @@ import { Package, Search, Edit2, Loader2, Check, X, ChevronDown, ChevronRight, S
 import { AdminSkeletonRows } from '@/components/skeletons/AdminSkeletons';
 import { formatShippingAddress } from '@/lib/qatar';
 
-const money = (v: any) => `QAR ${Number(v || 0).toFixed(2)}`;
+type Amount = string | number | null | undefined;
+const money = (v: Amount) => `QAR ${Number(v || 0).toFixed(2)}`;
+
+/** An order as GET /api/admin/orders returns it: JSON, so decimals and dates arrive as strings. */
+interface AdminOrder {
+  id: string;
+  status: string;
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  trackingNumber?: string | null;
+  totalAmount: Amount;
+  subtotal: Amount;
+  shippingFee: Amount;
+  tax: Amount;
+  discount: Amount;
+  pointsRedeemed: Amount;
+  createdAt: string;
+  shippingInfo: Record<string, string | undefined> | null;
+  user: { firstName?: string | null; lastName?: string | null; email?: string | null; phone?: string | null } | null;
+  items?: {
+    id: string;
+    quantity: number;
+    price: Amount;
+    colorName?: string | null;
+    variantSku?: string | null;
+    product?: { name?: string } | null;
+  }[];
+}
 
 export default function AdminOrders() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ status: '', trackingNumber: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
 
+  // One page at a time, searched on the server; typing is debounced to one request.
   useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
-    try {
-      const res = await fetch('/api/admin/orders');
-      const data = await res.json();
-      if (data.orders) {
-        setOrders(data.orders);
+    let alive = true;
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/admin/orders?page=${page}&q=${encodeURIComponent(searchTerm.trim())}`);
+        const data = await res.json();
+        if (alive && data.orders) {
+          setOrders(data.orders);
+          setPagination(data.pagination);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        if (alive) setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    }, searchTerm ? 300 : 0);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [page, searchTerm]);
 
-  const handleEditClick = (order: any) => {
+  const handleEditClick = (order: AdminOrder) => {
     setEditingId(order.id);
     setEditForm({
       status: order.status || 'PENDING',
@@ -68,23 +104,6 @@ export default function AdminOrders() {
     }
   };
 
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const filteredOrders = orders.filter((order) => {
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    const orderId = (order.id || '').toLowerCase();
-    const customerName = `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.toLowerCase();
-    const email = (order.user?.email || '').toLowerCase();
-    const tracking = (order.trackingNumber || '').toLowerCase();
-    return (
-      orderId.includes(term) ||
-      customerName.includes(term) ||
-      email.includes(term) ||
-      tracking.includes(term)
-    );
-  });
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -94,7 +113,10 @@ export default function AdminOrders() {
           <input 
             type="text" 
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search orders..." 
             suppressHydrationWarning
             className="pl-10 pr-4 py-2 border rounded-lg focus:ring-primary focus:border-primary text-sm"
@@ -118,7 +140,7 @@ export default function AdminOrders() {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <AdminSkeletonRows rows={8} columns={['40%', '55%', '35%', '30%', '25%']} withActions={false} />
-              ) : filteredOrders.length === 0 ? (
+              ) : orders.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
@@ -128,7 +150,7 @@ export default function AdminOrders() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => {
+                orders.map((order) => {
                   const si = order.shippingInfo || {};
                   const open = expandedId === order.id;
                   return (
@@ -272,7 +294,7 @@ export default function AdminOrders() {
                               {(order.items || []).length === 0 ? (
                                 <p className="text-sm italic text-gray-400">No line items recorded.</p>
                               ) : (
-                                (order.items || []).map((it: any) => (
+                                (order.items || []).map((it) => (
                                   <div key={it.id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm">
                                     <div className="min-w-0">
                                       <p className="truncate font-medium text-gray-800">{it.product?.name || 'Product'}</p>
@@ -334,6 +356,26 @@ export default function AdminOrders() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500">
+          <span>{isLoading ? 'Loading…' : `Showing ${orders.length} of ${pagination.total} orders`}</span>
+          <div className="flex gap-1">
+            <button
+              disabled={page <= 1 || isLoading}
+              onClick={() => setPage((p) => p - 1)}
+              className="rounded-md border border-gray-200 px-3 py-1 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <button
+              disabled={page >= pagination.totalPages || isLoading}
+              onClick={() => setPage((p) => p + 1)}
+              className="rounded-md border border-gray-200 px-3 py-1 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

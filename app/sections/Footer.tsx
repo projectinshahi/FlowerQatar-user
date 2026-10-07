@@ -6,7 +6,7 @@ import { shopCategoryHref } from '@/lib/category-config'
  * Footer navigation.
  *
  * Every entry carries the route it actually goes to. Labels whose page does not exist in this
- * app (Careers, Privacy Policy, Corporate Gifting, Terms, Accessibility Statement) are gone
+ * app (Careers, Corporate Gifting, Terms, Accessibility Statement) are gone
  * rather than pointing at "#", which looked like a working link and did nothing.
  *
  * SOCIAL is absent for the same reason: no social profile URLs are configured anywhere in the
@@ -22,8 +22,7 @@ export const linkColumns: { title: string; links: FooterLink[] }[] = [
     title: "INFORMATION",
     links: [
       { label: "Our Story", href: "/about" },
-      { label: "Blog", href: "/journal" },
-  
+      { label: "Privacy Policy", href: "/privacy-policy" },
     ],
   },
   {

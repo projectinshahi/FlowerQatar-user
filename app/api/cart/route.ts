@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getActiveUserId, getSessionCart, clearCart, emptyCart, CartError } from "@/lib/services/cart";
 
-function fail(e: any, fallback: string) {
+function fail(e: unknown, fallback: string) {
   const status = e instanceof CartError ? e.status : 500;
   if (status >= 500) console.error("[api/cart]", e);
-  return NextResponse.json({ success: false, error: e?.message || fallback }, { status });
+  return NextResponse.json({ success: false, error: (e instanceof Error && e.message) || fallback }, { status });
 }
 
 // GET /api/cart — the complete cart (with totals). Guests get an empty cart, never a 401,

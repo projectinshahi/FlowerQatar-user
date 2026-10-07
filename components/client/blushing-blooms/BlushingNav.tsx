@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Heart, Search, ShoppingCart } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { BB_ASSETS } from '@/lib/blushing-blooms';
+import { BB_ASSETS } from '@/data/blushing-blooms';
 
 /**
  * Floating glass navigation for the Blushing Blooms page.

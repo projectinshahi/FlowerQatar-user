@@ -55,8 +55,8 @@ export async function sendMail(opts: {
   try {
     await transporter.sendMail({ from: FROM, ...opts });
     return { sent: true };
-  } catch (e: any) {
-    console.error(`[email] Failed to send to ${opts.to}:`, e?.message || e);
+  } catch (e) {
+    console.error(`[email] Failed to send to ${opts.to}:`, (e instanceof Error && e.message) || e);
     throw e;
   }
 }

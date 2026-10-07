@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2, Sparkles, Image as ImageIcon, Film, LayoutTemplate } from 'lucide-react';
 import SingleMediaUploader from '@/components/admin/products/SingleMediaUploader';
-import { blushingBloomsDefaults } from '@/lib/blushing-blooms';
+import { BLUSHING_BLOOMS_DEFAULTS } from '@/data/blushing-blooms';
 import {
   blushingBloomsPageSchema,
   type BlushingBloomsPageFormData,
@@ -164,10 +164,10 @@ export default function BlushingBloomsPageForm() {
         >
           <SingleMediaUploader fieldName="heroMedia" label="Hero image or video" error={errors.heroMedia?.message} />
           <Field label="Heading" error={errors.heroTitle?.message}>
-            <input {...register('heroTitle')} placeholder={blushingBloomsDefaults.heroTitle} className={inputCls} suppressHydrationWarning />
+            <input {...register('heroTitle')} placeholder={BLUSHING_BLOOMS_DEFAULTS.heroTitle} className={inputCls} suppressHydrationWarning />
           </Field>
           <Field label="Supporting text" error={errors.heroSubtitle?.message}>
-            <textarea {...register('heroSubtitle')} rows={3} placeholder={blushingBloomsDefaults.heroSubtitle} className={`${inputCls} resize-none`} suppressHydrationWarning />
+            <textarea {...register('heroSubtitle')} rows={3} placeholder={BLUSHING_BLOOMS_DEFAULTS.heroSubtitle} className={`${inputCls} resize-none`} suppressHydrationWarning />
           </Field>
         </Section>
 
@@ -178,25 +178,25 @@ export default function BlushingBloomsPageForm() {
         >
           <SingleMediaUploader fieldName="bannerMedia" label="Banner image or video" error={errors.bannerMedia?.message} />
           <Field label="Eyebrow" error={errors.bannerEyebrow?.message}>
-            <input {...register('bannerEyebrow')} placeholder={blushingBloomsDefaults.bannerEyebrow} className={inputCls} suppressHydrationWarning />
+            <input {...register('bannerEyebrow')} placeholder={BLUSHING_BLOOMS_DEFAULTS.bannerEyebrow} className={inputCls} suppressHydrationWarning />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Heading — first line" error={errors.bannerTitle?.message}>
-              <input {...register('bannerTitle')} placeholder={blushingBloomsDefaults.bannerTitle} className={inputCls} suppressHydrationWarning />
+              <input {...register('bannerTitle')} placeholder={BLUSHING_BLOOMS_DEFAULTS.bannerTitle} className={inputCls} suppressHydrationWarning />
             </Field>
             <Field label="Heading — accent line (pink)" error={errors.bannerTitleAccent?.message}>
-              <input {...register('bannerTitleAccent')} placeholder={blushingBloomsDefaults.bannerTitleAccent} className={inputCls} suppressHydrationWarning />
+              <input {...register('bannerTitleAccent')} placeholder={BLUSHING_BLOOMS_DEFAULTS.bannerTitleAccent} className={inputCls} suppressHydrationWarning />
             </Field>
           </div>
           <Field label="Description" error={errors.bannerDescription?.message}>
-            <textarea {...register('bannerDescription')} rows={3} placeholder={blushingBloomsDefaults.bannerDescription} className={`${inputCls} resize-none`} suppressHydrationWarning />
+            <textarea {...register('bannerDescription')} rows={3} placeholder={BLUSHING_BLOOMS_DEFAULTS.bannerDescription} className={`${inputCls} resize-none`} suppressHydrationWarning />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Button label" error={errors.bannerCtaLabel?.message}>
-              <input {...register('bannerCtaLabel')} placeholder={blushingBloomsDefaults.bannerCtaLabel} className={inputCls} suppressHydrationWarning />
+              <input {...register('bannerCtaLabel')} placeholder={BLUSHING_BLOOMS_DEFAULTS.bannerCtaLabel} className={inputCls} suppressHydrationWarning />
             </Field>
             <Field label="Button link" error={errors.bannerCtaHref?.message}>
-              <input {...register('bannerCtaHref')} placeholder={blushingBloomsDefaults.bannerCtaHref} className={inputCls} suppressHydrationWarning />
+              <input {...register('bannerCtaHref')} placeholder={BLUSHING_BLOOMS_DEFAULTS.bannerCtaHref} className={inputCls} suppressHydrationWarning />
             </Field>
           </div>
         </Section>
@@ -209,14 +209,14 @@ export default function BlushingBloomsPageForm() {
           <SingleMediaUploader fieldName="videoMedia" label="Video (or image)" error={errors.videoMedia?.message} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Heading — first line" error={errors.videoTitle?.message}>
-              <input {...register('videoTitle')} placeholder={blushingBloomsDefaults.videoTitle} className={inputCls} suppressHydrationWarning />
+              <input {...register('videoTitle')} placeholder={BLUSHING_BLOOMS_DEFAULTS.videoTitle} className={inputCls} suppressHydrationWarning />
             </Field>
             <Field label="Heading — accent line (pink)" error={errors.videoTitleAccent?.message}>
-              <input {...register('videoTitleAccent')} placeholder={blushingBloomsDefaults.videoTitleAccent} className={inputCls} suppressHydrationWarning />
+              <input {...register('videoTitleAccent')} placeholder={BLUSHING_BLOOMS_DEFAULTS.videoTitleAccent} className={inputCls} suppressHydrationWarning />
             </Field>
           </div>
           <Field label="Description" error={errors.videoDescription?.message}>
-            <textarea {...register('videoDescription')} rows={3} placeholder={blushingBloomsDefaults.videoDescription} className={`${inputCls} resize-none`} suppressHydrationWarning />
+            <textarea {...register('videoDescription')} rows={3} placeholder={BLUSHING_BLOOMS_DEFAULTS.videoDescription} className={`${inputCls} resize-none`} suppressHydrationWarning />
           </Field>
         </Section>
 

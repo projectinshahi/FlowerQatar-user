@@ -16,10 +16,10 @@ async function withAdmin<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {
     await requireAdmin();
     return { success: true, data: await fn() };
-  } catch (e: any) {
+  } catch (e) {
     if (e instanceof AuthError) return { success: false, error: e.message };
     console.error("[banner.action]", e);
-    return { success: false, error: e.message || "Something went wrong" };
+    return { success: false, error: (e instanceof Error && e.message) || "Something went wrong" };
   }
 }
 

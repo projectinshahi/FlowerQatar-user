@@ -4,8 +4,33 @@ import { stillOf } from "@/lib/media";
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Edit, Trash, Copy, MoreVertical, Eye } from "lucide-react";
-import { bulkDeleteProducts, bulkUpdateProductStatus, deleteProduct } from "@/lib/actions/product.actions";
+import { Edit, Trash, Eye } from "lucide-react";
+import { bulkUpdateProductStatus, deleteProduct } from "@/lib/actions/product.actions";
+import type { ProductVariant } from "@/types/product-detail";
+
+/** A product as the table receives it: the Prisma row after JSON serialization. */
+interface ProductRow {
+  id: string;
+  slug: string;
+  name: string;
+  sku: string | null;
+  country: string | null;
+  status: string;
+  /** JSON column; anything that is not an array has no variants. */
+  variants: unknown;
+  subcategory?: { name?: string } | null;
+  isFeatured?: boolean;
+  isBestSeller?: boolean;
+  isTrending?: boolean;
+  isNewArrival?: boolean;
+}
+
+interface Pagination {
+  total: number;
+  page: number;
+  limit?: number;
+  totalPages: number;
+}
 
 /**
  * Prev/Next control. Module scope, not defined inside the table, so React keeps the same
@@ -33,9 +58,9 @@ function PageLink({ href, disabled, label }: { href: string; disabled: boolean; 
   );
 }
 
-export default function ProductTable({ products, pagination }: { products: any[], pagination: any }) {
+export default function ProductTable({ products, pagination }: { products: ProductRow[]; pagination: Pagination }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
 
   /**
@@ -130,21 +155,21 @@ export default function ProductTable({ products, pagination }: { products: any[]
             {products.length === 0 ? (
               <tr><td colSpan={6} className="text-center py-10 text-gray-500">No products found.</td></tr>
             ) : products.map((product) => {
-              const variants = Array.isArray(product.variants) ? product.variants : [];
-              const allColors = variants.flatMap((v: any) => v?.colorVariants || []);
+              const variants = (Array.isArray(product.variants) ? product.variants : []) as ProductVariant[];
+              const allColors = variants.flatMap((v) => v?.colorVariants || []);
               const firstColor = allColors[0];
-              const galleryImages = (firstColor?.galleryImages || []).filter((img: any) => img?.type !== "video");
+              const galleryImages = (firstColor?.galleryImages || []).filter((img) => img?.type !== "video");
               // Main media first — the Color Swatch upload — as a still: a video shows its poster frame.
               const primaryImage =
                 stillOf(firstColor?.swatchImage) ||
-                (galleryImages.find((img: any) => img.isPrimary) || galleryImages[0])?.url ||
+                (galleryImages.find((img) => img.isPrimary) || galleryImages[0])?.url ||
                 stillOf(firstColor?.hoverImage);
 
               // Price range across all color variants (effective = salePrice ?? price)
               const effectivePrices = allColors
-                .map((cv: any) => (cv?.salePrice ?? cv?.price))
-                .filter((p: any) => p != null)
-                .map((p: any) => Number(p));
+                .map((cv) => (cv?.salePrice ?? cv?.price))
+                .filter((p) => p != null)
+                .map((p) => Number(p));
               const minPrice = effectivePrices.length ? Math.min(...effectivePrices) : null;
               const maxPrice = effectivePrices.length ? Math.max(...effectivePrices) : null;
               const basePrice = firstColor?.price != null ? Number(firstColor.price) : null;

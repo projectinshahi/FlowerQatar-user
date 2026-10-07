@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, Power, PowerOff, Save, Loader2 } from "lucide-react";
@@ -41,10 +41,13 @@ export default function BannersManager({ initialBanners }: { initialBanners: Ban
   // the DB connection pool is under load) — the previous cause of "can't add another".
   const [banners, setBanners] = useState<Banner[]>(initialBanners);
 
-  // Re-sync when the server sends fresh props (e.g. after a successful refresh).
-  useEffect(() => {
+  // Re-sync when the server sends fresh props (e.g. after a successful refresh). Adjusted during
+  // render rather than in an effect, so the stale list is never committed first.
+  const [syncedBanners, setSyncedBanners] = useState(initialBanners);
+  if (syncedBanners !== initialBanners) {
+    setSyncedBanners(initialBanners);
     setBanners(initialBanners);
-  }, [initialBanners]);
+  }
 
   // New banner form — own pending flag, isolated from row operations.
   const [newTitle, setNewTitle] = useState("");
@@ -82,8 +85,8 @@ export default function BannersManager({ initialBanners }: { initialBanners: Ban
       setNewDescription("");
       setNewVideo(null);
       router.refresh();
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to add banner");
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || "Failed to add banner");
     } finally {
       setCreating(false);
     }
@@ -209,15 +212,9 @@ function BannerRow({
     banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR
   );
 
-  // Keep local edit fields in sync if the banner prop changes underneath us.
-  useEffect(() => {
-    setTitle(banner.title || "");
-    setSubheading(banner.subheading || "");
-    setDescription(banner.description || "");
-    setTitleColor(banner.titleColor || DEFAULT_BANNER_TEXT_COLOR);
-    setSubheadingColor(banner.subheadingColor || DEFAULT_BANNER_TEXT_COLOR);
-    setDescriptionColor(banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR);
-  }, [
+  // Keep local edit fields in sync if the banner prop changes underneath us (adjusted during
+  // render, keyed on exactly the fields the effect used to depend on).
+  const sourceKey = JSON.stringify([
     banner.title,
     banner.subheading,
     banner.description,
@@ -225,6 +222,16 @@ function BannerRow({
     banner.subheadingColor,
     banner.descriptionColor,
   ]);
+  const [syncedKey, setSyncedKey] = useState(sourceKey);
+  if (syncedKey !== sourceKey) {
+    setSyncedKey(sourceKey);
+    setTitle(banner.title || "");
+    setSubheading(banner.subheading || "");
+    setDescription(banner.description || "");
+    setTitleColor(banner.titleColor || DEFAULT_BANNER_TEXT_COLOR);
+    setSubheadingColor(banner.subheadingColor || DEFAULT_BANNER_TEXT_COLOR);
+    setDescriptionColor(banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR);
+  }
 
   const dirty =
     title !== (banner.title || "") ||
@@ -235,7 +242,11 @@ function BannerRow({
     descriptionColor !== (banner.descriptionColor || DEFAULT_BANNER_TEXT_COLOR);
 
   // Row-level runner: guards against thrown errors and updates local state on success.
-  const run = (fn: () => Promise<any>, okMsg: string, onSuccess?: (data: any) => void) =>
+  const run = (
+    fn: () => Promise<{ success: boolean; error?: string; data?: unknown }>,
+    okMsg: string,
+    onSuccess?: (data: unknown) => void
+  ) =>
     startTransition(async () => {
       try {
         const res = await fn();
@@ -246,8 +257,8 @@ function BannerRow({
         toast.success(okMsg);
         onSuccess?.(res.data);
         refresh();
-      } catch (e: any) {
-        toast.error(e?.message || "Something went wrong");
+      } catch (e) {
+        toast.error((e instanceof Error && e.message) || "Something went wrong");
       }
     });
 

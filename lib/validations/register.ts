@@ -51,9 +51,6 @@ export const createAccountSchema = z
     path: ["confirmPassword"],
   });
 
-export type SendOtpInput = z.infer<typeof sendOtpSchema>;
-export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
-export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 
 /* ─────────────── Forgot password ─────────────── */
 

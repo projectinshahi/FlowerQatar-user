@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@prisma/client";
+import { Prisma, type PromotionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, AuthError } from "@/lib/admin-guard";
 import {
@@ -26,13 +26,13 @@ async function withAdmin<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
     await requireAdmin();
     const data = await fn();
     return { success: true, data };
-  } catch (e: any) {
+  } catch (e) {
     if (e instanceof AuthError) return { success: false, error: e.message };
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return { success: false, error: "A record with this unique value already exists" };
     }
     console.error("[marketing.action]", e);
-    return { success: false, error: e.message || "Something went wrong" };
+    return { success: false, error: (e instanceof Error && e.message) || "Something went wrong" };
   }
 }
 
@@ -212,7 +212,7 @@ export interface PromotionListParams {
   search?: string;
   status?: "ACTIVE" | "INACTIVE";
   state?: "RUNNING" | "SCHEDULED" | "EXPIRED";
-  promotionType?: string;
+  promotionType?: PromotionType;
   page?: number;
   limit?: number;
 }
@@ -226,7 +226,7 @@ export async function getPromotions(params: PromotionListParams = {}) {
 
     if (params.search) where.title = { contains: params.search, mode: "insensitive" };
     if (params.status) where.status = params.status;
-    if (params.promotionType) where.promotionType = params.promotionType as any;
+    if (params.promotionType) where.promotionType = params.promotionType;
     if (params.state === "RUNNING") and.push({ status: "ACTIVE", startDate: { lte: now }, endDate: { gte: now } });
     if (params.state === "SCHEDULED") and.push({ startDate: { gt: now } });
     if (params.state === "EXPIRED") and.push({ endDate: { lt: now } });
@@ -441,7 +441,11 @@ export async function getMarketingStats() {
         orderBy: { _count: { couponId: "desc" } },
         take: 5,
       }),
-      prisma.couponUsage.findMany({ orderBy: { usedAt: "desc" }, take: 200, select: { usedAt: true, discount: true } }),
+      // Exactly the chart's 14-day window (below), however many uses it holds.
+      prisma.couponUsage.findMany({
+        where: { usedAt: { gte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) } },
+        select: { usedAt: true, discount: true },
+      }),
     ]);
 
     // Resolve top coupon details

@@ -33,5 +33,5 @@ if (typeof setInterval !== "undefined") {
     for (const [k, b] of store) if (b.resetAt <= now) store.delete(k);
   }, 10 * 60 * 1000);
   // Don't keep the process alive just for cleanup.
-  (t as any)?.unref?.();
+  t.unref?.();
 }

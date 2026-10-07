@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, PenLine, Check, Type } from "lucide-react";
+import { AlertCircle, PenLine, Check } from "lucide-react";
 import { useGreetingCards } from "@/hooks/useProductOptions";
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { GreetingFont } from '@/lib/validations/cart';
@@ -35,7 +35,6 @@ const FONTS: Record<GreetingFont, { label: string; family: string }> = {
   galada: { label: "Galada", family: "var(--font-galada), cursive" },
 };
 const SIZES: Record<GreetingStyle["size"], number> = { sm: 12.5, md: 15, lg: 19 };
-const COLORS = ["#61000B", "#941A2F", "#C45878", "#B8860B", "#2F6B46", "#2B3A67", "#333333", "#FFFFFF"];
 
 // Visual design per template (matched by name). Used when the template has no uploaded image.
 const DESIGNS: Record<string, { bg: string; accent: string; motif: string }> = {
@@ -85,14 +84,12 @@ export default function GreetingCardSelector({
   style,
   onTemplate,
   onMessage,
-  onStyle,
 }: {
   templateId: string | null;
   message: string;
   style: GreetingStyle;
   onTemplate: (id: string | null) => void;
   onMessage: (m: string) => void;
-  onStyle: (s: GreetingStyle) => void;
 }) {
   const { data, loading, error, reload } = useGreetingCards();
   /*
@@ -104,7 +101,6 @@ export default function GreetingCardSelector({
   const cards = (data ?? []).filter((t) => t.name.trim().toLowerCase() === "classic cream");
   const remaining = GREETING_MAX - message.length;
   const selected = cards.find((t) => t.id === templateId) || null;
-  const set = (patch: Partial<GreetingStyle>) => onStyle({ ...style, ...patch });
 
   return (
     <div className="space-y-3">
@@ -163,61 +159,6 @@ export default function GreetingCardSelector({
                   />
                   <p className={`text-[11px] mt-1 text-right ${remaining <= 20 ? "text-amber-600" : "text-[#9a9a9a]"}`}>{remaining} characters left</p>
                 </div>
-
-                {/* Font */}
-                {/* <div>
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-[#9a9a9a] flex items-center gap-1 mb-1.5"><Type size={11} /> Font</span>
-                  <div className="flex gap-1.5">
-                    {(Object.keys(FONTS) as GreetingStyle["font"][]).map((f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => set({ font: f })}
-                        aria-pressed={style.font === f}
-                        className={`px-3 py-1.5 rounded-lg border text-[12px] transition-colors ${style.font === f ? "border-primary bg-primary/5 text-primary" : "border-[#E4DED4] text-[#666] hover:border-primary/50"}`}
-                        style={{ fontFamily: FONTS[f].family }}
-                      >
-                        {FONTS[f].label}
-                      </button>
-                    ))}
-                  </div>
-                </div> */}
-
-                {/* Size */}
-                {/* <div>
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-[#9a9a9a] block mb-1.5">Text size</span>
-                  <div className="flex gap-1.5">
-                    {(["sm", "md", "lg"] as GreetingStyle["size"][]).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => set({ size: s })}
-                        aria-pressed={style.size === s}
-                        className={`w-9 h-8 rounded-lg border transition-colors ${style.size === s ? "border-primary bg-primary/5 text-primary" : "border-[#E4DED4] text-[#666] hover:border-primary/50"}`}
-                      >
-                        <span style={{ fontSize: s === "sm" ? 11 : s === "md" ? 13 : 16 }}>A</span>
-                      </button>
-                    ))}
-                  </div>
-                </div> */}
-
-                {/* Colour */}
-                {/* <div>
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-[#9a9a9a] block mb-1.5">Text colour</span>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => set({ color: c })}
-                        aria-label={`Text colour ${c}`}
-                        aria-pressed={style.color.toLowerCase() === c.toLowerCase()}
-                        className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${style.color.toLowerCase() === c.toLowerCase() ? "ring-2 ring-primary ring-offset-1" : "border-black/10"}`}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                  </div>
-                </div> */}
               </div>
 
               {/* Live preview */}

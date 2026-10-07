@@ -2,19 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldValues, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { freeDeliverySchema, type FreeDeliveryFormValues } from "@/lib/validations/marketing";
-import { createCampaign, updateCampaign } from "@/lib/actions/marketing.actions";
+import { createCampaign, updateCampaign, type getCampaignById } from "@/lib/actions/marketing.actions";
 import MultiSelect, { type Option } from "./MultiSelect";
 import { toDatetimeLocal } from "./ui";
 
 interface Props {
   productOptions: Option[];
   categoryOptions: Option[];
-  initialData?: any;
+  /** The saved record when editing (as the edit page loads it). */
+  initialData?: Extract<Awaited<ReturnType<typeof getCampaignById>>, { success: true }>["data"];
 }
 
 const field = "w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 outline-none text-sm bg-white";
@@ -30,8 +31,9 @@ export default function CampaignForm({ productOptions, categoryOptions, initialD
     watch,
     setValue,
     formState: { errors },
-  } = useForm<any>({
-    resolver: zodResolver(freeDeliverySchema),
+  } = useForm<FieldValues, unknown, FreeDeliveryFormValues>({
+    // Same cast as AddressForm: the schema's input type is stricter than what the inputs hold.
+    resolver: zodResolver(freeDeliverySchema) as unknown as Resolver<FieldValues, unknown, FreeDeliveryFormValues>,
     defaultValues: initialData
       ? {
           ...initialData,
@@ -66,15 +68,15 @@ export default function CampaignForm({ productOptions, categoryOptions, initialD
       } else {
         toast.error(result.error);
       }
-    } catch (e: any) {
-      toast.error(e.message || "Something went wrong");
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || "Something went wrong");
     } finally {
       setSubmitting(false);
     }
   };
 
   const err = (name: string) =>
-    (errors as any)[name] ? <p className="text-red-500 text-xs mt-1">{String((errors as any)[name].message)}</p> : null;
+    errors[name] ? <p className="text-red-500 text-xs mt-1">{String(errors[name].message)}</p> : null;
 
   const arrayField = (name: string, options: Option[], placeholder: string) => (
     <MultiSelect

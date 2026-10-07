@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { PROMOTION_BAR_DEFAULTS, type PromotionBarTheme } from '@/lib/promotions';
+import { PROMOTION_BAR_DEFAULTS, type PromotionBarTheme } from '@/lib/validations/promotion-bar';
 
 /**
- * Active-promotions bar pinned to the bottom of the home banner. Mirrors the site's
- * announcement-bar style (taupe strip, rotating message with prev/next chevrons), driven by
+ * Active-promotions bar: pinned to the bottom of the home banner, and at the top of the header
+ * everywhere else (Navbar). Taupe strip, rotating message with prev/next chevrons, driven by
  * the admin's live promotion titles. Auto-advances; chevrons only show for 2+.
  *
  * Mobile-safe: the bar uses a MIN height and the message FLOWS (wraps + centers) instead of
@@ -18,10 +18,13 @@ import { PROMOTION_BAR_DEFAULTS, type PromotionBarTheme } from '@/lib/promotions
 export default function PromotionBar({
   items,
   theme = PROMOTION_BAR_DEFAULTS,
+  placement = 'banner',
 }: {
   items: string[];
   /** Admin-configured colours; defaults keep the bar looking as it always did. */
   theme?: PromotionBarTheme;
+  /** 'banner' overlays the bottom edge of the hero; 'header' sits in normal flow. */
+  placement?: 'banner' | 'header';
 }) {
   const slides = items.map((t) => t.trim()).filter(Boolean);
   const [index, setIndex] = useState(0);
@@ -43,7 +46,7 @@ export default function PromotionBar({
     <div
       aria-label="Current offers"
       style={{ backgroundColor: theme.barColor, color: theme.textColor }}
-      className="absolute inset-x-0 bottom-0 z-10 flex min-h-[40px] items-center justify-between gap-1 px-1.5 py-1.5 sm:px-4 md:px-12"
+      className={`${placement === 'banner' ? 'absolute inset-x-0 bottom-0 z-10' : 'relative w-full'} flex min-h-[40px] items-center justify-between gap-1 px-1.5 py-1.5 sm:px-4 md:px-12`}
     >
       {hasControls ? (
         <button

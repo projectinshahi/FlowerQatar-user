@@ -31,7 +31,7 @@ const PAGE_SIZE = 8;
 /**
  * Premium product picker for the Occasion form.
  *
- * Loads from the existing /api/admin/products endpoint and derives image/price via the
+ * Loads from /api/admin/occasions/selectable-products and derives image/price via the
  * shared `mapDbProductToStore` (price and images live in Product.variants JSON, not columns).
  * Selected products are kept in a map so chips still render for items that aren't on the
  * current page — the admin never types an id.

@@ -1,5 +1,7 @@
+import type { Prisma } from '@prisma/client';
 import { stillOf } from '@/lib/media';
 import { prisma } from '@/lib/prisma';
+import type { ProductVariant } from '@/types/product-detail';
 import { formatShippingAddress } from '@/lib/qatar';
 import { SITE_URL } from '@/lib/site';
 import {
@@ -7,7 +9,6 @@ import {
   InvoiceLineItem,
   InvoiceFinancials,
   CustomerDetails,
-  CompanyDetails,
   PaymentDetails,
   DeliveryDetails,
   OrderNotes,
@@ -65,14 +66,11 @@ function translateColorToAr(color: string | null | undefined): string | undefine
 }
 
 /**
- * Resolves product image thumbnail safely from product or variants.
+ * Resolves a product's thumbnail from its variants (Product has no image column of its own).
  */
-function resolveProductImage(product: any): string | undefined {
-  if (!product) return undefined;
-  if (product.image) return product.image;
-  if (Array.isArray(product.images) && product.images.length > 0) return product.images[0];
+function resolveProductImage(product: { variants: Prisma.JsonValue }): string | undefined {
   if (Array.isArray(product.variants) && product.variants.length > 0) {
-    for (const v of product.variants) {
+    for (const v of product.variants as unknown as ProductVariant[]) {
       if (Array.isArray(v.colorVariants)) {
         for (const cv of v.colorVariants) {
           // An invoice can only print a still: a video swatch contributes its poster frame.
@@ -89,32 +87,36 @@ function resolveProductImage(product: any): string | undefined {
   return undefined;
 }
 
+const INVOICE_ORDER_INCLUDE = {
+  user: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      city: true,
+      state: true,
+      country: true,
+      addresses: true,
+    },
+  },
+  items: {
+    include: {
+      product: true,
+    },
+  },
+} satisfies Prisma.OrderInclude;
+
+type InvoiceOrder = Prisma.OrderGetPayload<{ include: typeof INVOICE_ORDER_INCLUDE }>;
+
 /**
  * Fetches and builds authoritative InvoiceData from an Order ID.
  */
 export async function getInvoiceDataByOrderId(orderId: string): Promise<InvoiceData> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          city: true,
-          state: true,
-          country: true,
-          addresses: true,
-        },
-      },
-      items: {
-        include: {
-          product: true,
-        },
-      },
-    },
+    include: INVOICE_ORDER_INCLUDE,
   });
 
   if (!order) {
@@ -127,13 +129,13 @@ export async function getInvoiceDataByOrderId(orderId: string): Promise<InvoiceD
 /**
  * Converts a Prisma Order record into a sanitized, production-ready InvoiceData structure.
  */
-export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData> {
+export async function buildInvoiceDataFromOrder(order: InvoiceOrder): Promise<InvoiceData> {
   const createdAt = new Date(order.createdAt || Date.now());
   const invoiceNumber = formatInvoiceNumber(createdAt, order.id);
   const orderReference = order.id.slice(0, 8).toUpperCase();
 
-  const si: Record<string, any> = (order.shippingInfo as Record<string, any>) || {};
-  const user = order.user || {};
+  const si = (order.shippingInfo ?? {}) as Record<string, string | undefined>;
+  const user = order.user;
 
   const customerName =
     [si.firstName || user.firstName, si.lastName || user.lastName].filter(Boolean).join(' ') ||
@@ -179,14 +181,14 @@ export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData
   const storedTax = Number(order.tax) || 0;
   const orderTaxRate = storedSubtotal > 0 ? storedTax / storedSubtotal : 0;
 
-  const lineItems: InvoiceLineItem[] = (order.items || []).map((it: any, index: number) => {
+  const lineItems: InvoiceLineItem[] = order.items.map((it, index) => {
     const unitPrice = Number(it.price || 0);
     const quantity = Number(it.quantity || 1);
     const itemTotal = unitPrice * quantity;
     const taxRate = orderTaxRate;
     const taxAmount = Math.round(itemTotal * taxRate * 100) / 100;
 
-    const prod = it.product || {};
+    const prod = it.product;
     const sku = it.variantSku || prod.sku || `SKU-${order.id.slice(0, 4)}-${index + 1}`;
     const colorAr = translateColorToAr(it.colorName);
 

@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { updateItemSchema } from "@/lib/validations/cart";
 import { resolveSessionUserId, updateItemQuantity, removeItem, CartError } from "@/lib/services/cart";
 
-function fail(e: any, fallback: string) {
+function fail(e: unknown, fallback: string) {
   const status = e instanceof CartError ? e.status : 500;
   if (status >= 500) console.error("[api/cart/item]", e);
-  return NextResponse.json({ success: false, error: e?.message || fallback }, { status });
+  return NextResponse.json({ success: false, error: (e instanceof Error && e.message) || fallback }, { status });
 }
 
 // PATCH /api/cart/item/:id — update quantity (0 removes the item)

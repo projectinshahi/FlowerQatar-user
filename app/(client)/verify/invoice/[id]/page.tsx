@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getInvoiceDataByOrderId } from '@/lib/invoice/service';
 import { formatCurrencyEn } from '@/lib/invoice/currency';
-import { formatDateEn, formatDateAr } from '@/lib/invoice/date';
+import { formatDateEn } from '@/lib/invoice/date';
 import { ShieldCheck, CheckCircle2, Building2, User, FileText, ArrowRight } from 'lucide-react';
 import type { Metadata } from 'next';
 

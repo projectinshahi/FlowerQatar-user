@@ -60,29 +60,36 @@ export default function OrdersHistory() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [invoiceOrderId, setInvoiceOrderId] = useState<string | null>(null);
 
+  const fetchOrders = () =>
+    fetch("/api/orders")
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => setOrders(data.orders ?? []))
+      .catch(() => setError("Could not load your orders. Please try again."))
+      .finally(() => setLoading(false));
+
   /** `quiet`: a live refresh re-reads in place, without flashing the loading skeleton. */
-  const load = async (quiet = false) => {
+  const load = (quiet = false) => {
     if (!quiet) setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/orders");
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setOrders(data.orders ?? []);
-    } catch {
-      setError("Could not load your orders. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    return fetchOrders();
   };
 
   useEffect(() => {
-    load();
-    // The server sends order events only to this customer's own room (server.mjs).
+    // First load: `loading` already starts true and `error` null, so only the fetch is needed.
+    fetchOrders();
+    // A live refresh re-reads quietly, like load(true). The server sends order events only to
+    // this customer's own room (server.mjs).
+    const refresh = () => {
+      setError(null);
+      fetchOrders();
+    };
     const offLive = onLive((event) => {
-      if (event.type === 'order.statusChanged') load(true);
+      if (event.type === 'order.statusChanged') refresh();
     });
-    const offResync = onResync(() => load(true));
+    const offResync = onResync(refresh);
     return () => {
       offLive();
       offResync();

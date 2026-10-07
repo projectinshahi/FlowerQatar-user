@@ -34,8 +34,6 @@ export const subcategorySchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export const createSubcategorySchema = subcategorySchema;
-
 /**
  * Inline row edits from the admin lists: one toggle or one image at a time.
  *
@@ -78,4 +76,3 @@ export const subcategoryListQuerySchema = z.object({
 });
 
 export type SubcategoryFormData = z.input<typeof subcategorySchema>;
-export type SubcategoryInput = z.output<typeof subcategorySchema>;

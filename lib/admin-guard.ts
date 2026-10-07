@@ -85,13 +85,6 @@ async function loadCurrentUser(): Promise<AuthUser | null> {
   };
 }
 
-/** Requires any authenticated (logged-in) user. Throws AuthError otherwise. */
-export async function requireUser(): Promise<AuthUser> {
-  const user = await getCurrentUser();
-  if (!user) throw new AuthError("You must be signed in", 401);
-  return user;
-}
-
 /**
  * Page guard for admin Server Components: redirects anyone who is not an admin to the admin
  * login rather than throwing. Pages must call this themselves — a layout's check is not
@@ -147,12 +140,3 @@ export async function guardAdmin(): Promise<NextResponse | null> {
   }
 }
 
-/** Route-handler guard for any authenticated user. Returns null when allowed. */
-export async function guardUser(): Promise<NextResponse | null> {
-  try {
-    await requireUser();
-    return null;
-  } catch (e) {
-    return denyFor(e);
-  }
-}

@@ -37,13 +37,13 @@ export async function GET(
 
     const invoiceData = await getInvoiceDataByOrderId(id);
     return NextResponse.json({ success: true, invoice: invoiceData });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Invoice API error:', error);
     if (error instanceof InvoiceServiceError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     return NextResponse.json(
-      { error: error?.message || 'Failed to retrieve invoice' },
+      { error: (error instanceof Error && error.message) || 'Failed to retrieve invoice' },
       { status: 500 }
     );
   }

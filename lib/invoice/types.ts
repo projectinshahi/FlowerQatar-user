@@ -1,4 +1,3 @@
-export type InvoiceLanguage = 'bilingual' | 'en' | 'ar';
 
 export interface CompanyDetails {
   nameEn: string;

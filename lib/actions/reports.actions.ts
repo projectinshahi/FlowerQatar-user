@@ -149,9 +149,9 @@ export async function getReportStats(preset?: string): Promise<ActionResult<Repo
         customers,
       },
     };
-  } catch (e: any) {
+  } catch (e) {
     if (e instanceof AuthError) return { success: false, error: e.message };
     console.error("[reports.action]", e);
-    return { success: false, error: e.message || "Could not build the report" };
+    return { success: false, error: (e instanceof Error && e.message) || "Could not build the report" };
   }
 }

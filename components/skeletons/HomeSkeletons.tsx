@@ -102,32 +102,3 @@ export function SubscriptionPlansSkeleton() {
   );
 }
 
-/** Circular category strip used by the Flower mega-menu and mobile nav. */
-export function CategoryStripSkeleton({ count = 5 }: { count?: number }) {
-  return (
-    <SkeletonRegion
-      label="Loading categories"
-      className="flex gap-4 overflow-hidden px-1 pb-1 lg:gap-5 xl:justify-center"
-    >
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="flex w-[80px] shrink-0 flex-col items-center gap-2 p-1 md:w-[86px] lg:w-[96px]">
-          <Skeleton className="h-[64px] w-[64px] rounded-full md:h-[72px] md:w-[72px] lg:h-[84px] lg:w-[84px]" />
-          <SkeletonText className="h-2" width="80%" />
-        </div>
-      ))}
-    </SkeletonRegion>
-  );
-}
-
-/** Text rows for the mobile navigation drawer. */
-export function NavListSkeleton({ count = 6 }: { count?: number }) {
-  return (
-    <SkeletonRegion label="Loading menu" className="space-y-1">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="flex min-h-[56px] items-center">
-          <SkeletonText className="h-4" width={`${70 - i * 5}%`} />
-        </div>
-      ))}
-    </SkeletonRegion>
-  );
-}

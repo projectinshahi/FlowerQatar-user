@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { ROSE_COLORS, BOX_COLORS } from '../../../data/products';
 import { ChevronRight, ChevronLeft, ShoppingBag, Gift, Sparkles, Check, ShieldCheck } from 'lucide-react';
@@ -19,7 +19,6 @@ export default function CustomArrangementPage() {
   const [selectedLid, setSelectedLid] = useState<'Branded Lid' | 'Clear Acrylic' | 'Custom Message'>('Branded Lid');
   const [customLidText, setCustomLidText] = useState('');
   const [cardMessage, setCardMessage] = useState('');
-  const [calculatedPrice, setCalculatedPrice] = useState(249);
 
   // Stepper steps definition
   const STEPS = [
@@ -30,29 +29,17 @@ export default function CustomArrangementPage() {
     { num: 5, label: 'Gift Card' },
   ];
 
-  // Dynamic price calculation
-  useEffect(() => {
-    // Base price by quantity
-    const basePrices = {
-      4: 79,
-      9: 149,
-      16: 249,
-      25: 349,
-      36: 449,
-      49: 549,
-    };
-
-    let price = basePrices[roseCount];
-
-    // Lid premiums
-    if (selectedLid === 'Clear Acrylic') {
-      price += 25;
-    } else if (selectedLid === 'Custom Message') {
-      price += 50;
-    }
-
-    setCalculatedPrice(price);
-  }, [roseCount, selectedLid]);
+  // Price follows the selection: base price by quantity, plus the lid premium.
+  const basePrices = {
+    4: 79,
+    9: 149,
+    16: 249,
+    25: 349,
+    36: 449,
+    49: 549,
+  };
+  const calculatedPrice =
+    basePrices[roseCount] + (selectedLid === 'Clear Acrylic' ? 25 : selectedLid === 'Custom Message' ? 50 : 0);
 
   const handleNext = () => {
     if (step < 5) setStep((s) => s + 1);
@@ -287,14 +274,14 @@ export default function CustomArrangementPage() {
                 <div>
                   <h3 className="font-serif text-2xl text-primary mb-4">Select Container Box Shape</h3>
                   <div className="grid grid-cols-3 gap-3">
-                    {[
+                    {([
                       { shape: 'Round', desc: 'Timeless Parisian classic' },
                       { shape: 'Square', desc: 'Modern geometric elegance' },
                       { shape: 'Heart', desc: 'The ultimate romantic statement' },
-                    ].map((item) => (
+                    ] as const).map((item) => (
                       <button
                         key={item.shape}
-                        onClick={() => setBoxShape(item.shape as any)}
+                        onClick={() => setBoxShape(item.shape)}
                         className={`p-4 border text-center flex flex-col items-center justify-center space-y-2 transition-all duration-300 rounded-none ${
                           boxShape === item.shape
                             ? 'border-secondary bg-cream text-primary ring-1 ring-secondary shadow-sm'
@@ -366,17 +353,17 @@ export default function CustomArrangementPage() {
                   The density determines the volume of eternity Ecuadorian roses packed into your custom arrangement.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
-                  {[
+                  {([
                     { count: 4, label: 'Le Quartet', price: 'QAR 79' },
                     { count: 9, label: 'Atelier Nine', price: 'QAR 149' },
                     { count: 16, label: 'Classic Sweet', price: 'QAR 249' },
                     { count: 25, label: 'Grande Premium', price: 'QAR 349' },
                     { count: 36, label: 'Majestic Luxe', price: 'QAR 449' },
                     { count: 49, label: 'Royal Emperor', price: 'QAR 549' },
-                  ].map((item) => (
+                  ] as const).map((item) => (
                     <button
                       key={item.count}
-                      onClick={() => setRoseCount(item.count as any)}
+                      onClick={() => setRoseCount(item.count)}
                       className={`p-4 border text-center flex flex-col items-center justify-center space-y-1.5 transition-all duration-300 rounded-none ${
                         roseCount === item.count
                           ? 'border-secondary bg-cream text-primary ring-1 ring-secondary shadow-sm'
@@ -400,14 +387,14 @@ export default function CustomArrangementPage() {
                   Finish your arrangement with standard branded rigid covers or clear showcase acrylic.
                 </p>
                 <div className="space-y-2.5 pt-2">
-                  {[
+                  {([
                     { title: 'Signature Branded Cardboard Lid', desc: 'Standard presentation cover, embossed in gold.', value: 'Branded Lid', extra: '+QAR 0' },
                     { title: 'Clear Acrylic Showcase Lid', desc: 'Keep your roses completely visible while protecting dust.', value: 'Clear Acrylic', extra: '+QAR 25' },
                     { title: 'Embossed Gold Foil Custom Message', desc: 'Emboss a name or anniversary message onto the lid.', value: 'Custom Message', extra: '+QAR 50' },
-                  ].map((opt) => (
+                  ] as const).map((opt) => (
                     <button
                       key={opt.value}
-                      onClick={() => setSelectedLid(opt.value as any)}
+                      onClick={() => setSelectedLid(opt.value)}
                       className={`w-full p-4 border text-left flex justify-between items-center transition-all duration-300 rounded-none ${
                         selectedLid === opt.value
                           ? 'border-secondary bg-cream text-primary ring-1 ring-secondary shadow-sm'

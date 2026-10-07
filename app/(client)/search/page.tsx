@@ -1,6 +1,5 @@
 import SearchClient from '../../../components/client/search/SearchClient';
 import { getStoreProducts } from '../../../lib/store-products';
-import { PRODUCTS } from '../../../data/products';
 
 import { privatePageMetadata } from '@/lib/page-metadata';
 
@@ -25,8 +24,7 @@ export default async function SearchPage({
   const sp = await searchParams;
   const query = typeof sp.q === 'string' ? sp.q : '';
 
-  const dbProducts = await getStoreProducts();
-  const products = dbProducts.length > 0 ? dbProducts : PRODUCTS;
+  const products = await getStoreProducts();
 
   return <SearchClient products={products} query={query} />;
 }

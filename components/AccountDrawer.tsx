@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -516,7 +517,9 @@ export default function AccountDrawer() {
                               <input id="reg-email" type="email" autoComplete="email" inputMode="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className={inputCls} />
                             </div>
                             <p className="font-serif text-[13px] text-primary mb-8 text-center leading-relaxed">
-                              By signing up, you agree to our Terms of Use and Privacy Policy.
+                              {/* New tab, so reading the policy does not lose what was typed here. */}
+                              By signing up, you agree to our Terms of Use and{' '}
+                              <Link href="/privacy-policy" target="_blank" className="underline underline-offset-2">Privacy Policy</Link>.
                             </p>
                             <button type="submit" disabled={loading} className={primaryBtn}>{loading ? 'SENDING CODE...' : 'CREATE ACCOUNT'}</button>
                           </form>

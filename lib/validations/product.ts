@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { ProductVariant } from '@/types/product-detail';
+import type { Product } from '@prisma/client';
 
 /**
  * All product data lives in a single Product row. Variants (and their nested color
@@ -142,5 +144,92 @@ export const productSchema = z.object({
   });
 
 export type ProductFormValues = z.infer<typeof productSchema>;
-export type VariantFormValues = z.infer<typeof variantSchema>;
-export type ColorVariantFormValues = z.infer<typeof colorVariantSchema>;
+
+/**
+ * Product.variants as stored (JSON column) → the shape the admin product form edits. Missing
+ * fields get the form's empty values so every input stays controlled.
+ */
+export function storedVariantsToForm(variants: unknown) {
+  return ((Array.isArray(variants) ? variants : []) as ProductVariant[]).map((v) => ({
+    id: v.id,
+    variantName: v.variantName || "",
+    sku: v.sku || "",
+    description: v.description || "",
+    productCare: {
+      dos: v.productCare?.dos || [],
+      donts: v.productCare?.donts || [],
+    },
+    isDefault: v.isDefault ?? false,
+    isActive: v.isActive ?? true,
+    specifications: (v.specifications || []).map((spec) => ({
+      id: spec.id,
+      title: spec.title,
+      value: spec.value,
+    })),
+    colorVariants: (v.colorVariants || []).map((cv) => ({
+      id: cv.id,
+      colorName: cv.colorName || "",
+      colorCode: cv.colorCode || "#000000",
+      price: cv.price ?? "",
+      salePrice: cv.salePrice ?? "",
+      swatchImage: cv.swatchImage || "",
+      hoverImage: cv.hoverImage || "",
+      isActive: cv.isActive ?? true,
+      isDefault: cv.isDefault ?? false,
+      galleryImages: (cv.galleryImages || []).map((img) => ({
+        id: img.id,
+        url: img.url,
+        publicId: img.publicId,
+        isPrimary: img.isPrimary,
+        order: img.order,
+        type: img.type || (img.url?.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) ? "video" : "image"),
+      })),
+    })),
+  }));
+}
+
+/**
+ * A stored product → the admin product form's starting values. Both edit views (the products
+ * list's ?edit= panel and /admin/products/[id]/edit) use this, so neither can drop a field the
+ * form edits — the list view once omitted `rating`, and saving from it erased the curated rating.
+ */
+export function productToFormValues(
+  product: Pick<
+    Product,
+    | "id" | "name" | "slug" | "sku" | "shortDescription" | "description" | "country" | "categoryType"
+    | "subcategoryId" | "status" | "isFeatured" | "isBestSeller" | "isTrending" | "isNewArrival"
+    | "rating" | "variants"
+  >
+) {
+  return {
+    id: product.id,
+    name: product.name || "",
+    slug: product.slug || "",
+    sku: product.sku || "",
+    shortDescription: product.shortDescription || "",
+    description: product.description || "",
+    country: product.country || "",
+    categoryType: product.categoryType || "",
+    subcategoryId: product.subcategoryId || "",
+    status: product.status,
+    isFeatured: product.isFeatured,
+    isBestSeller: product.isBestSeller,
+    isTrending: product.isTrending,
+    isNewArrival: product.isNewArrival,
+    // `?? ""` keeps the number input controlled and blank when nothing is curated — a null
+    // would make React drop back to an uncontrolled input and warn on the first keystroke.
+    rating: product.rating ?? "",
+    variants: storedVariantsToForm(product.variants),
+  };
+}
+
+/**
+ * The Product.rating part of an update, from the parsed `rating` field:
+ *  - undefined (the field was not sent) → leave the stored rating as it is;
+ *  - null (the admin blanked it)        → clear it, so the page falls back to the real reviews;
+ *  - a number                           → store it.
+ * Writing `rating ?? null` instead treated "not sent" as "cleared" and erased the rating.
+ */
+export function curatedRatingUpdate(rating: number | null | undefined): { rating?: number | null } {
+  return rating === undefined ? {} : { rating };
+}

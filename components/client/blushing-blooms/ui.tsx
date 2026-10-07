@@ -25,8 +25,6 @@ import { filledStars } from '@/lib/reviews';
 
 /** The Blushing Blooms accent, previously re-declared as a local `GOLD` in four files. */
 export const GOLD = '#cc965a';
-/** Hover for solid gold surfaces. */
-export const GOLD_HOVER = '#b9834a';
 /** 10% gold — the quick view's quantity pill and wishlist button sit on this. */
 export const SOFT_GOLD = 'rgba(204,150,90,0.1)';
 

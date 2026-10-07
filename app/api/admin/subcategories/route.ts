@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
-import { createSubcategorySchema, subcategoryListQuerySchema } from '@/lib/validations/subcategory';
+import { subcategorySchema, subcategoryListQuerySchema } from '@/lib/validations/subcategory';
 import { publishChange } from '@/lib/live-sync';
 import { logDbError } from '@/lib/prisma-error';
 import { z } from 'zod';
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const denied = await guardAdmin(); if (denied) return denied;
   try {
-    const data = createSubcategorySchema.parse(await request.json());
+    const data = subcategorySchema.parse(await request.json());
     const subcategory = await prisma.$transaction(async (tx) => {
       const category = await tx.category.findFirst({ where: { id: data.categoryId, isActive: true }, select: { id: true } });
       if (!category) throw new Error('PARENT_CATEGORY_INACTIVE');

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Loader2, Package, Minus, Plus, CalendarClock } from "lucide-react";
-import { errMsg } from "@/lib/error";
 import { FREQUENCIES } from "@/lib/validations/subscription";
 import { generateDeliveryDates, frequencyLabel } from "@/lib/services/subscription/schedule";
 import { formatNumber, formatUtcDate } from "@/lib/utils";
@@ -55,10 +54,19 @@ export default function CreateSubscriptionModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Each time the modal opens it starts clean and loading (adjusted during render; the effect
+  // below only fetches).
+  const [wasOpen, setWasOpen] = useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setError("");
+      setLoadingData(true);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setError("");
-    setLoadingData(true);
     let active = true;
     Promise.all([
       fetch("/api/subscriptions/catalog").then((r) => r.json()),

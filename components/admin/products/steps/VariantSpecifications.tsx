@@ -4,7 +4,7 @@ import { useFieldArray, useFormContext } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 
 export default function VariantSpecifications({ variantIndex }: { variantIndex: number }) {
-  const { register, control, formState: { errors } } = useFormContext();
+  const { register, control } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
     name: `variants.${variantIndex}.specifications`,

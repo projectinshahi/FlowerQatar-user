@@ -1,63 +1,30 @@
 'use client';
 
-import { useCallback, useSyncExternalStore } from 'react';
-import {
-  applyLanguage,
-  beginTransition,
-  endTransition,
-  isTranslated,
-  notifyLang,
-  readLang,
-  subscribeLang,
-  writeLang,
-  type Lang,
-} from '@/lib/translate';
-import { loadTranslator } from './GoogleTranslate';
+import { useSyncExternalStore } from 'react';
+import { LANGUAGES, SOURCE_LANG, loadTranslator, readLang, selectLanguage, subscribeLang } from '@/lib/translate';
 
-const LANGS: { code: Lang; label: string; full: string }[] = [
-  { code: 'en', label: 'EN', full: 'English' },
-  { code: 'ar', label: 'AR', full: 'العربية' },
-];
+/*
+ * The active pill is styled from <html lang>, which the pre-paint script in layout.tsx sets from
+ * the cookie. It is right on the very first frame, before hydration, instead of rendering the
+ * server's language and switching after.
+ */
+const ACTIVE_PILL_CSS = `${LANGUAGES.map(
+  (l) => `html[lang="${l.code}"] [data-lang-option="${l.code}"]`
+).join(',')}{background-color:var(--color-primary);color:#fff}`;
 
 /**
  * The cookie is an external store: it changes outside React and emits no event.
- * `useSyncExternalStore` renders the server snapshot ('en') during hydration and swaps to the
- * real value after — no mismatch, and no setState-in-an-effect.
+ * `useSyncExternalStore` renders the server snapshot during hydration and swaps to the real value
+ * after — no mismatch, and no setState-in-an-effect. Only aria-pressed reads it.
  */
-const serverLang = (): Lang => 'en';
+const serverLang = () => SOURCE_LANG;
 
 /**
- * English / Arabic switch for the navbar.
- *
- * Switches in the live document — no reload — by driving the <select> Google injects, which
- * is the same path its own dropdown uses. Scroll position, open drawers and cart state all
- * survive. A reload is only used as a fallback, when the widget script hasn't produced that
- * select yet (cold load, slow network, blocked by an extension).
+ * Language switch for the navbar. Switches in the live document — never a reload — so scroll
+ * position, open drawers and the cart all survive. See selectLanguage in lib/translate.ts.
  */
 export default function LanguageToggle({ className = '' }: { className?: string }) {
   const lang = useSyncExternalStore(subscribeLang, readLang, serverLang);
-
-  const select = useCallback((next: Lang) => {
-    // Deliberately NOT `if (next === readLang()) return`. The cookie can say Arabic while the
-    // page is still English — any failed pass leaves exactly that state — and skipping on the
-    // cookie alone then makes the Arabic button permanently dead. Re-applying is cheap, so
-    // only skip when the cookie AND the rendered page already agree.
-    if (next === readLang() && (next === 'en' ? !isTranslated() : isTranslated())) return;
-
-    writeLang(next);
-    notifyLang();
-
-    // Dim rather than blank: the document survives, so there is no white frame to hide.
-    beginTransition('nav');
-    if (applyLanguage(next)) {
-      window.setTimeout(endTransition, 600);
-      return;
-    }
-
-    // No widget yet — fall back to a masked reload, which the cookie alone is enough to drive.
-    beginTransition('boot');
-    window.setTimeout(() => window.location.reload(), 200);
-  }, []);
 
   return (
     <div
@@ -71,25 +38,24 @@ export default function LanguageToggle({ className = '' }: { className?: string 
       onPointerEnter={loadTranslator}
       onFocus={loadTranslator}
     >
-      {LANGS.map((l) => {
-        const active = lang === l.code;
-        return (
-          <button
-            key={l.code}
-            type="button"
-            onClick={() => select(l.code)}
-            aria-pressed={active}
-            aria-label={`Switch to ${l.full}`}
-            lang={l.code}
-            suppressHydrationWarning
-            className={`min-w-[34px] rounded-full px-2.5 py-1 font-sans text-[10px] font-medium uppercase tracking-[0.12em] transition-colors duration-200 ${
-              active ? 'bg-primary text-white' : 'text-primary/70 hover:text-primary'
-            }`}
-          >
-            {l.label}
-          </button>
-        );
-      })}
+      <style href="language-toggle-active-pill" precedence="default">
+        {ACTIVE_PILL_CSS}
+      </style>
+      {LANGUAGES.map((l) => (
+        <button
+          key={l.code}
+          type="button"
+          onClick={() => selectLanguage(l.code)}
+          aria-pressed={lang === l.code}
+          aria-label={`Switch to ${l.name}`}
+          lang={l.code}
+          data-lang-option={l.code}
+          suppressHydrationWarning
+          className="min-w-[34px] rounded-full px-2.5 py-1 font-sans text-[10px] font-medium uppercase tracking-[0.12em] text-primary/70 transition-colors duration-200 hover:text-primary"
+        >
+          {l.label}
+        </button>
+      ))}
     </div>
   );
 }

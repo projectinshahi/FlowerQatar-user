@@ -29,15 +29,16 @@ export default async function MembershipSuccessPage({
    * ACTIVE one: a membership whose payment has not been verified has activated nothing and
    * must not be presented as though it had.
    */
-  const membership = m
-    ? await prisma.membership.findFirst({
-        where: { id: m, userId: user.id, status: 'ACTIVE' },
-        include: { plan: true },
-      })
-    : null;
+  const [membership, wallet] = await Promise.all([
+    m
+      ? prisma.membership.findFirst({
+          where: { id: m, userId: user.id, status: 'ACTIVE' },
+          include: { plan: true },
+        })
+      : null,
+    getWalletView(user.id),
+  ]);
   if (!membership) redirect('/');
-
-  const wallet = await getWalletView(user.id);
   const name = planName(membership.plan.planType);
   const accent = planAccent(membership.plan.planType);
   const validityLabel = formatValidity(

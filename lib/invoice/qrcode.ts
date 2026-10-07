@@ -52,23 +52,3 @@ export async function generateQrCodeDataUrl(content: string): Promise<string> {
   }
 }
 
-/**
- * Generates a QR Code as an inline SVG string.
- */
-export async function generateQrCodeSvg(content: string): Promise<string> {
-  try {
-    return await QRCode.toString(content, {
-      type: 'svg',
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      width: 256,
-      color: {
-        dark: '#1A1A1A',
-        light: '#FFFFFF',
-      },
-    });
-  } catch (error) {
-    console.error('Error generating QR code SVG:', error);
-    return '';
-  }
-}

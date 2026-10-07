@@ -1,10 +1,9 @@
 /**
- * Self-check for googtrans cookie parsing — the only real logic behind the EN/AR switch.
- * Run with:  npx tsx scripts/check-language-toggle.ts
+ * Self-check for the language switch. Run with:  npx tsx scripts/check-language-toggle.ts
  *
- * Exercises the real `readLang` from lib/translate.ts by faking `document.cookie`, and asserts
- * the inline boot script in layout.tsx uses an equivalent pattern (it is a hand-inlined copy,
- * so the two can drift silently).
+ * Exercises the real googtrans parsing from lib/translate.ts by faking `document.cookie`, and
+ * asserts the structural invariants that keep the switch from regressing (no reload, no page
+ * mask, no widget rebuild). Behaviour is covered by tests/language.test.ts.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -32,22 +31,13 @@ assert.equal(read('googtrans_backup=/en/ar'), 'en', 'must not match a longer coo
 // A stale third language (the widget is now limited to en,ar) must not read as Arabic.
 assert.equal(read('googtrans=/en/fr'), 'en', 'unknown target falls back to english');
 
-// The boot script is a hand-inlined copy of the same read. If it stops matching, Arabic
-// visitors get an unmasked flash of English — so fail loudly rather than let it drift.
+// The pre-paint script must be the shared one — a hand-inlined copy of the parser drifted before.
 const layout = readFileSync(new URL('../app/(client)/layout.tsx', import.meta.url), 'utf8');
 assert.ok(
-  layout.includes(String.raw`/(?:^|;\\s*)googtrans=([^;]+)/`),
-  'inline boot script cookie regex no longer matches lib/translate.ts'
+  layout.includes('dangerouslySetInnerHTML={{ __html: bootLanguageScript }}'),
+  'layout must run bootLanguageScript from lib/translate.ts before first paint'
 );
-assert.ok(layout.includes(`endsWith('/ar')`), 'inline boot script no longer checks the /ar suffix');
-assert.ok(
-  layout.includes(`setAttribute('data-translating','boot')`),
-  'inline boot script no longer masks the page'
-);
-assert.ok(
-  layout.includes(`removeAttribute('data-translating')`),
-  'inline boot script lost its timeout fallback — the page could stay hidden'
-);
+assert.ok(!layout.includes('data-translating'), 'the page must never be masked while Google loads');
 
 /*
  * Loop guard. If isTranslatorNoise ever returns false for the translator's own edits, the
@@ -120,17 +110,29 @@ for (const hint of ['#000000', '#61000B', '0', '20', '0000 0000 0000 0000', '   
 /*
  * The init callback is inline JS, so TypeScript can't protect it. It must stay defensive:
  * element.js publishes window.google.translate before TranslateElement exists, and a caller
- * reaching it in that window used to throw "Cannot read properties of undefined
- * (reading 'InlineLayout')".
+ * reaching it in that window used to throw.
+ *
+ * And it must use Google's default layout: InlineLayout.SIMPLE draws a link-style menu and never
+ * creates the select.goog-te-combo the switch drives, so AR silently stopped translating in place.
  */
-const widget = readFileSync(new URL('../components/GoogleTranslate.tsx', import.meta.url), 'utf8');
+const translateLib = readFileSync(new URL('../lib/translate.ts', import.meta.url), 'utf8');
+const translateCode = translateLib.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 assert.ok(
-  widget.includes('if (!T || !T.InlineLayout) return false;'),
-  'init callback lost its guard — a premature call will throw on InlineLayout again'
+  translateLib.includes('if (!T) return false;'),
+  'init callback lost its guard — a premature call will throw again'
 );
 assert.ok(
-  widget.includes("includedLanguages: 'en,ar'"),
-  'widget must stay limited to English and Arabic'
+  !translateCode.includes('InlineLayout'),
+  'InlineLayout.SIMPLE never builds select.goog-te-combo — the switch would stop translating'
+);
+/*
+ * Back to English is Google's "Show original", never a translation INTO English: from that state
+ * Google's next switch only restores the page, so the second click on AR appeared to do nothing.
+ */
+assert.ok(translateLib.includes("'[id$=\".restore\"]'"), "EN must use Google's Show original");
+assert.ok(
+  translateLib.includes("includedLanguages: LANGUAGES.map((l) => l.code).join(',')"),
+  'widget must offer exactly the languages the switch offers'
 );
 
 /*
@@ -149,7 +151,7 @@ assert.ok(!/innerHTML\s*=/.test(syncCode), 'TranslateSync must not wipe the widg
  * Rotating bars must keep every slide mounted. A slide re-keyed on a timer is a brand-new English
  * node each tick, replacing the translated one before Google can translate it again.
  */
-for (const file of ['PromotionBar', 'TopAnnouncementBar']) {
+for (const file of ['PromotionBar']) {
   const src = stripComments(readFileSync(new URL(`../components/${file}.tsx`, import.meta.url), 'utf8'));
   assert.ok(!/key=\{(safeIndex|currentIndex)\}/.test(src), `${file} must not re-key its slide on every tick`);
 }
@@ -159,18 +161,14 @@ for (const file of ['PromotionBar', 'TopAnnouncementBar']) {
  * page that is still English; a cookie-only guard then makes the Arabic button permanently
  * dead, with no way for the user to recover short of clearing cookies.
  */
-const toggle = readFileSync(new URL('../components/LanguageToggle.tsx', import.meta.url), 'utf8');
-// Comments are stripped first: the file documents the bad pattern in prose to explain why it
-// is avoided, and matching that text would fail the check on correct code.
-const toggleCode = toggle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 assert.ok(
-  !/if\s*\(\s*next === readLang\(\)\s*\)\s*return/.test(toggleCode),
-  'toggle must not early-return on the cookie alone — that dead-locks the Arabic button'
+  translateLib.includes('next === readLang() && shownLang() === next'),
+  'switch must corroborate the cookie against the rendered page before skipping'
 );
-assert.ok(
-  toggle.includes('isTranslated()'),
-  'toggle must corroborate the cookie against the rendered page before skipping'
-);
+for (const file of ['../lib/translate.ts', '../components/LanguageToggle.tsx']) {
+  const src = stripComments(readFileSync(new URL(file, import.meta.url), 'utf8'));
+  assert.ok(!src.includes('location.reload'), `${file}: a language switch must never reload — it throws away the cart`);
+}
 
 /*
  * In-place switching. Setting `select.goog-te-combo` and firing `change` is the only mechanism
@@ -178,10 +176,9 @@ assert.ok(
  * the cookie, which is why an earlier version appeared to do nothing until a manual refresh.
  * If this ever regresses to init-only, the toggle silently stops working in the live document.
  */
-const translateLib = readFileSync(new URL('../lib/translate.ts', import.meta.url), 'utf8');
 assert.ok(
   translateLib.includes('select.goog-te-combo'),
-  'applyLanguage must drive the widget select — init alone does not re-apply the language'
+  'translateTo must drive the widget select — init alone does not re-apply the language'
 );
 assert.ok(
   translateLib.includes("dispatchEvent(new Event('change'))"),
@@ -192,4 +189,4 @@ assert.ok(
   'switching back to English must restore the original attribute text'
 );
 
-console.log('cookie + boot guard + loop guard + attribute filter + widget guard + no-rebuild + in-place OK');
+console.log('cookie + pre-paint script + loop guard + attribute filter + widget guard + no-rebuild + no-reload + in-place OK');

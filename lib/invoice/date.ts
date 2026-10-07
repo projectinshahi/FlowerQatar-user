@@ -71,18 +71,3 @@ export function formatDateAr(
   return `${dateStr}، ${h12}:${minutes} ${ampm}`;
 }
 
-/**
- * Returns dual English & Arabic formatted date strings.
- */
-export function formatDateDual(
-  dateInput: string | Date | null | undefined,
-  includeTime = false
-): { en: string; ar: string; combined: string } {
-  const en = formatDateEn(dateInput, includeTime);
-  const ar = formatDateAr(dateInput, includeTime);
-  return {
-    en,
-    ar,
-    combined: `${en} / ${ar}`,
-  };
-}

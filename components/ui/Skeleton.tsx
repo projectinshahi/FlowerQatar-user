@@ -84,19 +84,6 @@ export function SkeletonButton({ className = 'h-10 w-32' }: Props) {
   return <Skeleton className={`rounded-xl ${className}`} />;
 }
 
-/** A generic bordered card: image, title, two text lines. */
-export function SkeletonCard({ className = '', aspect = 'aspect-video' }: Props & { aspect?: string }) {
-  return (
-    <div className={`overflow-hidden rounded-2xl border border-divider/40 bg-white ${className}`}>
-      <SkeletonImage aspect={aspect} />
-      <div className="space-y-2.5 p-4">
-        <SkeletonTitle className="h-5" width="70%" />
-        <SkeletonText width="45%" />
-      </div>
-    </div>
-  );
-}
-
 /** One skeleton table row. `widths` sets each cell's bar width so columns look plausible. */
 export function SkeletonRow({ widths, className = '' }: { widths: string[]; className?: string }) {
   return (
@@ -110,39 +97,3 @@ export function SkeletonRow({ widths, className = '' }: { widths: string[]; clas
   );
 }
 
-/**
- * A full table body of placeholder rows. Renders `rows` of them so the table keeps its normal
- * height and the surrounding page doesn't jump when data lands.
- */
-export function SkeletonTable({
-  rows = 6,
-  widths,
-  className = '',
-}: {
-  rows?: number;
-  widths: string[];
-  className?: string;
-}) {
-  return (
-    <tbody className={className}>
-      {Array.from({ length: rows }).map((_, i) => (
-        <SkeletonRow key={i} widths={widths} />
-      ))}
-    </tbody>
-  );
-}
-
-/** A page-level shell: title, subtitle, and a block of content lines. */
-export function SkeletonPage({ className = '' }: Props) {
-  return (
-    <SkeletonRegion label="Loading page" className={`space-y-6 ${className}`}>
-      <div className="space-y-3">
-        <SkeletonTitle className="h-8" width="38%" />
-        <SkeletonText width="60%" />
-      </div>
-      <div className="rounded-2xl border border-divider/40 bg-white p-6">
-        <SkeletonParagraph lines={5} />
-      </div>
-    </SkeletonRegion>
-  );
-}

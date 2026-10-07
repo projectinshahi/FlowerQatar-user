@@ -142,11 +142,6 @@ export const PRODUCT_TABS: { slug: string; label: string; flag: ProductFlag }[] 
   { slug: 'featured', label: 'Featured', flag: 'isFeatured' },
 ];
 
-/** Resolve a `?tab=` slug to its Product flag (null if unknown). */
-export function flagForTab(slug: string | undefined): ProductFlag | null {
-  return PRODUCT_TABS.find((t) => t.slug === slug)?.flag ?? null;
-}
-
 /** How each category's mega-menu is laid out. */
 export const MENU_LAYOUT: Record<CategoryType, MenuLayout> = {
   GIFT_COMBOS: 'list',

@@ -39,14 +39,3 @@ export const formatUtcDate = (d: string | Date, options: Intl.DateTimeFormatOpti
     { ...options, timeZone: 'UTC' }
   );
 
-/**
- * Formats a number as QAR currency.
- */
-export function formatPrice(price: number): string {
-  return new Intl.NumberFormat('en-QA', {
-    style: 'currency',
-    currency: 'QAR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
-}

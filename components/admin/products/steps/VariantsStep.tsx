@@ -35,6 +35,9 @@ const POPULAR_COUNTRIES = POPULAR_COUNTRY_NAMES.map((name) =>
 
 type SubOption = { id: string; categoryType: string; name: string };
 
+/** The part of the form's error tree read here: whether a variant's name has an error. */
+type VariantErrors = { variantName?: { message?: string } }[];
+
 export default function VariantsStep({ subcategories = [] }: { subcategories?: SubOption[] }) {
   const { register, control, watch, setValue, getValues, formState: { errors } } = useFormContext();
   // Subcategory options depend on the chosen category; changing the category clears the subcategory.
@@ -313,9 +316,9 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
         </div>
 
         <div className="space-y-4 mt-4">
-          {fields.map((field: any, index: number) => {
+          {fields.map((field, index) => {
             const isExpanded = expandedVariants.includes(index);
-            const varErrors = (errors.variants as any)?.[index] || {};
+            const varErrors = (errors.variants as unknown as VariantErrors | undefined)?.[index] || {};
 
             return (
               <div key={field.id} className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">

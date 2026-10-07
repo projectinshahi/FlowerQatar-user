@@ -21,12 +21,3 @@ export interface FAQCategoryMeta {
   description: string;
 }
 
-/** One tier in the membership showcase. `price` is intentionally editable (blank until set). */
-export interface MembershipPlan {
-  name: 'Basic' | 'Premium' | 'VIP';
-  price: string; // QAR amount, e.g. "99" — leave "" to hide the price row
-  points: string;
-  validity: string;
-  accent: string;
-  featured?: boolean;
-}

@@ -38,7 +38,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
   const handleAddToCart = () => {
     addToCart({
       product: {
-        id: (product as any).id,
+        id: product.id,
         slug: product.slug,
         name: product.name,
         price: product.price,

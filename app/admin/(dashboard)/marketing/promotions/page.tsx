@@ -1,4 +1,4 @@
-import { getPromotions } from "@/lib/actions/marketing.actions";
+import { getPromotions, type PromotionListParams } from "@/lib/actions/marketing.actions";
 import PromotionsClient from "@/components/admin/marketing/PromotionsClient";
 import PromotionBarTheme from "@/components/admin/marketing/PromotionBarTheme";
 
@@ -12,11 +12,11 @@ export default async function PromotionsPage({
   const sp = await searchParams;
   const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
 
-  const params = {
+  const params: PromotionListParams = {
     search: str("search"),
-    status: str("status") as any,
-    state: str("state") as any,
-    promotionType: str("promotionType") as any,
+    status: str("status") as PromotionListParams["status"],
+    state: str("state") as PromotionListParams["state"],
+    promotionType: str("promotionType") as PromotionListParams["promotionType"],
     page: str("page") ? Number(str("page")) : 1,
     limit: 10,
   };

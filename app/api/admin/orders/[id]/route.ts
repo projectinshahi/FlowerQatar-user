@@ -74,7 +74,7 @@ export async function PATCH(
 
     notifyUser(order.userId, { type: 'order.statusChanged', ids: [id], status: order.status });
     return NextResponse.json({ message: 'Order updated successfully', order });
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof OrderError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
@@ -119,7 +119,7 @@ export async function GET(
     }
 
     return NextResponse.json({ order });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching order:', error);
     return NextResponse.json(
       { error: 'Failed to fetch order' },

@@ -60,7 +60,7 @@ export default function ProfileImageUploader({
       const sigRes = await fetch("/api/cloudinary/signature");
       const sig = await sigRes.json();
       if (!sigRes.ok || !sig?.success) throw new Error(sig?.error || "Upload not authorized");
-      const { timestamp, signature, apiKey, cloudName, folder } = sig.data;
+      const { timestamp, signature, apiKey, cloudName, folder, allowedFormats } = sig.data;
 
       const fd = new FormData();
       fd.append("file", file);
@@ -68,6 +68,7 @@ export default function ProfileImageUploader({
       fd.append("timestamp", String(timestamp));
       fd.append("signature", signature);
       fd.append("folder", folder);
+      if (allowedFormats) fd.append("allowed_formats", allowedFormats);
 
       const url: string = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();

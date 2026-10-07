@@ -1,12 +1,12 @@
-import { io, type Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { entityOf, type LiveEvent, type LiveHello } from '@/lib/live-events';
 
 /**
  * Browser side of live updates: ONE Socket.IO connection per tab, shared by every component.
  *
  * Components subscribe with onLive()/onResync() and get a function to unsubscribe. The socket
- * is opened lazily by the first subscriber, and its handlers are registered exactly once here,
- * so re-renders never stack listeners.
+ * is opened lazily by the first subscriber — the Socket.IO client itself is only downloaded
+ * then — and its handlers are registered exactly once here, so re-renders never stack listeners.
  *
  * If the socket cannot connect (server without Socket.IO, network down) nothing breaks: pages
  * are server-rendered and correct on load; they just stop updating live until it reconnects.
@@ -22,9 +22,16 @@ const applied = new Map<string, number>();
 /** What this tab had seen the last time it was connected. */
 let seen: LiveHello | null = null;
 let socket: Socket | null = null;
+let connecting = false;
 
 function connect() {
-  if (socket || typeof window === 'undefined') return;
+  if (connecting || typeof window === 'undefined') return;
+  connecting = true;
+  // A failed chunk load leaves the page static, as an unreachable server does; the next subscriber retries.
+  import('socket.io-client').then(({ io }) => open(io), () => { connecting = false; });
+}
+
+function open(io: typeof import('socket.io-client').io) {
   socket = io({
     path: '/socket.io',
     // WebSocket only: no long-polling fallback hammering the server with HTTP requests.

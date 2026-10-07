@@ -22,8 +22,8 @@ const STATIC_PATHS = [
   "/faq",
   "/care",
   "/shipping-returns",
+  "/privacy-policy",
   "/boutiques",
-  "/press",
   "/journal",
 ];
 

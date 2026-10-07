@@ -1,11 +1,10 @@
 'use client';
 
-import React, { use, useState, useEffect } from 'react';
+import React, { use, useState } from 'react';
 import Image from '../../../../components/LuxuryImage';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Calendar, Clock, User, ArrowLeft, Link as LinkIcon, Heart } from 'lucide-react';
-import { BlogPost } from '../../../../types';
+import { Calendar, Clock, User, ArrowLeft, Link as LinkIcon } from 'lucide-react';
 import { BLOG_POSTS } from '../../../../data/blog-posts';
 import Breadcrumbs from '../../../../components/Breadcrumbs';
 

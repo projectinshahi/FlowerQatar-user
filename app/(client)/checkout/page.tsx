@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import Link from 'next/link';
-import { ChevronRight, ChevronUp, ChevronDown, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag, Eye, EyeOff, Check, MapPin } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, CreditCard, ShieldCheck, CheckCircle2, Check, MapPin } from 'lucide-react';
 import Image from '../../../components/LuxuryImage';
 import CouponBox from '../../../components/checkout/CouponBox';
 import RedeemPointsBox from '../../../components/checkout/RedeemPointsBox';
@@ -13,6 +13,7 @@ import {
   type ShippingConfig,
 } from '../../../lib/shipping';
 import { qar, formatNumber } from '../../../lib/utils';
+import { cartView } from '../../../lib/cart-limits';
 import { onLive, onResync } from '../../../lib/live-client';
 import { ZONE_PATTERN, formatQatarAddress, formatShippingAddress, isValidQatarMobile, normalizeQatarMobile, qatarLocalDigits } from '../../../lib/qatar';
 import { useAddresses } from '../../../hooks/useAddresses';
@@ -27,7 +28,7 @@ const ADDRESS_FIELDS: { key: AddressKey; label: string; placeholder: string; req
   { key: 'zone', label: 'Zone *', placeholder: 'e.g. 66', required: true, maxLength: 3 },
   { key: 'street', label: 'Street *', placeholder: 'e.g. 920', required: true, maxLength: 100 },
   { key: 'building', label: 'Building *', placeholder: 'e.g. 12', required: true, maxLength: 50 },
-  { key: 'unit', label: 'Unit', placeholder: 'Apartment / villa no. (optional)', required: false, maxLength: 30 },
+  { key: 'unit', label: 'Unit', placeholder: 'Apartment / villa no.', required: false, maxLength: 30 },
 ];
 
 /** Radios in the brand colour rather than the browser's blue. */
@@ -75,7 +76,7 @@ function QatarPhoneField({ id, label, value, error, autoComplete, onChange }: {
           className="w-full pr-10 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
           // Clears the +974 segment; inline so it never depends on a newly generated class.
           style={{ paddingLeft: 96 }}
-          placeholder="5512 3456"
+          placeholder=""
         />
         {isValidQatarMobile(value) && !error && (
           <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
@@ -97,7 +98,7 @@ interface AppliedCoupon {
 }
 
 export default function CheckoutPage() {
-  const { cart, getCartTotal, refreshCart, user, addToast } = useApp();
+  const { cart, cartLoading, getCartTotal, refreshCart, user, addToast } = useApp();
   const [step, setStep] = useState(1);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -211,7 +212,6 @@ export default function CheckoutPage() {
   const standardFee = calculateShippingForMethod(subtotal, shippingConfig, 'standard');
   const courierFee = calculateShippingForMethod(subtotal, shippingConfig, 'courier');
   const money = (n: number) => (n <= 0 ? 'Complimentary' : `QAR ${n}`);
-  const tax = Math.round(subtotal * 0.08);
 
   // Coupon-derived adjustments (default to no-ops when no coupon is applied).
   const couponDiscount = appliedCoupon?.discount ?? 0;
@@ -405,7 +405,20 @@ export default function CheckoutPage() {
     );
   }
 
-  if (cart.length === 0) {
+  const view = cartView(cart.length, cartLoading);
+  if (view === 'loading') {
+    return (
+      <div className="max-w-7xl mx-auto px-6 pb-24 page-below-header grid grid-cols-1 lg:grid-cols-12 gap-12" aria-busy="true" aria-label="Loading your cart">
+        <div className="lg:col-span-7 space-y-4">
+          <div className="h-4 w-1/3 skeleton" />
+          <div className="h-48 skeleton" />
+        </div>
+        <div className="lg:col-span-5 h-64 skeleton" />
+      </div>
+    );
+  }
+
+  if (view === 'empty') {
     return (
       <div className="max-w-7xl mx-auto px-6 pb-24 page-below-header text-center font-sans">
         <h2 className="font-serif text-2xl mb-4">Your Cart is empty</h2>
@@ -842,7 +855,7 @@ export default function CheckoutPage() {
                   <div className="flex-grow">
                     <p className="font-semibold text-primary truncate max-w-[180px]">{item.product.name}</p>
                     <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">
-                      Qty: {item.quantity} • {item.roseColor}
+                      {qar(item.price)} × {item.quantity} • {item.roseColor}
                     </p>
                   </div>
                   <span className="font-semibold text-primary/95 ml-2">{qar(item.price * item.quantity)}</span>
@@ -876,10 +889,6 @@ export default function CheckoutPage() {
                 <span>Shipping</span>
                 <span>{effectiveShipping === 0 ? 'Complimentary' : qar(effectiveShipping)}</span>
               </div>
-              {/* <div className="flex justify-between text-muted">
-                <span>Estimated Taxes</span>
-                <span>${tax}</span>
-              </div> */}
               {pointsDiscount > 0 && (
                 <div className="flex justify-between text-green-600 font-medium">
                   <span>Points Redeemed</span>

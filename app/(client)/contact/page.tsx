@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronRight, PackageSearch, Loader2 } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 
 export default function ContactPage() {
@@ -47,14 +47,6 @@ export default function ContactPage() {
     }
   };
 
-  const quickLinks = [
-    'Where\'s My Order?',
-    'Modify Shipping Address',
-    'Cancel My Order',
-    'Report Damages',
-    'Shipping Cutoff Times',
-    'Returns and Exchanges'
-  ];
 
   return (
     <div className="max-w-[800px] mx-auto px-4 md:px-8 py-12 md:py-16 text-secondary min-h-screen">
@@ -63,24 +55,6 @@ export default function ContactPage() {
         <Breadcrumbs items={[{ label: 'Contact us', href: '/contact' }]} />
       </div>
 
-      {/* Quick Links Grid */}
-      {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        {quickLinks.map((link, idx) => (
-          <button 
-            key={idx} 
-            className="flex items-center justify-between border border-secondary/20 p-5 rounded-sm hover:border-secondary transition-colors bg-white/50"
-          >
-            <span className="font-serif font-medium text-[15px]">{link}</span>
-            <ChevronRight size={18} className="text-secondary/40" />
-          </button>
-        ))}
-      </div> */}
-
-      {/* Track Order Section */}
-      {/* <div className="border border-secondary/20 p-6 md:p-8 rounded-sm flex flex-col items-center justify-center cursor-pointer hover:border-secondary transition-colors mb-12 bg-white/50">
-        <PackageSearch size={32} strokeWidth={1.2} className="mb-3 text-secondary" />
-        <span className="font-serif font-medium text-[15px]">Track order</span>
-      </div> */}
       <br />
 
       {/* Contact Form Section */}

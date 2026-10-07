@@ -7,7 +7,6 @@ export const consentSchema = z.object({
   analyticsCookies: z.boolean().optional(),
   personalization: z.boolean().optional(),
 });
-export type ConsentInput = z.infer<typeof consentSchema>;
 
 /**
  * Account deletion confirmation. Password-based accounts must send `password`;
@@ -17,4 +16,3 @@ export const deleteAccountSchema = z.object({
   password: z.string().optional().nullable(),
   confirmText: z.string().optional().nullable(),
 });
-export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

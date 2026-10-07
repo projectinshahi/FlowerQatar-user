@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { linkColumns } from '@/app/sections/Footer';
-import { BB_ASSETS } from '@/lib/blushing-blooms';
+import { BB_ASSETS } from '@/data/blushing-blooms';
 
 /**
  * Dark footer for the Blushing Blooms page.

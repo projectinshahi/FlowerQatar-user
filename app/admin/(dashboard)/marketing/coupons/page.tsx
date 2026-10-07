@@ -1,4 +1,4 @@
-import { getCoupons } from "@/lib/actions/marketing.actions";
+import { getCoupons, type CouponListParams } from "@/lib/actions/marketing.actions";
 import CouponsClient from "@/components/admin/marketing/CouponsClient";
 
 export const metadata = { title: "Coupons | Marketing" };
@@ -11,13 +11,13 @@ export default async function CouponsPage({
   const sp = await searchParams;
   const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
 
-  const params = {
+  const params: CouponListParams = {
     search: str("search"),
-    status: str("status") as any,
-    state: str("state") as any,
-    type: str("type") as any,
-    usage: str("usage") as any,
-    sortBy: str("sortBy") as any,
+    status: str("status") as CouponListParams["status"],
+    state: str("state") as CouponListParams["state"],
+    type: str("type") as CouponListParams["type"],
+    usage: str("usage") as CouponListParams["usage"],
+    sortBy: str("sortBy") as CouponListParams["sortBy"],
     page: str("page") ? Number(str("page")) : 1,
     limit: 10,
   };
