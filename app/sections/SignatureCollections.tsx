@@ -19,7 +19,7 @@ export default function SignatureCollections() {
         >
           <div className="relative aspect-[4/5] w-full max-w-[600px] mb-8 md:mb-12 overflow-hidden group">
             <Image
-              src="/images/category_gift_boxes_1782290153364.png"
+              src="/images/3.png"
               alt="Eternity Roses Collection"
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -53,7 +53,7 @@ export default function SignatureCollections() {
         >
           <div className="md:order-2 relative aspect-[4/5] w-full max-w-[600px] mt-8 md:mt-12 overflow-hidden group">
             <Image
-              src="/images/product_master_1_1782290164345.png"
+              src="/images/4.png"
               alt="Mixed Florals Collection"
               fill
               sizes="(max-width: 768px) 100vw, 50vw"

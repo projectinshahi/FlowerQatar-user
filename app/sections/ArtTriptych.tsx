@@ -17,7 +17,7 @@ export default function ArtTriptych() {
       {/* Shared Background Image */}
       <div className="absolute inset-0 overflow-hidden">
         <Image
-          src="/images/ART.png"
+          src="/images/1.jpeg"
           alt="Birth of Venus"
           fill
           sizes="100vw"

@@ -248,6 +248,7 @@ export default function OrdersHistory() {
                             {formatShippingAddress(o.shippingInfo) ? ` — ${formatShippingAddress(o.shippingInfo)}` : ""}
                           </p>
                           {o.shippingInfo.phone && <p className="text-[#999] mt-0.5">{o.shippingInfo.phone}</p>}
+                          {o.shippingInfo.receiverPhone && <p className="text-[#999] mt-0.5">Receiver: {o.shippingInfo.receiverPhone}</p>}
                         </div>
                       )}
                     </div>

@@ -311,6 +311,7 @@ export default function AdminOrders() {
                             <p className="font-medium">{si.firstName || order.user?.firstName || ''} {si.lastName || order.user?.lastName || ''}</p>
                             {formatShippingAddress(si) && <p className="text-gray-500">{formatShippingAddress(si)}</p>}
                             <p className="text-gray-500">{si.phone || order.user?.phone || '—'} · {si.email || order.user?.email || '—'}</p>
+                            {si.receiverPhone && <p className="text-gray-500">Receiver: {si.receiverPhone}</p>}
                             <p className="mt-1 text-xs text-gray-400">Placed {new Date(order.createdAt).toLocaleString('en-US', { timeZone: 'UTC' })}</p>
                           </div>
                           <div className="flex sm:flex-col gap-2 shrink-0">

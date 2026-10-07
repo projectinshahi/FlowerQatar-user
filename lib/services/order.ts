@@ -21,7 +21,10 @@ export interface ShippingInfo {
   firstName?: string;
   lastName?: string;
   email?: string;
+  /** The sender — the customer placing the order. */
   phone?: string;
+  /** Who the flowers are delivered to. */
+  receiverPhone?: string;
   zone?: string;
   street?: string;
   building?: string;
