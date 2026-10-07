@@ -19,8 +19,8 @@ export default function BrandStory() {
       {/* Parallax Background */}
       <motion.div style={{ y }} className="absolute inset-0 w-full h-[120%] -top-[10%]">
         <Image
-          src="/images/about_florist_1782290182382.png"
-          alt="Deep red roses"
+          src="/images/2.jpg"
+          alt="Lebami florist wrapping a rose bouquet"
           fill
           sizes="100vw"
           className="object-cover object-[center_30%]"

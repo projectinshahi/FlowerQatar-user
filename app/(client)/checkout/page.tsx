@@ -33,6 +33,59 @@ const ADDRESS_FIELDS: { key: AddressKey; label: string; placeholder: string; req
 /** Radios in the brand colour rather than the browser's blue. */
 const BRAND_CONTROL = { accentColor: 'var(--color-primary)' };
 
+/** "+974 5512 3456" from the 8 local digits. */
+const formatLocalMobile = (digits: string) => `+974 ${digits.slice(0, 4)} ${digits.slice(4)}`;
+
+/** A Qatari mobile field: +974 fixed in the box, the 8 local digits typed, a tick when valid. */
+function QatarPhoneField({ id, label, value, error, autoComplete, onChange }: {
+  id: string;
+  label: string;
+  value: string;
+  error?: string;
+  autoComplete: string;
+  onChange: (digits: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
+        {label}
+      </label>
+      <div className="relative">
+        {/* Fixed country code, drawn inside the field's own border so the global input focus
+            ring still frames the whole thing. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 flex items-center gap-1.5 border-r border-divider pl-4 pr-3 text-xs text-primary select-none"
+        >
+          <Flag code="QA" />
+          +974
+        </span>
+        <input
+          type="tel"
+          required
+          value={value}
+          id={id}
+          aria-label={`${label}, Qatar (+974)`}
+          autoComplete={autoComplete}
+          inputMode="numeric"
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? `${id}-err` : undefined}
+          // Digits only, at most 8; a pasted "+974 5512 3456" keeps just the local part.
+          onChange={(e) => onChange(qatarLocalDigits(e.target.value))}
+          className="w-full pr-10 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
+          // Clears the +974 segment; inline so it never depends on a newly generated class.
+          style={{ paddingLeft: 96 }}
+          placeholder="5512 3456"
+        />
+        {isValidQatarMobile(value) && !error && (
+          <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+        )}
+      </div>
+      {error && <p id={`${id}-err`} role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{error}</p>}
+    </div>
+  );
+}
+
 interface FormErrors {
   [key: string]: string;
 }
@@ -62,8 +115,10 @@ export default function CheckoutPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [addr, setAddr] = useState<Record<AddressKey, string>>({ zone: '', street: '', building: '', unit: '' });
-  // The 8 local digits; +974 is fixed in the field and added when the order is sent.
+  // Sender (the customer) and receiver (who the flowers go to): the 8 local digits each; +974 is
+  // fixed in the fields and added when the order is sent.
   const [phone, setPhone] = useState('');
+  const [receiverPhone, setReceiverPhone] = useState('');
   
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'courier'>('standard');
 
@@ -191,7 +246,10 @@ export default function CheckoutPage() {
         if (!addr.building.trim()) tempErrors.building = 'Building is required';
       }
       if (!isValidQatarMobile(phone)) {
-        tempErrors.phone = 'Enter a valid Qatar mobile number: 8 digits starting with 3, 5, 6 or 7';
+        tempErrors.phone = "Enter the sender's Qatar mobile number: 8 digits starting with 3, 5, 6 or 7";
+      }
+      if (!isValidQatarMobile(receiverPhone)) {
+        tempErrors.receiverPhone = "Enter the receiver's Qatar mobile number: 8 digits starting with 3, 5, 6 or 7";
       }
     }
 
@@ -271,7 +329,7 @@ export default function CheckoutPage() {
           shippingMethod,
           couponCode: appliedCoupon?.code ?? null,
           pointsRedeemed,
-          shippingInfo: { firstName, lastName, email, phone: `+974${phone}`, ...deliveryAddr },
+          shippingInfo: { firstName, lastName, email, phone: `+974${phone}`, receiverPhone: `+974${receiverPhone}`, ...deliveryAddr },
         }),
       });
       const data = await res.json();
@@ -461,41 +519,32 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                    Phone Number
-                  </label>
-                  <div className="relative">
-                    {/* Fixed country code, drawn inside the field's own border so the global
-                        input focus ring still frames the whole thing. */}
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-y-0 left-0 flex items-center gap-1.5 border-r border-divider pl-4 pr-3 text-xs text-primary select-none"
-                    >
-                      <Flag code="QA" />
-                      +974
-                    </span>
-                    <input
-                      type="tel"
-                      required
-                      value={phone}
-                      id="co-phone" aria-label="Phone number, Qatar (+974)" autoComplete="tel-national" inputMode="numeric" aria-invalid={!!errors.phone || undefined} aria-describedby={errors.phone ? "co-phone-err" : undefined}
-                      onChange={(e) => {
-                        // Digits only, at most 8; a pasted "+974 5512 3456" keeps just the local part.
-                        setPhone(qatarLocalDigits(e.target.value));
-                        // Drop a stale error on edit, so a corrected number shows its tick immediately.
-                        if (errors.phone) setErrors((prev) => { const next = { ...prev }; delete next.phone; return next; });
-                      }}
-                      className="w-full pr-10 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                      // Clears the +974 segment; inline so it never depends on a newly generated class.
-                      style={{ paddingLeft: 96 }}
-                      placeholder="5512 3456"
-                    />
-                    {isValidQatarMobile(phone) && !errors.phone && (
-                      <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
-                    )}
-                  </div>
-                  {errors.phone && <p id="co-phone-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
+                {/* Sender (the customer) and receiver (who the flowers go to). A corrected number
+                    drops its stale error straight away, so its tick shows immediately. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <QatarPhoneField
+                    id="co-phone"
+                    label="Sender Phone Number"
+                    value={phone}
+                    error={errors.phone}
+                    autoComplete="tel-national"
+                    onChange={(digits) => {
+                      setPhone(digits);
+                      if (errors.phone) setErrors((prev) => { const next = { ...prev }; delete next.phone; return next; });
+                    }}
+                  />
+                  <QatarPhoneField
+                    id="co-receiver-phone"
+                    label="Receiver Phone Number"
+                    value={receiverPhone}
+                    error={errors.receiverPhone}
+                    // Not the shopper's own number, so the browser should not autofill it.
+                    autoComplete="off"
+                    onChange={(digits) => {
+                      setReceiverPhone(digits);
+                      if (errors.receiverPhone) setErrors((prev) => { const next = { ...prev }; delete next.receiverPhone; return next; });
+                    }}
+                  />
                 </div>
 
                 {/* Delivery address: pick a saved one, or add a new one (Flipkart-style). */}
@@ -722,7 +771,9 @@ export default function CheckoutPage() {
                   {selectedSaved && <p className="text-[10px] uppercase tracking-wider">{selectedSaved.label}</p>}
                   <p>{formatShippingAddress(deliveryAddr)}</p>
                   <p>Qatar</p>
-                  <p>Contact: {email} | +974 {phone.slice(0, 4)} {phone.slice(4)}</p>
+                  <p>Contact: {email}</p>
+                  <p>Sender phone: {formatLocalMobile(phone)}</p>
+                  <p>Receiver phone: {formatLocalMobile(receiverPhone)}</p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-primary uppercase tracking-wider mb-1">Delivery Speed</h4>

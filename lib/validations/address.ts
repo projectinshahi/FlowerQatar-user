@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ZONE_PATTERN, formatQatarAddress } from "@/lib/qatar";
+import { ZONE_PATTERN, formatQatarAddress, normalizeQatarMobile } from "@/lib/qatar";
 
 /** Generous safety backstop to prevent abuse; users are effectively unlimited. */
 export const MAX_ADDRESSES = 100;
@@ -18,6 +18,19 @@ const opt = (max: number) =>
     .optional()
     .nullable()
     .transform((v) => (v ? v : null));
+
+/**
+ * A Qatari mobile, in any usual form ("5512 3456", "+974 5512 3456"), stored as +974XXXXXXXX
+ * so couriers and the payment gateway always get one format. Used by the order API.
+ */
+export const qatarMobile = z
+  .string()
+  .max(40)
+  .transform((v, ctx) => {
+    const phone = normalizeQatarMobile(v);
+    if (!phone) ctx.addIssue({ code: "custom", message: "Enter a valid Qatar mobile number: 8 digits starting with 3, 5, 6 or 7" });
+    return phone ?? "";
+  });
 
 /** Qatar's national address (the blue plate on every building): zone, street, building. */
 export const addressSchema = z.object({

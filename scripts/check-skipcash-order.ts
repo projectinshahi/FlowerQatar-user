@@ -51,6 +51,7 @@ async function main() {
         lastName: 'Check',
         email: user.email,
         phone: '+97433123456',
+        receiverPhone: '+97455123456',
         zone: '66',
         street: '920',
         building: '12',

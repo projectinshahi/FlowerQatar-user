@@ -6,7 +6,8 @@ import { orderedItemImage } from "@/lib/media";
 import { createPendingOrder, setOrderPayment, setOrderPaymentStatus, OrderError } from "@/lib/services/order";
 import { createPayment, PaymentError } from "@/lib/services/skipcash";
 import { WalletError } from "@/lib/services/wallet";
-import { ZONE_PATTERN, normalizeQatarMobile } from "@/lib/qatar";
+import { ZONE_PATTERN } from "@/lib/qatar";
+import { qatarMobile } from "@/lib/validations/address";
 
 const schema = z.object({
   shippingMethod: z.enum(["standard", "courier"]).optional(),
@@ -16,15 +17,9 @@ const schema = z.object({
     firstName: z.string().trim().min(1, "First name is required").max(80, "First name is too long"),
     lastName: z.string().trim().min(1, "Last name is required").max(80, "Last name is too long"),
     email: z.string().trim().toLowerCase().email("Enter a valid email address").max(254),
-    // Qatari mobiles only, stored as +974XXXXXXXX so couriers and the gateway get one format.
-    phone: z
-      .string()
-      .max(40)
-      .transform((v, ctx) => {
-        const phone = normalizeQatarMobile(v);
-        if (!phone) ctx.addIssue({ code: "custom", message: "Enter a valid Qatar mobile number" });
-        return phone ?? "";
-      }),
+    // The sender (the customer, also given to the payment gateway) and the receiver.
+    phone: qatarMobile,
+    receiverPhone: qatarMobile,
     // Qatar's national address, as on the building's blue plate.
     zone: z.string().trim().regex(ZONE_PATTERN, "Enter your zone number (e.g. 66)"),
     street: z.string().trim().min(1, "Street is required").max(100, "Street is too long"),
