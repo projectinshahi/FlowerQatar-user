@@ -22,9 +22,10 @@ export interface ShippingInfo {
   lastName?: string;
   email?: string;
   phone?: string;
-  address?: string;
-  city?: string;
-  zip?: string;
+  zone?: string;
+  street?: string;
+  building?: string;
+  unit?: string;
 }
 
 export interface PlaceOrderInput {

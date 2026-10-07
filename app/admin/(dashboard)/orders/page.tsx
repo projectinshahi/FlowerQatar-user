@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Package, Search, Edit2, Loader2, Check, X, ChevronDown, ChevronRight, Sparkles, CreditCard, FileText } from 'lucide-react';
 import { AdminSkeletonRows } from '@/components/skeletons/AdminSkeletons';
+import { formatShippingAddress } from '@/lib/qatar';
 
 const money = (v: any) => `QAR ${Number(v || 0).toFixed(2)}`;
 
@@ -308,9 +309,7 @@ export default function AdminOrders() {
                           <div className="rounded-lg border border-gray-100 bg-white px-3 py-3 text-sm text-gray-700 flex-1">
                             <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Delivery &amp; Contact</h4>
                             <p className="font-medium">{si.firstName || order.user?.firstName || ''} {si.lastName || order.user?.lastName || ''}</p>
-                            {(si.address || si.city || si.zip) && (
-                              <p className="text-gray-500">{[si.address, si.city, si.zip].filter(Boolean).join(', ')}</p>
-                            )}
+                            {formatShippingAddress(si) && <p className="text-gray-500">{formatShippingAddress(si)}</p>}
                             <p className="text-gray-500">{si.phone || order.user?.phone || '—'} · {si.email || order.user?.email || '—'}</p>
                             <p className="mt-1 text-xs text-gray-400">Placed {new Date(order.createdAt).toLocaleString('en-US', { timeZone: 'UTC' })}</p>
                           </div>

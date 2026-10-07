@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ZONE_PATTERN, formatQatarAddress } from "@/lib/qatar";
 
 /** Generous safety backstop to prevent abuse; users are effectively unlimited. */
 export const MAX_ADDRESSES = 100;
@@ -21,7 +22,7 @@ const opt = (max: number) =>
 /** Qatar's national address (the blue plate on every building): zone, street, building. */
 export const addressSchema = z.object({
   label: req("Label", 30),
-  zone: z.string().trim().regex(/^\d{1,3}$/, "Enter your zone number (e.g. 66)"),
+  zone: z.string().trim().regex(ZONE_PATTERN, "Enter your zone number (e.g. 66)"),
   street: req("Street", 100),
   building: req("Building", 50),
   unit: opt(30),
@@ -53,12 +54,6 @@ export interface Address {
 
 /** One-line address for display; falls back to the old fields for addresses saved before. */
 export function formatAddress(a: Address): string {
-  if (a.zone) {
-    // Blue-plate numbers get their name ("Street 920"); typed names ("Al Sadd St") stand alone.
-    const tag = (name: string, v?: string | null) => v && (/^\d+$/.test(v) ? `${name} ${v}` : v);
-    return [tag("Unit", a.unit), tag("Building", a.building), tag("Street", a.street), tag("Zone", a.zone)]
-      .filter(Boolean)
-      .join(", ");
-  }
+  if (a.zone) return formatQatarAddress(a);
   return [a.addressLine1, a.addressLine2, a.city, a.stateName, a.postalCode].filter(Boolean).join(", ");
 }

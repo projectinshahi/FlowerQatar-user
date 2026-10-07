@@ -6,6 +6,7 @@ import { orderedItemImage } from "@/lib/media";
 import { createPendingOrder, setOrderPayment, setOrderPaymentStatus, OrderError } from "@/lib/services/order";
 import { createPayment, PaymentError } from "@/lib/services/skipcash";
 import { WalletError } from "@/lib/services/wallet";
+import { ZONE_PATTERN, normalizeQatarMobile } from "@/lib/qatar";
 
 const schema = z.object({
   shippingMethod: z.enum(["standard", "courier"]).optional(),
@@ -15,19 +16,20 @@ const schema = z.object({
     firstName: z.string().trim().min(1, "First name is required").max(80, "First name is too long"),
     lastName: z.string().trim().min(1, "Last name is required").max(80, "Last name is too long"),
     email: z.string().trim().toLowerCase().email("Enter a valid email address").max(254),
-    // 8 digits is a local Qatari number, 15 the international maximum.
+    // Qatari mobiles only, stored as +974XXXXXXXX so couriers and the gateway get one format.
     phone: z
       .string()
-      .trim()
       .max(40)
-      .refine(
-        (v) => /^\+?[\d\s-]+$/.test(v) && v.replace(/\D/g, "").length >= 8,
-        "Enter a valid phone number"
-      ),
-    address: z.string().trim().min(1, "Street address is required").max(255, "Address is too long"),
-    city: z.string().trim().min(1, "City is required").max(120, "City is too long"),
-    // Optional: Qatar operates no postal-code system (lib/postal.ts).
-    zip: z.string().trim().max(20, "Postal code is too long").optional().default(""),
+      .transform((v, ctx) => {
+        const phone = normalizeQatarMobile(v);
+        if (!phone) ctx.addIssue({ code: "custom", message: "Enter a valid Qatar mobile number" });
+        return phone ?? "";
+      }),
+    // Qatar's national address, as on the building's blue plate.
+    zone: z.string().trim().regex(ZONE_PATTERN, "Enter your zone number (e.g. 66)"),
+    street: z.string().trim().min(1, "Street is required").max(100, "Street is too long"),
+    building: z.string().trim().min(1, "Building is required").max(50, "Building is too long"),
+    unit: z.string().trim().max(30, "Unit is too long").optional().default(""),
   }),
 });
 

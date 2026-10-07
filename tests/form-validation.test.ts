@@ -16,7 +16,6 @@ import { addItemSchema } from '../lib/validations/cart';
 import { occasionSchema } from '../lib/validations/occasion';
 import { createSubscriptionSchema } from '../lib/validations/subscription';
 import { availableDates, TIME_SLOTS } from '../lib/delivery';
-import { isValidPostalCode } from '../lib/postal';
 
 const color = { colorName: 'Blush', colorCode: '#F5E1E1', price: 100 };
 const product = {
@@ -134,15 +133,5 @@ describe('links and discounts that are not the customer to set', () => {
       discountPercent: 90,
     });
     assert.equal('discountPercent' in parsed, false);
-  });
-});
-
-describe('postal codes follow the country', () => {
-  it('accepts an empty postal code in Qatar, where there are none', () => {
-    assert.equal(isValidPostalCode('QA', ''), true);
-    assert.equal(isValidPostalCode('QA', 'DOHA-1'), true);
-    // The countries that do use them are unaffected.
-    assert.equal(isValidPostalCode('IN', '12345'), false);
-    assert.equal(isValidPostalCode('IN', '560001'), true);
   });
 });

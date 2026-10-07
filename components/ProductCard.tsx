@@ -36,10 +36,24 @@ export default function ProductCard({ product, onQuickView, className = '', move
     const defaultSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
 
     addToCart({
+      /*
+       * `id` and `image` both matter here.
+       *
+       * Without the id the server cannot resolve the product, so the line is stored as an
+       * unidentified "custom arrangement": it falls back to the stored selection, which is
+       * why a quick-added item showed no picture in the cart - and why its price was the
+       * browser's figure rather than one re-derived from the database. With the id the line
+       * is rebuilt from the live product, image included. `image` stays as the fallback for
+       * a product whose id is missing (the mock catalogue) or later deleted.
+       *
+       * The same shape QuickViewModal and the product page already send.
+       */
       product: {
+        id: product.id,
         slug: product.slug,
         name: product.name,
         price: product.price,
+        image: product.image || (product.images && product.images[0]),
       },
       quantity: 1,
       roseColor: defaultColor,
