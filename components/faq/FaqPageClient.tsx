@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { FAQS, FAQ_CATEGORIES, FAQ_CATEGORY_META } from '@/data/faq';
 import type { FAQCategory } from '@/types/faq';
 import type { StoreSubscriptionPlan } from '@/lib/subscription-plans';
@@ -112,7 +114,9 @@ export default function FaqPageClient({ plans }: { plans: StoreSubscriptionPlan[
   const toggle = useCallback((id: number) => setOpenId((prev) => (prev === id ? null : id)), []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-cream via-[#FBF6EF] to-cream">
+    // overflow-x-clip, not overflow-hidden: hidden would make this box the sticky sidebar's scroll
+    // container, and the sidebar would scroll away with the page instead of staying in view.
+    <div className="relative min-h-screen overflow-x-clip bg-gradient-to-b from-cream via-[#FBF6EF] to-cream">
 
       {/* Faint floral watermarks */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -120,11 +124,11 @@ export default function FaqPageClient({ plans }: { plans: StoreSubscriptionPlan[
         <div className="absolute -left-32 top-[60%] h-[360px] w-[360px] opacity-[0.03]"><FloralWatermark /></div>
       </div>
 
-      <div className="relative mx-auto max-w-[1100px] px-6 pb-24 pt-[116px] sm:px-8 sm:pt-[140px] md:px-10 md:pt-[168px]">
+      <div className="relative mx-auto max-w-[1100px] px-6 pb-24 pt-[116px] sm:px-8 sm:pt-[140px] md:px-10 md:pt-[168px] lg:max-w-[1240px]">
         <FAQHero />
 
-        {/* Sticky search + category nav */}
-        <div ref={stickyRef} style={{ top: offsets.nav }} className="sticky z-40 -mx-6 mt-12 bg-cream/85 px-6 py-4 backdrop-blur-md sm:-mx-8 sm:px-8 md:-mx-10 md:px-10">
+        {/* Phones and tablets: sticky, horizontally scrollable category pills. */}
+        <div ref={stickyRef} style={{ top: offsets.nav }} className="sticky z-40 -mx-6 mt-12 bg-cream/85 px-6 py-4 backdrop-blur-md sm:-mx-8 sm:px-8 md:-mx-10 md:px-10 lg:hidden">
           {/* <FAQSearch value={query} onChange={setQuery} /> */}
           {visibleCategories.length > 0 && (
             <div className="mt-4">
@@ -133,11 +137,47 @@ export default function FaqPageClient({ plans }: { plans: StoreSubscriptionPlan[
           )}
         </div>
 
+        {/* Desktop: categories in a sticky sidebar on the left, questions on the right. */}
+        <div
+          className={`mt-14 md:mt-16 ${
+            sections.length > 0 ? 'lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-14 xl:gap-20' : ''
+          }`}
+        >
+          {sections.length > 0 && (
+            <aside className="hidden lg:block">
+              <div className="sticky" style={{ top: offsets.nav + 32 }}>
+                <p className="mb-5 flex items-center gap-3 font-sans text-[11px] font-medium uppercase tracking-[0.25em] text-accent">
+                  <span className="h-px w-6 bg-accent" aria-hidden="true" />
+                  Browse topics
+                </p>
+                <FAQCategoryTabs
+                  variant="sidebar"
+                  categories={visibleCategories}
+                  active={active}
+                  onSelect={scrollToCategory}
+                />
+                <div className="mt-8 rounded-2xl border border-divider/70 bg-white/60 p-5">
+                  <p className="font-serif text-[17px] leading-snug text-primary">Can&apos;t find your answer?</p>
+                  <p className="mt-1.5 font-sans text-[12px] leading-relaxed text-muted">
+                    Our team is happy to help with orders, delivery and gifting.
+                  </p>
+                  <Link
+                    href="/contact"
+                    className="mt-4 inline-flex items-center gap-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.15em] text-primary transition-colors hover:text-secondary"
+                  >
+                    Contact us
+                    <ArrowRight size={13} aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
+            </aside>
+          )}
+
         {/* Sections */}
         {sections.length === 0 ? (
           <FAQEmptyState query={query} />
         ) : (
-          <div className="mt-14 space-y-20 md:mt-16 md:space-y-24">
+          <div className="min-w-0 space-y-20 md:space-y-24">
             {sections.map((section) => (
               <FAQSection
                 key={section.category}
@@ -157,6 +197,7 @@ export default function FaqPageClient({ plans }: { plans: StoreSubscriptionPlan[
             ))}
           </div>
         )}
+        </div>
 
         {/* Help CTA */}
         <div className="mt-24">

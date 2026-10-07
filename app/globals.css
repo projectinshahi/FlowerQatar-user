@@ -161,11 +161,15 @@ body {
   }
 }
 
-/* Hide scrollbar */
-.no-scrollbar::-webkit-scrollbar {
+/* Hide scrollbar — also on the page itself; wheel, touch and keyboard scrolling still work. */
+.no-scrollbar::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
   display: none;
 }
-.no-scrollbar {
+.no-scrollbar,
+html,
+body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }

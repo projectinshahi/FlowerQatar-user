@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronUp } from 'lucide-react';
 import { memo } from 'react';
 import type { FAQItem } from '@/types/faq';
 
@@ -53,7 +53,7 @@ function FAQAccordion({ item, isOpen, onToggle }: FAQAccordionProps) {
             }`}
             aria-hidden="true"
           >
-            <ChevronDown size={16} />
+            <ChevronUp size={16} />
           </span>
         </button>
       </h3>
