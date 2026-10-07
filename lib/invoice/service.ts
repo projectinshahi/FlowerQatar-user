@@ -1,5 +1,6 @@
 import { stillOf } from '@/lib/media';
 import { prisma } from '@/lib/prisma';
+import { formatShippingAddress } from '@/lib/qatar';
 import { SITE_URL } from '@/lib/site';
 import {
   InvoiceData,
@@ -139,6 +140,8 @@ export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData
     'Valued Customer';
   const customerEmail = si.email || user.email || 'customer@lebami.com';
   const customerPhone = si.phone || user.phone || '—';
+  // Qatar-format orders store zone/street/building/unit; older ones a free-text `address`.
+  const addressLine1 = si.zone ? formatShippingAddress(si) : si.address || 'Standard Delivery';
 
   const customer: CustomerDetails = {
     id: user.id,
@@ -146,7 +149,7 @@ export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData
     email: customerEmail,
     phone: customerPhone,
     shippingAddress: {
-      addressLine1: si.address || 'Standard Delivery',
+      addressLine1,
       city: si.city || user.city || 'Doha',
       cityAr: si.city === 'Doha' || !si.city ? 'الدوحة' : undefined,
       state: si.state || user.state || 'Doha Municipality',
@@ -156,7 +159,7 @@ export async function buildInvoiceDataFromOrder(order: any): Promise<InvoiceData
       postalCode: si.zip || si.postalCode || '—',
     },
     billingAddress: {
-      addressLine1: si.address || 'Standard Delivery',
+      addressLine1,
       city: si.city || user.city || 'Doha',
       cityAr: si.city === 'Doha' || !si.city ? 'الدوحة' : undefined,
       state: si.state || user.state || 'Doha Municipality',

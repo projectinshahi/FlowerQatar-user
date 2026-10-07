@@ -50,10 +50,11 @@ async function main() {
         firstName: 'Sandbox',
         lastName: 'Check',
         email: user.email,
-        phone: '33123456',
-        address: '1 Test Street',
-        city: 'Doha',
-        zip: '',
+        phone: '+97433123456',
+        zone: '66',
+        street: '920',
+        building: '12',
+        unit: '',
       },
     });
     ok('order created', Boolean(order.orderId), `total ${order.totalAmount}`);

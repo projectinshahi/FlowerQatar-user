@@ -8,6 +8,7 @@ import { Package, AlertCircle, ChevronDown, FileText } from "lucide-react";
 import LuxuryImage from "@/components/LuxuryImage";
 import { Skeleton } from '@/components/ui/Skeleton';
 import { onLive, onResync } from '@/lib/live-client';
+import { formatShippingAddress } from '@/lib/qatar';
 
 // Pulls in the invoice document, html-to-image and jspdf only once a customer opens one.
 const InvoiceModal = dynamic(() => import("./InvoiceModal"));
@@ -244,9 +245,7 @@ export default function OrdersHistory() {
                           <p className="text-[11px] uppercase tracking-[0.12em] text-[#999] mb-1">Delivery</p>
                           <p className="text-[#333]">
                             {[o.shippingInfo.firstName, o.shippingInfo.lastName].filter(Boolean).join(" ")}
-                            {o.shippingInfo.address ? ` — ${o.shippingInfo.address}` : ""}
-                            {o.shippingInfo.city ? `, ${o.shippingInfo.city}` : ""}
-                            {o.shippingInfo.zip ? ` ${o.shippingInfo.zip}` : ""}
+                            {formatShippingAddress(o.shippingInfo) ? ` — ${formatShippingAddress(o.shippingInfo)}` : ""}
                           </p>
                           {o.shippingInfo.phone && <p className="text-[#999] mt-0.5">{o.shippingInfo.phone}</p>}
                         </div>

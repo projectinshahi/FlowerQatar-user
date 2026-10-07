@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import Link from 'next/link';
-import { ChevronRight, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag, Eye, EyeOff, Check } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, CreditCard, ShieldCheck, CheckCircle2, Truck, ShoppingBag, Eye, EyeOff, Check, MapPin } from 'lucide-react';
 import Image from '../../../components/LuxuryImage';
 import CouponBox from '../../../components/checkout/CouponBox';
 import RedeemPointsBox from '../../../components/checkout/RedeemPointsBox';
@@ -12,20 +12,26 @@ import {
   calculateShippingForMethod,
   type ShippingConfig,
 } from '../../../lib/shipping';
-import { isValidPostalCode } from '../../../lib/postal';
 import { qar, formatNumber } from '../../../lib/utils';
 import { onLive, onResync } from '../../../lib/live-client';
+import { ZONE_PATTERN, formatQatarAddress, formatShippingAddress, isValidQatarMobile, normalizeQatarMobile, qatarLocalDigits } from '../../../lib/qatar';
+import { useAddresses } from '../../../hooks/useAddresses';
+import Flag from '../../../components/account/address/Flag';
+import LabelGlyph from '../../../components/account/address/LabelGlyph';
+import DefaultBadge from '../../../components/account/address/DefaultBadge';
 
-const STORE_COUNTRY = 'QA';
+type AddressKey = 'zone' | 'street' | 'building' | 'unit';
 
-const isValidQatarMobile = (phone: string): boolean => {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('974')) {
-    const afterCode = digits.slice(3);
-    return afterCode.length === 8 && /^[3-79]\d{7}$/.test(afterCode);
-  }
-  return digits.length === 8 && /^[3-79]\d{7}$/.test(digits);
-};
+/** Qatar national address, worded exactly as the saved-address form (AddressForm). */
+const ADDRESS_FIELDS: { key: AddressKey; label: string; placeholder: string; required: boolean; maxLength: number }[] = [
+  { key: 'zone', label: 'Zone *', placeholder: 'e.g. 66', required: true, maxLength: 3 },
+  { key: 'street', label: 'Street *', placeholder: 'e.g. 920', required: true, maxLength: 100 },
+  { key: 'building', label: 'Building *', placeholder: 'e.g. 12', required: true, maxLength: 50 },
+  { key: 'unit', label: 'Unit', placeholder: 'Apartment / villa no. (optional)', required: false, maxLength: 30 },
+];
+
+/** Radios in the brand colour rather than the browser's blue. */
+const BRAND_CONTROL = { accentColor: 'var(--color-primary)' };
 
 interface FormErrors {
   [key: string]: string;
@@ -55,15 +61,39 @@ export default function CheckoutPage() {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [zip, setZip] = useState('');
+  const [addr, setAddr] = useState<Record<AddressKey, string>>({ zone: '', street: '', building: '', unit: '' });
+  // The 8 local digits; +974 is fixed in the field and added when the order is sent.
   const [phone, setPhone] = useState('');
   
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'courier'>('standard');
 
 
   const [errors, setErrors] = useState<FormErrors>({});
+
+  /*
+   * Delivery address: one of the shopper's saved addresses, or "Other" — an address typed here
+   * for this order only, never written to their address book.
+   *
+   * Only saved addresses in the Qatar format can be delivered to; ones saved before zone /
+   * street / building existed are shown but disabled. Until the shopper picks, the choice
+   * follows their default (or first usable) address, and falls back to "Other" when there is none.
+   * ('new' is the id of the Other option.)
+   */
+  const { addresses, loading: addressesLoading } = useAddresses();
+  const deliverable = addresses.filter((a) => a.zone && a.street && a.building);
+  const [picked, setPicked] = useState<string | null>(null);
+  const selectedId =
+    picked && (picked === 'new' || deliverable.some((a) => a.id === picked))
+      ? picked
+      : (deliverable.find((a) => a.isDefault) ?? deliverable[0])?.id ?? 'new';
+  const selectedSaved = deliverable.find((a) => a.id === selectedId) ?? null;
+  const deliveryAddr: Record<AddressKey, string> = selectedSaved
+    ? { zone: selectedSaved.zone, street: selectedSaved.street, building: selectedSaved.building, unit: selectedSaved.unit ?? '' }
+    : addr;
+  // Saved addresses whose details panel is open (the chevron in the card's corner).
+  const [openDetails, setOpenDetails] = useState<string[]>([]);
+  const toggleDetails = (id: string) =>
+    setOpenDetails((open) => (open.includes(id) ? open.filter((x) => x !== id) : [...open, id]));
 
   /*
    * Pre-fill from the signed-in user, never overwriting anything already typed.
@@ -84,8 +114,8 @@ export default function CheckoutPage() {
     setEmail((v) => v || user.email || '');
     setFirstName((v) => v || user.firstName || '');
     setLastName((v) => v || user.lastName || '');
-    setPhone((v) => v || user.phone || '');
-    setCity((v) => v || user.city || '');
+    // Only a saved Qatari mobile pre-fills: anything else would be cut into wrong digits.
+    setPhone((v) => v || normalizeQatarMobile(user.phone || '')?.slice(4) || '');
   }
 
   /*
@@ -154,13 +184,14 @@ export default function CheckoutPage() {
       }
       if (!firstName.trim()) tempErrors.firstName = 'First name is required';
       if (!lastName.trim()) tempErrors.lastName = 'Last name is required';
-      if (!address.trim()) tempErrors.address = 'Street address is required';
-      if (!city.trim()) tempErrors.city = 'City is required';
-      if (!isValidPostalCode(STORE_COUNTRY, zip)) {
-        tempErrors.zip = 'Enter a valid postal code';
+      // A typed address follows the same rules as the saved-address form and the order API.
+      if (selectedId === 'new') {
+        if (!ZONE_PATTERN.test(addr.zone.trim())) tempErrors.zone = 'Enter your zone number (e.g. 66)';
+        if (!addr.street.trim()) tempErrors.street = 'Street is required';
+        if (!addr.building.trim()) tempErrors.building = 'Building is required';
       }
       if (!isValidQatarMobile(phone)) {
-        tempErrors.phone = 'Enter a valid Qatar mobile number (e.g. 30123456 or +97430123456)';
+        tempErrors.phone = 'Enter a valid Qatar mobile number: 8 digits starting with 3, 5, 6 or 7';
       }
     }
 
@@ -209,9 +240,9 @@ export default function CheckoutPage() {
       if (!res.ok || !data?.success) return;
       const info = (data.order.shippingInfo ?? {}) as Record<string, string>;
       setEmail(info.email ?? '');
-      setAddress(info.address ?? '');
-      setCity(info.city ?? '');
-      setZip(info.zip ?? '');
+      // The confirmation shows the address the ORDER was placed with, not today's default.
+      setAddr({ zone: info.zone ?? '', street: info.street ?? '', building: info.building ?? '', unit: info.unit ?? '' });
+      setPicked('new');
       if (info.shippingMethod === 'courier') setShippingMethod('courier');
       setPaidOrder({ amount: Number(data.order.totalAmount), points: data.order.pointsRedeemed ?? 0 });
       setCreatedOrderId(orderId);
@@ -240,7 +271,7 @@ export default function CheckoutPage() {
           shippingMethod,
           couponCode: appliedCoupon?.code ?? null,
           pointsRedeemed,
-          shippingInfo: { firstName, lastName, email, phone, address, city, zip },
+          shippingInfo: { firstName, lastName, email, phone: `+974${phone}`, ...deliveryAddr },
         }),
       });
       const data = await res.json();
@@ -292,7 +323,7 @@ export default function CheckoutPage() {
           {(paidOrder?.points ?? pointsDiscount) > 0 && (
             <p><span className="font-semibold text-primary">Points Redeemed:</span> {formatNumber(paidOrder?.points ?? pointsDiscount)} pts (−QAR {paidOrder?.points ?? pointsDiscount})</p>
           )}
-          <p><span className="font-semibold text-primary">Shipping Address:</span> {address}, {city}, {zip}</p>
+          <p><span className="font-semibold text-primary">Shipping Address:</span> {formatShippingAddress(deliveryAddr)}, Qatar</p>
           <p><span className="font-semibold text-primary">Estimated Arrival:</span> {shippingMethod === 'courier' ? 'Tomorrow by 6:00 PM' : '3-5 Business Days'}</p>
         </div>
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -326,6 +357,38 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
+  /** Qatar national address fields — the same wording as the saved-address form (AddressForm). */
+  const newAddressForm = (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {ADDRESS_FIELDS.map((f) => (
+          <div key={f.key}>
+            <label htmlFor={`co-${f.key}`} className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
+              {f.label}
+            </label>
+            <input
+              type="text"
+              required={f.required}
+              value={addr[f.key]}
+              id={`co-${f.key}`}
+              inputMode={f.key === 'zone' ? 'numeric' : undefined}
+              maxLength={f.maxLength}
+              aria-invalid={!!errors[f.key] || undefined}
+              aria-describedby={errors[f.key] ? `co-${f.key}-err` : undefined}
+              onChange={(e) => setAddr((a) => ({ ...a, [f.key]: e.target.value }))}
+              className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
+              placeholder={f.placeholder}
+            />
+            {errors[f.key] && <p id={`co-${f.key}-err`} role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors[f.key]}</p>}
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted">
+        You&apos;ll find these numbers on the blue plate outside your building. This address is used for this order only and is not saved to your addresses.
+      </p>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-6 md:px-12 pb-8 page-below-header font-sans text-primary">
@@ -400,72 +463,123 @@ export default function CheckoutPage() {
 
                 <div>
                   <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                    Street Address
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={address}
-                    id="co-address" aria-label="Street address" autoComplete="address-line1" aria-invalid={!!errors.address || undefined} aria-describedby={errors.address ? "co-address-err" : undefined} onChange={(e) => setAddress(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                    placeholder="Suite, apartment, street name"
-                  />
-                  {errors.address && <p id="co-address-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.address}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={city}
-                      id="co-city" aria-label="City" autoComplete="address-level2" aria-invalid={!!errors.city || undefined} aria-describedby={errors.city ? "co-city-err" : undefined} onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                    />
-                    {errors.city && <p id="co-city-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.city}</p>}
-                  </div>
-                  <div>
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
-                      Zip Code
-                    </label>
-                    <input
-                      type="text"
-                      value={zip}
-                      id="co-zip" aria-label="Zip code" autoComplete="postal-code" aria-invalid={!!errors.zip || undefined} aria-describedby={errors.zip ? "co-zip-err" : undefined} onChange={(e) => setZip(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
-                      placeholder="Optional"
-                    />
-                    {errors.zip && <p id="co-zip-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.zip}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] uppercase tracking-wider font-semibold text-muted block mb-1">
                     Phone Number
                   </label>
                   <div className="relative">
+                    {/* Fixed country code, drawn inside the field's own border so the global
+                        input focus ring still frames the whole thing. */}
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 left-0 flex items-center gap-1.5 border-r border-divider pl-4 pr-3 text-xs text-primary select-none"
+                    >
+                      <Flag code="QA" />
+                      +974
+                    </span>
                     <input
                       type="tel"
                       required
                       value={phone}
-                      id="co-phone" aria-label="Phone number" autoComplete="tel" inputMode="tel" aria-invalid={!!errors.phone || undefined} aria-describedby={errors.phone ? "co-phone-err" : undefined} onChange={(e) => setPhone(e.target.value)}
-                      className={`w-full px-4 py-2.5 bg-cream/30 border focus:outline-none text-xs rounded-none transition-colors ${
-                        errors.phone
-                          ? 'border-red-500 focus:border-red-500'
-                          : phone && isValidQatarMobile(phone)
-                          ? 'border-green-500 focus:border-green-500'
-                          : 'border-divider focus:border-secondary'
-                      }`}
-                      placeholder="e.g. 30123456 or +97430123456"
+                      id="co-phone" aria-label="Phone number, Qatar (+974)" autoComplete="tel-national" inputMode="numeric" aria-invalid={!!errors.phone || undefined} aria-describedby={errors.phone ? "co-phone-err" : undefined}
+                      onChange={(e) => {
+                        // Digits only, at most 8; a pasted "+974 5512 3456" keeps just the local part.
+                        setPhone(qatarLocalDigits(e.target.value));
+                        // Drop a stale error on edit, so a corrected number shows its tick immediately.
+                        if (errors.phone) setErrors((prev) => { const next = { ...prev }; delete next.phone; return next; });
+                      }}
+                      className="w-full pr-10 py-2.5 bg-cream/30 border border-divider focus:border-secondary focus:outline-none text-xs rounded-none"
+                      // Clears the +974 segment; inline so it never depends on a newly generated class.
+                      style={{ paddingLeft: 96 }}
+                      placeholder="5512 3456"
                     />
-                    {phone && isValidQatarMobile(phone) && !errors.phone && (
+                    {isValidQatarMobile(phone) && !errors.phone && (
                       <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
                     )}
                   </div>
                   {errors.phone && <p id="co-phone-err" role="alert" className="text-red-500 text-[10px] mt-1 font-medium">{errors.phone}</p>}
+                </div>
+
+                {/* Delivery address: pick a saved one, or add a new one (Flipkart-style). */}
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted">Delivery Address</h3>
+                  {addressesLoading ? (
+                    <div className="space-y-3" aria-busy="true" aria-label="Loading your saved addresses">
+                      <div className="h-16 skeleton" />
+                      <div className="h-16 skeleton" />
+                    </div>
+                  ) : addresses.length === 0 ? (
+                    newAddressForm
+                  ) : (
+                    <div role="radiogroup" aria-label="Delivery address" className="space-y-3">
+                      {addresses.map((a) => {
+                        const usable = deliverable.includes(a);
+                        const active = selectedId === a.id;
+                        const open = usable && openDetails.includes(a.id);
+                        return (
+                          <div
+                            key={a.id}
+                            className={`relative border transition-colors ${active ? 'border-primary bg-cream' : 'border-divider bg-white'} ${usable ? 'hover:border-primary' : 'opacity-60'}`}
+                          >
+                            <label className={`flex items-start gap-3 p-4 pr-14 ${usable ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                              <input type="radio" name="delivery-address" className="mt-0.5" style={BRAND_CONTROL} checked={active} disabled={!usable} onChange={() => setPicked(a.id)} />
+                              <span className="flex-1 min-w-0 space-y-1.5">
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] font-semibold text-primary">
+                                    <LabelGlyph label={a.label} size={12} /> {a.label}
+                                  </span>
+                                  {a.isDefault && <DefaultBadge />}
+                                </span>
+                                {!usable ? (
+                                  <span className="block text-xs text-muted leading-relaxed">
+                                    Saved before zone, street and building were required. Update it in My Addresses to deliver here.
+                                  </span>
+                                ) : (
+                                  !open && <span className="block text-xs text-muted leading-relaxed">{formatQatarAddress(a)}, Qatar</span>
+                                )}
+                              </span>
+                            </label>
+                            {usable && (
+                              // Outside the <label>, so opening the details never changes the selection.
+                              <button
+                                type="button"
+                                onClick={() => toggleDetails(a.id)}
+                                aria-expanded={open}
+                                aria-controls={`addr-details-${a.id}`}
+                                aria-label={`${open ? 'Hide' : 'Show'} ${a.label} address details`}
+                                className="absolute top-3 right-3 grid h-8 w-8 place-items-center rounded-full border border-divider bg-white text-primary transition-colors hover:border-primary"
+                              >
+                                {open ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                              </button>
+                            )}
+                            {open && (
+                              <dl id={`addr-details-${a.id}`} className="mx-4 mb-4 border-t border-divider pt-3 space-y-2 text-xs" style={{ marginLeft: 44 }}>
+                                {([['Zone', a.zone], ['Street', a.street], ['Building', a.building], ['Unit', a.unit], ['Country', 'Qatar']] as const)
+                                  .filter(([, value]) => value)
+                                  .map(([name, value]) => (
+                                    <div key={name} className="flex gap-4">
+                                      <dt className="w-20 shrink-0 text-[10px] uppercase tracking-wider font-semibold text-muted">{name}</dt>
+                                      <dd className="text-primary">{value}</dd>
+                                    </div>
+                                  ))}
+                              </dl>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {/* Other: an address for this order only — it is not saved to the account. */}
+                      <div className={`border transition-colors ${selectedId === 'new' ? 'border-primary bg-cream' : 'border-divider bg-white hover:border-primary'}`}>
+                        <label className="flex items-start gap-3 p-4 cursor-pointer">
+                          <input type="radio" name="delivery-address" className="mt-0.5" style={BRAND_CONTROL} checked={selectedId === 'new'} onChange={() => setPicked('new')} />
+                          <span className="flex-1 min-w-0 space-y-1.5">
+                            <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] font-semibold text-primary">
+                              <MapPin size={12} /> Other
+                            </span>
+                            <span className="block text-xs text-muted leading-relaxed">Deliver this order to a different address</span>
+                          </span>
+                        </label>
+                        {selectedId === 'new' && <div className="px-4 pb-4">{newAddressForm}</div>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -605,9 +719,10 @@ export default function CheckoutPage() {
                 <div>
                   <h4 className="font-semibold text-primary uppercase tracking-wider mb-1">Shipping Address</h4>
                   <p>{firstName} {lastName}</p>
-                  <p>{address}</p>
-                  <p>{city}, {zip}</p>
-                  <p>Contact: {email} | {phone}</p>
+                  {selectedSaved && <p className="text-[10px] uppercase tracking-wider">{selectedSaved.label}</p>}
+                  <p>{formatShippingAddress(deliveryAddr)}</p>
+                  <p>Qatar</p>
+                  <p>Contact: {email} | +974 {phone.slice(0, 4)} {phone.slice(4)}</p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-primary uppercase tracking-wider mb-1">Delivery Speed</h4>
