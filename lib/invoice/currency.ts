@@ -45,20 +45,3 @@ export function formatCurrencyAr(
   return `${formatted} ${currencyAr}`;
 }
 
-/**
- * Returns bilingual currency format.
- * Example: "QAR 150.00 / 150.00 ر.ق"
- */
-export function formatCurrencyDual(
-  amount: number | string | null | undefined,
-  currencyEn = 'QAR',
-  currencyAr = 'ر.ق'
-): { en: string; ar: string; combined: string } {
-  const en = formatCurrencyEn(amount, currencyEn);
-  const ar = formatCurrencyAr(amount, currencyAr);
-  return {
-    en,
-    ar,
-    combined: `${en} · ${ar}`,
-  };
-}

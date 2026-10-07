@@ -166,8 +166,6 @@ export const getSubcategories = cache(
     (await getMenuData())[categoryType] ?? []
 );
 
-export const getExploreFlowers = cache(async () => getSubcategories('FLOWER'));
-
 export async function getAdminSubcategoryOptions(): Promise<
   { id: string; categoryType: CategoryType; name: string }[]
 > {

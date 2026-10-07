@@ -1,4 +1,4 @@
-import type { FAQCategory, FAQCategoryMeta, FAQItem, MembershipPlan } from '@/types/faq';
+import type { FAQCategory, FAQCategoryMeta, FAQItem } from '@/types/faq';
 
 /** Category order used for navigation and section rendering. */
 export const FAQ_CATEGORIES: FAQCategory[] = [
@@ -230,16 +230,6 @@ export const FAQS: FAQItem[] = [
     question: 'Can I change my subscription plan?',
     answer: 'Yes. You can contact our team to discuss changing your subscription plan, subject to availability and the applicable plan terms.',
   },
-];
-
-/**
- * Membership showcase tiers. Prices are blank in the source copy — fill the `price`
- * (QAR amount) for each plan to reveal the price row on the cards.
- */
-export const MEMBERSHIP_PLANS: MembershipPlan[] = [
-  { name: 'Basic', price: '', points: 'Earn reward points on every payment', validity: 'Monthly', accent: '#8A9099' },
-  { name: 'Premium', price: '', points: 'Earn reward points on every payment', validity: 'Monthly', accent: '#C9A227', featured: true },
-  { name: 'VIP', price: '', points: 'Earn reward points on every payment', validity: 'Monthly', accent: '#5B6B7B' },
 ];
 
 /**

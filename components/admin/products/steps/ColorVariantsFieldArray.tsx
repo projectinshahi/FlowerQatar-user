@@ -6,6 +6,9 @@ import { useState } from "react";
 import SingleMediaUploader from "../SingleMediaUploader";
 import VariantImageUploader from "../VariantImageUploader";
 
+/** The part of the form's error tree read here: whether a colour's name has an error. */
+type VariantErrors = { colorVariants?: { colorName?: { message?: string } }[] }[];
+
 function ColorVariantHeader({ variantIndex, index }: { variantIndex: number; index: number }) {
   const { control } = useFormContext();
   const colorName = useWatch({
@@ -32,7 +35,7 @@ function ColorPickerInput({ variantIndex, index }: { variantIndex: number; index
 }
 
 export default function ColorVariantsFieldArray({ variantIndex }: { variantIndex: number }) {
-  const { register, control, setValue, formState: { errors } } = useFormContext();
+  const { register, control, formState: { errors } } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
     name: `variants.${variantIndex}.colorVariants`,
@@ -79,9 +82,9 @@ export default function ColorVariantsFieldArray({ variantIndex }: { variantIndex
       </div>
 
       <div className="space-y-4">
-        {fields.map((field: any, index: number) => {
+        {fields.map((field, index) => {
           const isExpanded = expandedColors.includes(index);
-          const colorErrors = (errors.variants as any)?.[variantIndex]?.colorVariants?.[index] || {};
+          const colorErrors = (errors.variants as unknown as VariantErrors | undefined)?.[variantIndex]?.colorVariants?.[index] || {};
 
           return (
             <div key={field.id} className="border border-indigo-200 border-l-4 border-l-indigo-400 rounded-lg bg-white overflow-hidden shadow-sm">

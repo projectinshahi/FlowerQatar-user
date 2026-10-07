@@ -6,7 +6,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useApp } from '../../context/AppContext'
-import TopAnnouncementBar from '../../components/TopAnnouncementBar'
+import PromotionBar from '../../components/PromotionBar'
+import type { PromotionBarData } from '../../lib/promotions'
 import type { CategoryType } from '@prisma/client'
 import type { NavCategory, NavItem } from '../../lib/category-config'
 import LanguageToggle from '../../components/LanguageToggle'
@@ -246,7 +247,6 @@ const MegaPanel = memo(function MegaPanel({ cat, onNavigate }: { cat: NavCategor
                       fill
                       sizes="(max-width: 1024px) 100vw, 480px"
                       className="object-cover transition-transform duration-700 ease-out hover:scale-105"
-                      priority
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-cream font-serif text-2xl text-primary/30">
@@ -316,8 +316,10 @@ const ExploreTile = memo(function ExploreTile({
   )
 })
 
-export default function Navbar({ menu }: { menu: NavCategory[] }) {
+export default function Navbar({ menu, promotionBar }: { menu: NavCategory[]; promotionBar: PromotionBarData }) {
   const [isScrolled, setIsScrolled] = useState(false)
+  // Home only: the hero carries the offers bar on its bottom edge until it scrolls under the header.
+  const [pastHero, setPastHero] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeMegaMenu, setActiveMegaMenu] = useState<CategoryType | null>(null)
@@ -346,10 +348,20 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
   const isHomePage = pathname === '/'
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 100)
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 100)
+      if (!isHomePage) return
+      const hero = document.querySelector('[data-home-hero]')
+      setPastHero(!!hero && hero.getBoundingClientRect().bottom <= (headerRef.current?.offsetHeight ?? 0))
+    }
+    // Re-sync on arrival: returning to the home page at the top fires no scroll event.
+    const frame = requestAnimationFrame(handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [isHomePage])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -487,7 +499,20 @@ export default function Navbar({ menu }: { menu: NavCategory[] }) {
         onMouseLeave={() => { setIsHovered(false); setActiveMegaMenu(null); }}
         className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-500 flex flex-col ${headerSurface}`}
       >
-        <TopAnnouncementBar />
+        <AnimatePresence initial={false}>
+          {promotionBar.items.length > 0 && (!isHomePage || pastHero) && (
+            <motion.div
+              key="promotion-bar"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <PromotionBar items={promotionBar.items} theme={promotionBar.theme} placement="header" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="max-w-[1440px] mx-auto relative w-full px-4 md:px-12 pt-4 pb-4 flex flex-col justify-between">
 
           {/* Mobile Menu Button */}

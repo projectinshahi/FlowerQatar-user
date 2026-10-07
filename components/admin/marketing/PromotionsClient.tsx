@@ -10,11 +10,22 @@ import {
   duplicatePromotion,
   bulkDeletePromotions,
   bulkSetPromotionStatus,
+  type getPromotions,
 } from "@/lib/actions/marketing.actions";
 import { PROMOTION_TYPES } from "@/lib/validations/marketing";
 import { StateBadge, discountText, formatDate, prettyType } from "./ui";
 
-export default function PromotionsClient({ promotions, pagination, params }: { promotions: any[]; pagination: any; params: Record<string, string> }) {
+type ListData = Extract<Awaited<ReturnType<typeof getPromotions>>, { success: true }>["data"];
+
+export default function PromotionsClient({
+  promotions,
+  pagination,
+  params,
+}: {
+  promotions: ListData["promotions"];
+  pagination: ListData["pagination"];
+  params: Record<string, string>;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -40,7 +51,7 @@ export default function PromotionsClient({ promotions, pagination, params }: { p
   const toggleAll = () => setSelected(selected.length === promotions.length ? [] : promotions.map((p) => p.id));
   const toggleOne = (id: string) => setSelected((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
-  const run = (fn: () => Promise<any>, okMsg: string) =>
+  const run = (fn: () => Promise<{ success: boolean; error?: string }>, okMsg: string) =>
     startTransition(async () => {
       const res = await fn();
       if (res?.success === false) toast.error(res.error);

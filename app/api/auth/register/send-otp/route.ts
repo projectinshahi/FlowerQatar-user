@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    const { firstName, lastName, email } = parsed.data;
+    const { firstName, email } = parsed.data;
 
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (existing) {

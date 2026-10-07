@@ -91,7 +91,7 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
             <tbody className="divide-y divide-gray-50">
               {c.usages.length === 0 ? (
                 <tr><td colSpan={4} className="text-center py-8 text-gray-500">No usage yet.</td></tr>
-              ) : c.usages.map((u: any) => (
+              ) : c.usages.map((u) => (
                 <tr key={u.id}>
                   <td className="px-5 py-3 text-gray-600">{formatDate(u.usedAt)}</td>
                   <td className="px-5 py-3 text-gray-600 font-mono text-xs">{u.userId ? u.userId.slice(0, 8) : "Guest"}</td>

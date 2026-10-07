@@ -5,6 +5,8 @@ import { NAV_MENU_TAG } from '@/lib/subcategories';
 import { DELIVERY_CONFIG_TAG } from '@/lib/services/cart';
 import { WELCOME_POPUP_TAG } from '@/lib/welcome-popup';
 import { BLUSHING_BLOOMS_TAG } from '@/lib/blushing-blooms';
+import { PROMOTIONS_TAG } from '@/lib/promotions';
+import { REVIEWS_TAG } from '@/lib/services/reviews';
 import { entityOf, type LiveChange, type LiveEntity } from '@/lib/live-events';
 
 /**
@@ -41,8 +43,10 @@ const publisher = () => (globalThis as Record<symbol, unknown>)[PUBLISHER_KEY] a
  * - subcategory: the navigation menu is in the shared layout, and listings show subcategory
  *   names.
  * - gift: gift sections render only on product pages.
- * - review: only the reviewed product's page renders its reviews.
- * - promotion, banner, occasion, subscriptionPlan, welcomePopup: rendered on the home page
+ * - review: the reviewed product's page, plus the cached ratings on the Blushing Blooms listing.
+ * - promotion: the offers bar is in the shared layout (and the home banner), so every page.
+ * - subscriptionPlan: the home page and the FAQ's membership cards.
+ * - banner, occasion, welcomePopup: rendered on the home page
  *   (occasion detail pages are dynamic and always fresh).
  * - blushingBlooms: its page content renders on /shop?category=blushing-blooms.
  * - welcomePopup: the home page renders nothing from it, but the storefront dialog fetches it
@@ -63,11 +67,21 @@ const INVALIDATE: Record<LiveEntity, (change: LiveChange) => void> = {
   },
   // The pattern must name the (client) route group: patterns are matched against file paths.
   gift: () => revalidatePath('/(client)/product/[slug]', 'page'),
-  review: (change) => change.slugs?.forEach((slug) => revalidatePath(`/product/${slug}`)),
-  promotion: () => revalidatePath('/'),
+  review: (change) => {
+    revalidateTag(REVIEWS_TAG, { expire: 0 });
+    revalidatePath('/shop');
+    change.slugs?.forEach((slug) => revalidatePath(`/product/${slug}`));
+  },
+  promotion: () => {
+    revalidateTag(PROMOTIONS_TAG, { expire: 0 });
+    revalidatePath('/', 'layout');
+  },
   banner: () => revalidatePath('/'),
   occasion: () => revalidatePath('/'),
-  subscriptionPlan: () => revalidatePath('/'),
+  subscriptionPlan: () => {
+    revalidatePath('/');
+    revalidatePath('/faq');
+  },
   welcomePopup: () => {
     revalidateTag(WELCOME_POPUP_TAG, { expire: 0 });
     revalidatePath('/');

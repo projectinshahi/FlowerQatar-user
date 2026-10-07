@@ -3,41 +3,28 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Usage: ADMIN_PASSWORD='…' npx tsx scripts/seed-admin.ts [email]
 async function main() {
-  const email = 'admin@flowerqatar.com';
-  const plainPassword = 'admin123';
+  const email = (process.argv[2] ?? 'admin@flowerqatar.com').toLowerCase().trim();
+  const plainPassword = process.env.ADMIN_PASSWORD;
+  if (!plainPassword || plainPassword.length < 12) {
+    throw new Error('Set ADMIN_PASSWORD (at least 12 characters) in the environment.');
+  }
+  const hashedPassword = await bcrypt.hash(plainPassword, 12);
 
-  // Check if admin already exists
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
-
-
-
-  
+  const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
     console.log(`Admin user ${email} already exists. Updating password and role to ADMIN...`);
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(plainPassword, salt);
-    
     await prisma.user.update({
       where: { email },
-      data: { 
-        password: hashedPassword,
-        role: 'ADMIN',
-        isActive: true,
-      }
+      data: { password: hashedPassword, role: 'ADMIN', isActive: true },
     });
     console.log('Admin account successfully reset and upgraded!');
     return;
   }
 
-  // Create new admin
   console.log('Creating new admin user...');
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(plainPassword, salt);
-
   await prisma.user.create({
     data: {
       email,
@@ -49,10 +36,7 @@ async function main() {
       isEmailVerified: true,
     },
   });
-
-  console.log(`\n✅ Successfully created Admin Account!`);
-  console.log(`Email: ${email}`);
-  console.log(`Password: ${plainPassword}\n`);
+  console.log(`Created admin account ${email}.`);
 }
 
 main()

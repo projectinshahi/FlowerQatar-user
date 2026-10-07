@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import Image from '../../../components/LuxuryImage';
 import Link from 'next/link';
-import { Trash2, Plus, Minus, ShieldCheck, Truck, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ShieldCheck, Truck, ArrowLeft } from 'lucide-react';
 import Breadcrumbs from '../../../components/Breadcrumbs';
 import { qar } from '../../../lib/utils';
+import { cartView } from '../../../lib/cart-limits';
 import { onLive, onResync } from '../../../lib/live-client';
 import {
   NO_SHIPPING,
@@ -17,6 +18,7 @@ import {
 
 export default function CartPage() {
   const { cart, cartLoading, updateCartQuantity, removeFromCart, getCartTotal } = useApp();
+  const view = cartView(cart.length, cartLoading);
 
   /*
    * The same rules as checkout and the order itself: the admin's DeliveryCharge row for
@@ -62,7 +64,7 @@ export default function CartPage() {
         Your Atelier Cart
       </h1>
 
-      {cartLoading && cart.length === 0 ? (
+      {view === 'loading' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           <div className="lg:col-span-8 space-y-6">
             <div className="border border-divider/60 divide-y divide-divider">
@@ -83,7 +85,7 @@ export default function CartPage() {
             <div className="border border-divider/60 p-6 skeleton h-64" />
           </div>
         </div>
-      ) : cart.length === 0 ? (
+      ) : view === 'empty' ? (
         <div className="text-center py-20 bg-cream border border-divider/60 rounded-none space-y-6">
           <p className="text-muted text-sm italic">Your luxury cart is currently empty.</p>
           <p className="text-xs text-muted/80 max-w-sm mx-auto leading-relaxed">
@@ -152,7 +154,7 @@ export default function CartPage() {
                         )}
                         {item.card && (
                           <p className="sm:col-span-2 italic text-secondary mt-1">
-                            <span className="font-semibold text-primary/70 not-italic">Calligraphy Greeting:</span> "{item.card}"
+                            <span className="font-semibold text-primary/70 not-italic">Calligraphy Greeting:</span> &quot;{item.card}&quot;
                           </p>
                         )}
                       </div>

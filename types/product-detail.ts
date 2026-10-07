@@ -35,6 +35,8 @@ export interface ProductColorVariant {
   hoverImage?: string | null;
   /** Stills and clips both; read through lib/media.ts, never by checking `type` directly. */
   galleryImages?: GalleryMedia[];
+  isActive?: boolean;
+  isDefault?: boolean;
 }
 
 export interface ProductVariant {
@@ -48,6 +50,8 @@ export interface ProductVariant {
   specifications?: ProductSpecification[];
   productCare?: ProductCare | null;
   colorVariants?: ProductColorVariant[];
+  isActive?: boolean;
+  isDefault?: boolean;
 }
 
 /** The serialized Prisma row (Decimals and Dates already stringified) plus its subcategory. */

@@ -3,6 +3,7 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { logDbError } from "@/lib/prisma-error";
 import type { Product, ProductColor } from "@/types";
+import type { ProductVariant } from "@/types/product-detail";
 import type { CategoryType } from "@prisma/client";
 import { subcategoryHref } from "@/lib/category-config";
 import { NAV_MENU_TAG } from "@/lib/subcategories";
@@ -21,8 +22,26 @@ function pickDefault<T extends { isDefault?: boolean }>(arr: T[] | undefined): T
   return arr.find((x) => x.isDefault) || arr[0];
 }
 
-export function mapDbProductToStore(db: any): Product {
-  const variants: any[] = Array.isArray(db.variants) ? db.variants : [];
+/** The product columns mapDbProductToStore reads: a Prisma row, raw or serialized. */
+export interface DbStoreProduct {
+  id: string;
+  slug: string;
+  name: string;
+  /** JSON column; anything that is not an array has no variants. */
+  variants?: unknown;
+  shortDescription?: string | null;
+  description?: string | null;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
+  isTrending?: boolean;
+  isFeatured?: boolean;
+  categoryType?: string | null;
+  country?: string | null;
+  subcategory?: { id?: string; name?: string } | null;
+}
+
+export function mapDbProductToStore(db: DbStoreProduct): Product {
+  const variants = (Array.isArray(db.variants) ? db.variants : []) as ProductVariant[];
   const defVariant = pickDefault(variants);
   const allColors = variants.flatMap((v) => v?.colorVariants || []);
   const defColor = pickDefault(defVariant?.colorVariants) || allColors[0];

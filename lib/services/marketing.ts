@@ -123,7 +123,7 @@ export function computeDiscount(
 
 /**
  * Full rule evaluation for a coupon against a cart. Pure business logic —
- * does not mutate usage counters (see applyCoupon).
+ * does not mutate usage counters (usage is recorded when the order is paid, in services/order.ts).
  */
 export async function validateCoupon(
   code: string,
@@ -192,63 +192,6 @@ export async function validateCoupon(
   };
 }
 
-/**
- * Validates then atomically records a coupon usage, guarding against races on
- * both the global usage limit and the per-customer limit.
- */
-export async function applyCoupon(
-  code: string,
-  items: CartItemDTO[],
-  userId: string | null,
-  orderId: string | null
-): Promise<CouponResult> {
-  const result = await validateCoupon(code, items, userId);
-  if (!result.valid) return result;
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      const coupon = await tx.coupon.findUnique({
-        where: { id: result.couponId },
-        select: { usageLimit: true, usagePerCustomer: true },
-      });
-      if (!coupon) throw new Error("Invalid coupon code");
-
-      // Atomically bump global usage only if still under the limit.
-      const bumped = await tx.coupon.updateMany({
-        where:
-          coupon.usageLimit == null
-            ? { id: result.couponId }
-            : { id: result.couponId, currentUsage: { lt: coupon.usageLimit } },
-        data: { currentUsage: { increment: 1 } },
-      });
-      if (bumped.count === 0) {
-        throw new Error("This coupon has reached its usage limit");
-      }
-
-      // Re-check per-customer limit inside the transaction.
-      if (userId && coupon.usagePerCustomer != null) {
-        const used = await tx.couponUsage.count({ where: { couponId: result.couponId, userId } });
-        if (used >= coupon.usagePerCustomer) {
-          throw new Error("You have already used this coupon");
-        }
-      }
-
-      await tx.couponUsage.create({
-        data: {
-          couponId: result.couponId,
-          userId: userId ?? null,
-          orderId: orderId ?? null,
-          discount: result.discount,
-        },
-      });
-    });
-  } catch (e: any) {
-    return { valid: false, reason: e.message || "Failed to apply coupon" };
-  }
-
-  return result;
-}
-
 /* ─────────────────────── Promotions ────────────────────────── */
 
 export interface PromotionResult {
@@ -265,17 +208,18 @@ export interface PromotionResult {
  */
 export async function applyBestPromotion(items: CartItemDTO[]): Promise<PromotionResult> {
   const now = new Date();
-  const ctx = await buildCartContext(items);
-
-  const promotions = await prisma.promotion.findMany({
-    where: {
-      status: "ACTIVE",
-      autoApply: true,
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-    orderBy: [{ priority: "desc" }, { discountValue: "desc" }],
-  });
+  const [ctx, promotions] = await Promise.all([
+    buildCartContext(items),
+    prisma.promotion.findMany({
+      where: {
+        status: "ACTIVE",
+        autoApply: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: [{ priority: "desc" }, { discountValue: "desc" }],
+    }),
+  ]);
 
   let best: PromotionResult | null = null;
 
@@ -324,16 +268,17 @@ export interface FreeDeliveryResult {
  */
 export async function checkFreeDelivery(items: CartItemDTO[]): Promise<FreeDeliveryResult> {
   const now = new Date();
-  const ctx = await buildCartContext(items);
-
-  const campaigns = await prisma.freeDeliveryCampaign.findMany({
-    where: {
-      status: "ACTIVE",
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-    orderBy: [{ priority: "desc" }, { minOrderAmount: "asc" }],
-  });
+  const [ctx, campaigns] = await Promise.all([
+    buildCartContext(items),
+    prisma.freeDeliveryCampaign.findMany({
+      where: {
+        status: "ACTIVE",
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: [{ priority: "desc" }, { minOrderAmount: "asc" }],
+    }),
+  ]);
 
   let closest: FreeDeliveryResult | null = null;
 

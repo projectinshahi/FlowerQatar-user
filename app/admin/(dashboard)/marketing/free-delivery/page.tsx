@@ -1,4 +1,4 @@
-import { getCampaigns } from "@/lib/actions/marketing.actions";
+import { getCampaigns, type CampaignListParams } from "@/lib/actions/marketing.actions";
 import CampaignsClient from "@/components/admin/marketing/CampaignsClient";
 
 export const metadata = { title: "Free Delivery | Marketing" };
@@ -11,10 +11,10 @@ export default async function FreeDeliveryPage({
   const sp = await searchParams;
   const str = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
 
-  const params = {
+  const params: CampaignListParams = {
     search: str("search"),
-    status: str("status") as any,
-    state: str("state") as any,
+    status: str("status") as CampaignListParams["status"],
+    state: str("state") as CampaignListParams["state"],
     page: str("page") ? Number(str("page")) : 1,
     limit: 10,
   };

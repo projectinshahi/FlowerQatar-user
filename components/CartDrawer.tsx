@@ -8,9 +8,11 @@ import { useDialogA11y } from '../hooks/useDialogA11y';
 import LuxuryImage from './LuxuryImage';
 import Link from 'next/link';
 import { qar } from '../lib/utils';
+import { cartView } from '../lib/cart-limits';
 
 export default function CartDrawer() {
-  const { cart, isCartOpen, setCartOpen, updateCartQuantity, removeFromCart, getCartTotal } = useApp();
+  const { cart, cartLoading, isCartOpen, setCartOpen, updateCartQuantity, removeFromCart, getCartTotal } = useApp();
+  const view = cartView(cart.length, cartLoading);
   const dialogRef = useDialogA11y<HTMLDivElement>(isCartOpen, () => setCartOpen(false));
 
   return (
@@ -46,9 +48,22 @@ export default function CartDrawer() {
                 <h2 className="text-xs uppercase tracking-[0.15em] font-medium text-primary">MY CART</h2>
               </div>
 
-              {/* Items List or Empty State */}
+              {/* Items List, Loading or Empty State */}
               <div className="flex-1 overflow-y-auto bg-white">
-                {cart.length === 0 ? (
+                {view === 'loading' ? (
+                  <div className="px-5 md:px-6 py-4 space-y-6" aria-busy="true" aria-label="Loading your cart">
+                    {[0, 1].map((i) => (
+                      <div key={i} className="flex gap-4">
+                        <div className="w-20 h-24 skeleton flex-shrink-0" />
+                        <div className="flex-1 space-y-2 pt-1">
+                          <div className="h-3 w-2/3 skeleton" />
+                          <div className="h-2 w-1/3 skeleton" />
+                          <div className="h-2 w-1/2 skeleton" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : view === 'empty' ? (
                   <div className="flex min-h-full flex-col items-center justify-center px-6 py-10">
                     <p className="font-serif text-[18px] md:text-[20px] text-primary mb-6">Your cart is empty</p>
                     <Link
@@ -56,7 +71,7 @@ export default function CartDrawer() {
                       onClick={() => setCartOpen(false)}
                       className="bg-black text-white px-8 md:px-10 py-3.5 text-[10px] uppercase tracking-widest hover:bg-secondary transition-colors font-medium"
                     >
-                      LET'S SHOP
+                      LET&apos;S SHOP
                     </Link>
                   </div>
                 ) : (
@@ -107,7 +122,7 @@ export default function CartDrawer() {
                                 )}
                                 {item.card && (
                                   <p className="italic text-secondary truncate max-w-full">
-                                    <span className="font-medium text-primary/70 not-italic">Card:</span> "{item.card}"
+                                    <span className="font-medium text-primary/70 not-italic">Card:</span> &quot;{item.card}&quot;
                                   </p>
                                 )}
                               </div>

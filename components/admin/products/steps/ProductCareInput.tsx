@@ -40,7 +40,7 @@ export default function ProductCareInput({ variantIndex }: { variantIndex: numbe
     <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
       <div>
         <label className="block text-sm font-medium text-gray-900">Product Care</label>
-        <p className="text-xs text-gray-500">Do's &amp; Don'ts shown on the product page.</p>
+        <p className="text-xs text-gray-500">Do&apos;s &amp; Don&apos;ts shown on the product page.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -89,7 +89,7 @@ export default function ProductCareInput({ variantIndex }: { variantIndex: numbe
         <div className="space-y-3">
           <h4 className="text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500"></div>
-            Don't
+            Don&apos;t
           </h4>
           <div className="flex gap-2">
             <input

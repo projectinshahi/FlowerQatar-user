@@ -76,7 +76,6 @@ interface SingleMediaUploaderProps {
 export default function SingleMediaUploader({ 
   fieldName, 
   label, 
-  placeholder = "https://...", 
   required,
   accept = "image/*,video/*",
   error 

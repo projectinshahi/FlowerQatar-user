@@ -52,14 +52,6 @@ export interface Product {
   care?: string[];
 }
 
-export interface Collection {
-  slug: string;
-  name: string;
-  description: string;
-  image: string;
-  isCustom?: boolean;
-}
-
 export interface BlogPost {
   slug: string;
   title: string;

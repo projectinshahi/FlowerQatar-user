@@ -12,32 +12,63 @@ const planBadge = (p: string) =>
     ? 'bg-slate-200 text-slate-700'
     : 'bg-gray-100 text-gray-600'; // SILVER / default
 
+/** A user as GET /api/admin/users returns it: JSON, so dates arrive as strings. */
+interface AdminUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  role: string;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  createdAt: string;
+  lastLogin: string | null;
+  membership: {
+    plan: string;
+    active: boolean;
+    status: string;
+    startsAt: string;
+    expiresAt: string;
+    pointsCredited: number;
+  } | null;
+  wallet: { availablePoints: number; usedPoints: number; totalEarned: number; expiredPoints: number };
+}
+
 export default function AdminUsers() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ role: '', isActive: true });
   const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
 
+  // One page at a time, searched on the server; typing is debounced to one request.
   useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch('/api/admin/users');
-      const data = await res.json();
-      if (data.users) {
-        setUsers(data.users);
+    let alive = true;
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/admin/users?page=${page}&q=${encodeURIComponent(searchTerm.trim())}`);
+        const data = await res.json();
+        if (alive && data.users) {
+          setUsers(data.users);
+          setPagination(data.pagination);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        if (alive) setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    }, searchTerm ? 300 : 0);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [page, searchTerm]);
 
-  const handleEditClick = (user: any) => {
+  const handleEditClick = (user: AdminUser) => {
     setEditingId(user.id);
     setEditForm({
       role: user.role,
@@ -95,6 +126,11 @@ export default function AdminUsers() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
             type="text" 
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search users..." 
             className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-shadow"
           />
@@ -122,7 +158,7 @@ export default function AdminUsers() {
                   <td colSpan={6} className="px-6 py-16 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <Users size={48} className="text-gray-200 mb-4" />
-                      <p>No users found in the system.</p>
+                      <p>{searchTerm ? 'No users matching your search.' : 'No users found in the system.'}</p>
                     </div>
                   </td>
                 </tr>
@@ -262,6 +298,26 @@ export default function AdminUsers() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500">
+          <span>{isLoading ? 'Loading…' : `Showing ${users.length} of ${pagination.total} users`}</span>
+          <div className="flex gap-1">
+            <button
+              disabled={page <= 1 || isLoading}
+              onClick={() => setPage((p) => p - 1)}
+              className="rounded-md border border-gray-200 px-3 py-1 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <button
+              disabled={page >= pagination.totalPages || isLoading}
+              onClick={() => setPage((p) => p + 1)}
+              className="rounded-md border border-gray-200 px-3 py-1 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

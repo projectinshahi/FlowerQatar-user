@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import ProductTable from "@/components/admin/products/ProductTable";
 import ProductForm from "@/components/admin/products/ProductForm";
 import { getProducts, getProductById } from "@/lib/actions/product.actions";
 import { getAdminSubcategoryOptions } from "@/lib/subcategories";
+import { productToFormValues } from "@/lib/validations/product";
+import { requireAdminPage } from "@/lib/admin-guard";
 
 export const metadata = {
   title: "Products | Admin Dashboard",
@@ -12,11 +14,13 @@ export const metadata = {
 export default async function AdminProductsPage(props: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  await requireAdminPage();
   const searchParams = await props.searchParams;
   const page = typeof searchParams.page === "string" ? Number(searchParams.page) : 1;
   const search = typeof searchParams.search === "string" ? searchParams.search : undefined;
-  const status = typeof searchParams.status === "string" ? searchParams.status as any : undefined;
-  const sortBy = typeof searchParams.sortBy === "string" ? searchParams.sortBy as any : undefined;
+  type ListParams = Parameters<typeof getProducts>[0];
+  const status = typeof searchParams.status === "string" ? searchParams.status as ListParams["status"] : undefined;
+  const sortBy = typeof searchParams.sortBy === "string" ? searchParams.sortBy as ListParams["sortBy"] : undefined;
   const isNew = searchParams.new === "true";
   const editId = typeof searchParams.edit === "string" ? searchParams.edit : undefined;
 
@@ -26,62 +30,10 @@ export default async function AdminProductsPage(props: {
       editId ? getProductById(editId) : Promise.resolve(null)
     ]);
 
-    let initialData = undefined;
-    if (editId && editProductResult?.success && editProductResult.data) {
-      const product = editProductResult.data;
-      initialData = {
-        id: product.id,
-        name: product.name || "",
-        slug: product.slug || "",
-        sku: product.sku || "",
-        shortDescription: product.shortDescription || "",
-        description: product.description || "",
-        country: product.country || "",
-        categoryType: product.categoryType || "",
-        subcategoryId: product.subcategoryId || "",
-        status: product.status,
-        isFeatured: product.isFeatured,
-        isBestSeller: product.isBestSeller,
-        isTrending: product.isTrending,
-        isNewArrival: product.isNewArrival,
-        variants: ((product.variants as any[]) || []).map((v: any) => ({
-          id: v.id,
-          variantName: v.variantName || "",
-          sku: v.sku || "",
-          description: v.description || "",
-          productCare: {
-            dos: v.productCare?.dos || [],
-            donts: v.productCare?.donts || [],
-          },
-          isDefault: v.isDefault ?? false,
-          isActive: v.isActive ?? true,
-          specifications: (v.specifications || []).map((s: any) => ({
-            id: s.id,
-            title: s.title,
-            value: s.value
-          })),
-          colorVariants: (v.colorVariants || []).map((cv: any) => ({
-            id: cv.id,
-            colorName: cv.colorName || "",
-            colorCode: cv.colorCode || "#000000",
-            price: cv.price ?? "",
-            salePrice: cv.salePrice ?? "",
-            swatchImage: cv.swatchImage || "",
-            hoverImage: cv.hoverImage || "",
-            isActive: cv.isActive ?? true,
-            isDefault: cv.isDefault ?? false,
-            galleryImages: (cv.galleryImages || []).map((img: any) => ({
-              id: img.id,
-              url: img.url,
-              publicId: img.publicId,
-              isPrimary: img.isPrimary,
-              order: img.order,
-              type: img.type || (img.url?.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) ? "video" : "image"),
-            }))
-          }))
-        }))
-      };
-    }
+    const initialData =
+      editId && editProductResult?.success && editProductResult.data
+        ? productToFormValues(editProductResult.data)
+        : undefined;
 
     return (
       <div className="space-y-6">
@@ -108,7 +60,7 @@ export default async function AdminProductsPage(props: {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-serif font-bold text-gray-900">Products</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your store's products, variants, and inventory.</p>
+          <p className="text-gray-500 text-sm mt-1">Manage your store&apos;s products, variants, and inventory.</p>
         </div>
         <Link
           href="/admin/products?new=true"

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, type FieldValues, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductFormValues } from "@/lib/validations/product";
 import { createProduct, updateProduct } from "@/lib/actions/product.actions";
@@ -14,19 +14,29 @@ const STEPS = [
   { id: "variants", title: "Variants, Specs & Images" },
 ];
 
-export default function ProductForm({ subcategories, initialData }: { subcategories?: any[], initialData?: any }) {
+export default function ProductForm({
+  subcategories,
+  initialData,
+}: {
+  subcategories?: { id: string; categoryType: string; name: string }[];
+  /** Raw input values ("" for blanks, strings for numbers); the step components edit them untyped. */
+  initialData?: FieldValues & { id?: string };
+}) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  // False on the server and during hydration, true once on the client — the form renders client-only.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const methods = useForm<any>({
-    resolver: zodResolver(productSchema),
+  // The inputs are untyped field values; the zod resolver turns them into ProductFormValues.
+  const methods = useForm<FieldValues, unknown, ProductFormValues>({
+    // Same cast as AddressForm: the schema's input type is stricter than what the inputs hold.
+    resolver: zodResolver(productSchema) as unknown as Resolver<FieldValues, unknown, ProductFormValues>,
     defaultValues: initialData || {
       name: "",
       slug: "",
@@ -72,7 +82,7 @@ export default function ProductForm({ subcategories, initialData }: { subcategor
 
   const nextStep = async () => {
     // Validate current step fields before proceeding
-    let fieldsToValidate: any = [];
+    let fieldsToValidate: string[] = [];
     if (currentStep === 0) fieldsToValidate = ['name', 'slug', 'subcategoryId'];
     const isStepValid = await trigger(fieldsToValidate);
     if (isStepValid) {
@@ -82,7 +92,7 @@ export default function ProductForm({ subcategories, initialData }: { subcategor
 
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 0));
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
     setError(null);
     try {
@@ -96,8 +106,8 @@ export default function ProductForm({ subcategories, initialData }: { subcategor
       } else {
         setError(result.error || "Failed to save product");
       }
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
+    } catch (err) {
+      setError((err instanceof Error && err.message) || "An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -151,8 +161,8 @@ export default function ProductForm({ subcategories, initialData }: { subcategor
               <div className="p-4 bg-red-50 text-red-700 rounded-lg text-sm border border-red-100">
                 <p className="font-bold">Please fix the following errors:</p>
                 <ul className="list-disc pl-5 mt-2">
-                  {Object.entries(errors).map(([key, err]: any) => (
-                    <li key={key}>{err.message || "Invalid field"}</li>
+                  {Object.entries(errors).map(([key, err]) => (
+                    <li key={key}>{(typeof err?.message === "string" && err.message) || "Invalid field"}</li>
                   ))}
                 </ul>
               </div>

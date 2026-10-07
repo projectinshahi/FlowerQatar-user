@@ -89,5 +89,4 @@ export const updateItemSchema = z.object({
 });
 
 export type AddItemInput = z.infer<typeof addItemSchema>;
-export type UpdateItemInput = z.infer<typeof updateItemSchema>;
 export type CartSelection = z.infer<typeof cartSelectionSchema>;

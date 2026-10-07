@@ -1,5 +1,3 @@
-"use client";
-
 import { formatMoney } from "./ui";
 
 type TimelinePoint = { date: string; uses: number; discount: number };

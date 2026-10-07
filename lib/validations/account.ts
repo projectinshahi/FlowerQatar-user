@@ -41,8 +41,6 @@ export const updateProfileSchema = z.object({
     ),
 });
 
-export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
-
 /* ─────────────────────── Change password ─────────────────────── */
 
 export const changePasswordSchema = z
@@ -59,7 +57,5 @@ export const changePasswordSchema = z
     message: "New password must be different from the current one",
     path: ["newPassword"],
   });
-
-export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 // Address validation/types now live in ./address (label + country/state/city codes).

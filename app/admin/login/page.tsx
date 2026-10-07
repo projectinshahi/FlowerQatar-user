@@ -43,8 +43,8 @@ export default function AdminLogin() {
 
       router.push('/admin/dashboard');
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setIsLoading(false);
     }

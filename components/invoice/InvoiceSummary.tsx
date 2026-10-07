@@ -12,7 +12,6 @@ export const InvoiceSummary: React.FC<InvoiceSummaryProps> = ({ financials }) =>
     shippingFee,
     couponCode,
     couponDiscount,
-    pointsRedeemed,
     pointsDiscount,
     taxAmount,
     grandTotal,

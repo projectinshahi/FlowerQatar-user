@@ -62,7 +62,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({ message: 'User updated successfully', user });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating user:', error);
     return NextResponse.json(
       { error: 'Failed to update user' },
@@ -108,7 +108,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: 'User deleted successfully' });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting user:', error);
     return NextResponse.json(
       { error: 'Failed to delete user' },

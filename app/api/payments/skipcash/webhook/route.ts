@@ -36,13 +36,6 @@ export async function POST(request: Request) {
 
   try {
     const result = await confirmSkipCashPayment(paymentId);
-    console.log("[skipcash] webhook processed", {
-      paymentId,
-      status: result.status,
-      kind: result.kind,
-      orderId: result.orderId,
-      membershipId: result.membershipId ?? null,
-    });
     return NextResponse.json({ received: true });
   } catch (e) {
     // Could not verify with SkipCash right now — 503 so the gateway delivers it again.

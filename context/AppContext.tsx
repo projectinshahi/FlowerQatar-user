@@ -9,6 +9,23 @@ import { track } from '../lib/analytics';
 import { syncToggle } from '../lib/wishlist';
 import { addToast } from '../lib/toasts';
 import type { GreetingFont } from '../lib/validations/cart';
+import type { CartPayload } from '../lib/services/cart';
+
+/** The signed-in shopper, exactly as /api/auth/me selects it. */
+export interface SessionUser {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  phone: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  role: string;
+  profileImage: string | null;
+  isEmailVerified: boolean;
+  isActive: boolean;
+}
 
 export interface CartItem {
   id: string; // cart line id (uuid) once persisted, or a temporary id while optimistic
@@ -54,9 +71,9 @@ interface AppContextType {
   isAccountOpen: boolean;
   isSearchOpen: boolean;
   customizer: CustomArrangementState;
-  user: any | null;
+  user: SessionUser | null;
 
-  setUser: (user: any | null) => void;
+  setUser: (user: SessionUser | null) => void;
 
   // Cart Actions (DB-backed via /api/cart)
   addToCart: (item: Omit<CartItem, 'id'>) => void;
@@ -98,7 +115,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** Stable key for de-duping identical selections in the optimistic UI. */
 const dedupKey = (i: Omit<CartItem, 'id'>) => {
-  const p = (i.product as any).id || i.product.slug || 'custom';
+  const p = i.product.id || i.product.slug || 'custom';
   const sel = [i.roseColor, i.boxColor, i.boxShape, i.size, i.lid, i.card].map((v) => v || '').join('~');
   // Distinct add-ons / delivery / greeting = distinct cart line (don't merge different gift configs).
   const extra = [
@@ -110,9 +127,9 @@ const dedupKey = (i: Omit<CartItem, 'id'>) => {
 };
 
 /** Maps the structured server cart payload into the client CartItem shape the UI expects. */
-function mapServerCart(payload: any): CartItem[] {
+function mapServerCart(payload: CartPayload | null | undefined): CartItem[] {
   if (!payload?.items) return [];
-  return payload.items.map((i: any): CartItem => ({
+  return payload.items.map((i): CartItem => ({
     id: i.id,
     product: {
       id: i.product?.id || undefined,
@@ -144,7 +161,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const [isAccountOpen, setAccountOpen] = useState(false);
   const [isSearchOpen, setSearchOpen] = useState(false);
   const [customizer, setCustomizer] = useState<CustomArrangementState>(defaultCustomizer);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
 
   /*
    * Which identity the cart and wishlist currently hold, as opposed to which one React has
@@ -166,7 +183,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       // fetchJson, not res.json(): this runs on every page load and after every cart
       // mutation, so any non-JSON response (dev-server restart, 500 error page) used to
       // surface as an unexplained "Unexpected token '<'" SyntaxError in the console.
-      const data = await fetchJson<{ success?: boolean; data?: unknown }>('/api/cart');
+      const data = await fetchJson<{ success?: boolean; data?: CartPayload }>('/api/cart');
       if (data?.success) setCart(mapServerCart(data.data));
     } catch (err) {
       console.error('Failed to load cart', err);
@@ -196,7 +213,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       return [...prev, { ...item, id: `tmp-${Date.now()}` }];
     });
 
-    const pid = (item.product as any).id;
+    const pid = item.product.id;
     const productId = pid && UUID_RE.test(pid) ? pid : null;
     const selection = {
       roseColor: item.roseColor,
@@ -207,7 +224,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
       card: item.card,
       name: item.product.name,
       slug: item.product.slug,
-      image: (item.product as any).image,
+      image: item.product.image,
       // M05 selections
       addOns: item.addOns,
       deliveryDate: item.deliveryDate,
@@ -249,7 +266,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
     addToast('Item removed from cart.', 'info');
     (async () => {
       try {
-        const data = await fetchJson<{ success?: boolean; data?: unknown }>(
+        const data = await fetchJson<{ success?: boolean; data?: CartPayload }>(
           `/api/cart/item/${itemId}`,
           { method: 'DELETE' }
         );
@@ -284,7 +301,7 @@ export const AppContextProvider = ({ children }: { children: ReactNode }) => {
     setCart([]);
     (async () => {
       try {
-        const data = await fetchJson<{ success?: boolean; data?: unknown }>('/api/cart', {
+        const data = await fetchJson<{ success?: boolean; data?: CartPayload }>('/api/cart', {
           method: 'DELETE',
         });
         if (data?.success) setCart(mapServerCart(data.data));

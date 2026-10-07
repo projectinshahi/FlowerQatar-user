@@ -31,23 +31,29 @@ export default function SearchDrawer() {
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
+  /** Every query change goes through here: an empty query clears, anything else starts loading. */
+  const changeQuery = (next: string) => {
+    setQuery(next);
+    if (next.trim().length === 0) {
+      setResults([]);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+  };
+
   // Debounced backend search.
   useEffect(() => {
     const q = query.trim();
-    if (q.length === 0) {
-      setResults([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    if (q.length === 0) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
         const data = await res.json();
         if (data?.success) setResults(data.data as Product[]);
-      } catch (err: any) {
-        if (err?.name !== 'AbortError') console.error('Search failed', err);
+      } catch (err) {
+        if (!(err instanceof Error && err.name === 'AbortError')) console.error('Search failed', err);
       } finally {
         setLoading(false);
       }
@@ -79,7 +85,11 @@ export default function SearchDrawer() {
   // Clear query when drawer closes
   useEffect(() => {
     if (!isSearchOpen) {
-      setTimeout(() => setQuery(''), 300);
+      setTimeout(() => {
+        setQuery('');
+        setResults([]);
+        setLoading(false);
+      }, 300);
     }
   }, [isSearchOpen]);
 
@@ -133,7 +143,7 @@ export default function SearchDrawer() {
                       <input aria-label="Search products"
                         type="text"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => changeQuery(e.target.value)}
                         placeholder="SEARCH HERE..."
                         ref={inputRef}
                         className="w-full bg-transparent outline-none text-[11px] md:text-[12px] uppercase tracking-widest placeholder:text-black/60 focus:ring-0 px-3 md:px-4 h-full min-w-0"
@@ -141,7 +151,7 @@ export default function SearchDrawer() {
                     </div>
                     <button 
                       onClick={() => {
-                        if (query.length > 0) setQuery('');
+                        if (query.length > 0) changeQuery('');
                       }}
                       className="flex items-center justify-center px-3 md:px-4 text-black hover:text-[#C1A87D] transition-colors h-full flex-shrink-0"
                     >
@@ -169,7 +179,7 @@ export default function SearchDrawer() {
                             {/* Fills the search box — an action, not navigation, so a button. */}
                             <button
                               type="button"
-                              onClick={() => setQuery(item)}
+                              onClick={() => changeQuery(item)}
                               className="text-left font-serif text-[16px] md:text-[17px] text-primary hover:text-[#C1A87D] transition-colors"
                             >
                               {item}

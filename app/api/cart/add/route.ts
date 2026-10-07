@@ -13,9 +13,9 @@ export async function POST(req: Request) {
     const cartId = await resolveSessionUserId();
     const data = await addItem(cartId, parsed.data);
     return NextResponse.json({ success: true, data }, { status: 201 });
-  } catch (e: any) {
+  } catch (e) {
     const status = e instanceof CartError ? e.status : 500;
     if (status >= 500) console.error("[api/cart/add]", e);
-    return NextResponse.json({ success: false, error: e?.message || "Failed to add to cart" }, { status });
+    return NextResponse.json({ success: false, error: (e instanceof Error && e.message) || "Failed to add to cart" }, { status });
   }
 }

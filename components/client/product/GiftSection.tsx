@@ -55,7 +55,6 @@ const SKIN: Record<
      * name and price always keep the remaining ~70%, at any column width.
      */
     image: 'aspect-square w-[30%] min-w-11 max-w-20',
-    // The storefront's existing tile colours — the same ones AddOnsSelector already uses.
     border: (on) => (on ? 'var(--color-primary)' : '#E4DED4'),
     background: (on) => (on ? 'rgba(97,0,11,0.05)' : 'transparent'),
   },

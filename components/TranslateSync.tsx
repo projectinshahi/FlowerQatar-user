@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   applyAttrs,
+  applyDocumentLanguage,
   collectAttrs,
-  endTransition,
   isTranslatorNoise,
   readLang,
+  SOURCE_LANG,
+  subscribeLang,
   whenTranslated,
 } from '@/lib/translate';
 
@@ -15,7 +17,7 @@ import {
 const ATTR_SETTLE_MS = 1500;
 
 /**
- * Keeps attribute text translated, and owns the fade that hides the untranslated frame.
+ * Keeps <html lang/dir> and attribute text in step with the selected language.
  *
  * Google's widget translates content that appears after load on its own — streamed sections,
  * drawers, modals, route changes. This component must never re-initialise it: clearing
@@ -23,50 +25,32 @@ const ATTR_SETTLE_MS = 1500;
  * it only tears the widget down. Doing that on every DOM change (every carousel tick) is what
  * kept Arabic pages churning and dropping content back to English.
  *
- * What Google can't translate is attribute text (placeholders, aria-labels, alt), so that is the
- * only thing handled here — see the attribute pool in lib/translate.ts.
- *
- * The masking attribute is set pre-paint by the inline script in layout.tsx; this component
- * clears it once the first pass has landed.
+ * What Google can't translate is attribute text (placeholders, aria-labels, alt), so that is
+ * handled here — see the attribute pool in lib/translate.ts.
  */
 export default function TranslateSync() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const lang = useSyncExternalStore(subscribeLang, readLang, () => SOURCE_LANG);
 
-  // First paint: the inline script already masked the body. Wait for Google, then reveal.
+  // Register attribute text before Google's first pass, and copy the translations back after.
   useEffect(() => {
-    if (readLang() !== 'ar') {
-      endTransition();
-      return;
-    }
-
+    if (lang === SOURCE_LANG) return;
     let cancelled = false;
-
-    // Register attribute text NOW, before element.js gets to run. Google applies the cookie
-    // itself during startup, and that native path is the dependable one — we just want the
-    // hidden pool to already be in the DOM when it happens.
     collectAttrs();
-
-    // whenTranslated always resolves (it has a timeout), so the page can never stay masked.
-    whenTranslated().then(() => {
-      if (cancelled) return;
-      applyAttrs();
-      endTransition();
-    });
-
+    whenTranslated().then(() => !cancelled && applyAttrs());
     return () => {
       cancelled = true;
-      endTransition();
     };
-  }, []);
+  }, [lang]);
 
   /*
    * Late-arriving content: Google translates its text by itself. Mirror any new attribute text
-   * into the pool so it is translated alongside, then copy the result back. No fade — this fires
-   * during normal browsing, and the widget itself is never touched.
+   * into the pool so it is translated alongside, then copy the result back. The widget itself
+   * is never touched.
    */
   useEffect(() => {
-    if (readLang() !== 'ar') return;
+    if (lang === SOURCE_LANG) return;
 
     let cancelled = false;
     let debounce = 0;
@@ -88,11 +72,12 @@ export default function TranslateSync() {
       observer.disconnect();
       window.clearTimeout(debounce);
     };
-  }, []);
+  }, [lang]);
 
+  // A navigation must never put <html> back into another language or direction.
   useEffect(() => {
-    document.documentElement.lang = readLang();
-  }, [pathname, searchParams]);
+    applyDocumentLanguage(readLang());
+  }, [pathname, searchParams, lang]);
 
   return null;
 }

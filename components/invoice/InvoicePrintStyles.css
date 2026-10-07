@@ -9,31 +9,6 @@
   font-family: 'Cairo', 'Amiri', 'Traditional Arabic', sans-serif;
 }
 
-/* Subtle & Premium Neutral Utilities */
-.invoice-bg-card {
-  background-color: #FAFAFA;
-}
-
-.invoice-border {
-  border-color: #EAEAEA;
-}
-
-.invoice-text-primary {
-  color: #2E2E2E;
-}
-
-.invoice-text-secondary {
-  color: #6B7280;
-}
-
-.invoice-accent {
-  color: #61000B;
-}
-
-.invoice-accent-bg {
-  background-color: #61000B;
-}
-
 /* Document Container */
 .invoice-page-container {
   width: 100%;
@@ -112,7 +87,6 @@
     break-inside: avoid !important;
   }
 
-  .avoid-page-break,
   .invoice-summary-block,
   .invoice-footer-block,
   .invoice-customer-block {

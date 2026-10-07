@@ -110,15 +110,16 @@ export async function getSubscription(userId: string, id: string) {
 }
 
 export async function createSubscription(userId: string, input: CreateSubscriptionInput) {
-  const product = await prisma.product.findFirst({
-    where: { id: input.productId, status: "PUBLISHED" },
-    select: { id: true, name: true, variants: true },
-  });
+  const [product, user] = await Promise.all([
+    prisma.product.findFirst({
+      where: { id: input.productId, status: "PUBLISHED" },
+      select: { id: true, name: true, variants: true },
+    }),
+    prisma.user.findUnique({ where: { id: userId }, select: { addresses: true } }),
+  ]);
   if (!product) throw new ApiError("Product not found or unavailable", 404);
 
   const pricing = resolveProduct(product, input.variantId, input.colorId);
-
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { addresses: true } });
   const address = resolveAddress(user?.addresses, input.addressId);
   if (!address) throw new ApiError("Please add a delivery address before subscribing", 400);
 

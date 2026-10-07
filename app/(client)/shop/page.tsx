@@ -8,7 +8,6 @@ import { getSubcategories } from '../../../lib/subcategories';
 import { getBlushingBloomsContent } from '../../../lib/blushing-blooms';
 import { getRatingSummaries } from '../../../lib/services/reviews';
 import { categoryFromSlug, categorySlug, CATEGORY_META, PRODUCT_TABS } from '../../../lib/category-config';
-import { PRODUCTS } from '../../../data/products';
 import {
   parseFilters,
   reconcileFilters,
@@ -17,7 +16,6 @@ import {
   sortProducts,
   UNASSIGNED_SUBCATEGORY,
 } from '../../../lib/shop-facets';
-import { BLUSHING_BLOOMS_FALLBACK } from '../../../data/blushing-blooms';
 import type { Product } from '../../../types';
 
 /*
@@ -125,14 +123,12 @@ export default async function ShopPage({
    * catalogue does not depend on the products. Awaited in sequence these were two separate
    * round trips to a remote database on the most trafficked listing page.
    */
-  const [dbProducts, subcategoryRows] = await Promise.all([
+  const [all, subcategoryRows] = await Promise.all([
     getStoreProducts(),
     activeType
       ? getSubcategories(activeType)
       : ([] as Awaited<ReturnType<typeof getSubcategories>>),
   ]);
-  // Fall back to the curated mock catalog only if the DB has no published products yet.
-  const all = dbProducts.length > 0 ? dbProducts : PRODUCTS;
 
   const tabKey = str('tab');
   const tabField = tabKey ? TAB_FIELD[tabKey] : undefined;
@@ -207,23 +203,21 @@ export default async function ShopPage({
  * Split out of ShopPage purely so the Suspense boundary above has something to await: every
  * database call for this category happens in here, which keeps the themed fallback on screen
  * for the whole wait rather than only after the queries resolve.
- *
- * Reads from `dbProducts` directly — the shared PRODUCTS mock carries no categoryType, so
- * filtering it by category would always yield nothing. With no published Blushing Blooms
- * products the page falls back to its own preview set.
  */
 async function BlushingBloomsListing() {
-  const [dbProducts, content] = await Promise.all([getStoreProducts(), getBlushingBloomsContent()]);
-  const blushing = dbProducts.filter((p) => p.categoryType === 'BLUSHING_BLOOMS');
-  const products = blushing.length > 0 ? blushing : BLUSHING_BLOOMS_FALLBACK;
+  const [dbProducts, content, ratings] = await Promise.all([
+    getStoreProducts(),
+    getBlushingBloomsContent(),
+    getRatingSummaries(),
+  ]);
+  const products = dbProducts.filter((p) => p.categoryType === 'BLUSHING_BLOOMS');
 
   /*
    * Real ratings for the cards and the quick view. mapDbProductToStore hardcodes rating 5 /
    * reviewCount 0 for every product, which is fine where nothing renders them but would have
-   * the quick view advertise a rating nobody gave. One aggregate query covers the whole grid;
+   * the quick view advertise a rating nobody gave. One cached aggregate covers the whole grid;
    * products with no reviews keep the mapper's default and the quick view hides the count.
    */
-  const ratings = await getRatingSummaries(products.map((p) => p.id).filter(Boolean));
   const rated = products.map((p) => {
     const r = ratings.get(p.id);
     return r ? { ...p, rating: r.average, reviewCount: r.count } : p;

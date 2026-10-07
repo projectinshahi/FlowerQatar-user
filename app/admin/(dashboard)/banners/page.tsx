@@ -17,7 +17,7 @@ export default async function BannersPage() {
       {!res.success && (
         <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 text-sm">{res.error}</div>
       )}
-      <BannersManager initialBanners={banners as any} />
+      <BannersManager initialBanners={banners} />
     </div>
   );
 }

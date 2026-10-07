@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { ACTIVE_USER, getCurrentUser, getSessionUserId } from "@/lib/admin-guard";
 import { MAX_CART_QUANTITY } from "@/lib/cart-limits";
 import type { AddItemInput, CartSelection } from "@/lib/validations/cart";
+import type { Prisma } from "@prisma/client";
+import type { ProductColorVariant, ProductVariant } from "@/types/product-detail";
 import { unstable_cache } from "next/cache";
 import { NO_SHIPPING, calculateShipping, type ShippingConfig } from "@/lib/shipping";
 import { logDbError } from "@/lib/prisma-error";
@@ -38,6 +40,19 @@ interface StoredItem {
   quantity: number;
   unitPrice: number;
   selection: CartSelection | null; // fallback/display for id-less or custom items
+}
+
+/** A User.cart entry as read back: the current shape above, or the legacy pipe-string + meta one. */
+interface RawStoredItem {
+  id?: unknown;
+  productId?: string | null;
+  variantId?: string | null;
+  colorId?: string | null;
+  quantity?: unknown;
+  unitPrice?: unknown;
+  selection?: unknown;
+  variant?: unknown;
+  meta?: Partial<Record<"roseColor" | "boxColor" | "boxShape" | "name" | "slug" | "image", string>>;
 }
 
 export interface CartProduct {
@@ -90,7 +105,11 @@ export interface CartPayload {
 
 /* ───────────────────── JSON variant resolution ───────────────────── */
 
-function pickVariant(variants: any[], item: { variantId?: string | null; selection?: CartSelection | null }): any | undefined {
+/** Product.variants is a JSON column; anything that is not an array has no variants. */
+const variantsOf = (product: { variants: Prisma.JsonValue }) =>
+  (Array.isArray(product.variants) ? product.variants : []) as unknown as ProductVariant[];
+
+function pickVariant(variants: ProductVariant[], item: { variantId?: string | null; selection?: CartSelection | null }): ProductVariant | undefined {
   if (!variants?.length) return undefined;
   return (
     (item.variantId && variants.find((v) => v.id === item.variantId)) ||
@@ -100,8 +119,8 @@ function pickVariant(variants: any[], item: { variantId?: string | null; selecti
   );
 }
 
-function pickColor(variant: any, item: { colorId?: string | null; selection?: CartSelection | null }): any | undefined {
-  const colors: any[] = variant?.colorVariants || [];
+function pickColor(variant: ProductVariant | undefined, item: { colorId?: string | null; selection?: CartSelection | null }): ProductColorVariant | undefined {
+  const colors = variant?.colorVariants || [];
   if (!colors.length) return undefined;
   return (
     (item.colorId && colors.find((c) => c.id === item.colorId)) ||
@@ -111,16 +130,16 @@ function pickColor(variant: any, item: { colorId?: string | null; selection?: Ca
   );
 }
 
-function colorImage(color: any): string | null {
+function colorImage(color: ProductColorVariant | undefined): string | null {
   // The colour's main media is its Color Swatch upload; gallery and hover media are fallbacks.
-  const gallery: any[] = color?.galleryImages || [];
+  const gallery = color?.galleryImages || [];
   const primary = gallery.find((g) => g?.isPrimary) || gallery[0];
   return color?.swatchImage || primary?.url || color?.hoverImage || null;
 }
 
 /** Resolves the DB price for a catalog selection (salePrice preferred). */
-function resolvePrice(product: any, item: { variantId?: string | null; colorId?: string | null; selection?: CartSelection | null }): number | null {
-  const variant = pickVariant(product?.variants || [], item);
+function resolvePrice(product: { variants: Prisma.JsonValue }, item: { variantId?: string | null; colorId?: string | null; selection?: CartSelection | null }): number | null {
+  const variant = pickVariant(variantsOf(product), item);
   const color = pickColor(variant, item);
   if (!color) return null;
   const sale = color.salePrice != null ? Number(color.salePrice) : null;
@@ -138,15 +157,15 @@ async function readCart(userId: string): Promise<StoredItem[]> {
 }
 
 async function writeCart(userId: string, items: StoredItem[]): Promise<void> {
-  await prisma.user.update({ where: { id: userId }, data: { cart: items as any } });
+  await prisma.user.update({ where: { id: userId }, data: { cart: items as unknown as Prisma.InputJsonValue } });
 }
 
 /** Accepts both the new ref shape and the legacy pipe-string + meta shape. */
 function normalize(raw: unknown): StoredItem[] {
   if (!Array.isArray(raw)) return [];
-  return raw
+  return (raw as RawStoredItem[])
     .filter((i) => i && typeof i === "object")
-    .map((i: any): StoredItem => {
+    .map((i): StoredItem => {
       const legacy = typeof i.variant === "string"; // old pipe-string items had a `meta` block
       if (legacy) {
         const meta = i.meta || {};
@@ -293,12 +312,12 @@ function computeSummary(lines: CartLine[], shippingConfig: ShippingConfig): Cart
 
 function resolveLine(
   item: StoredItem,
-  product: any | undefined,
+  product: { id: string; name: string; slug: string; variants: Prisma.JsonValue } | undefined,
   prices: Map<string, { name: string; price: number }>
 ): CartLine {
   const extras = priceExtras(item.selection, prices);
   if (item.productId && product) {
-    const variant = pickVariant(product.variants || [], item);
+    const variant = pickVariant(variantsOf(product), item);
     const color = pickColor(variant, item);
     // Latest DB price for the product, plus the DB price of every gift on this line.
     const price = round2((resolvePrice(product, item) ?? item.unitPrice) + extras.total);

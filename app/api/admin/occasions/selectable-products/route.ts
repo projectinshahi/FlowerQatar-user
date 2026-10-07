@@ -3,13 +3,15 @@ import { guardAdmin } from '@/lib/admin-guard';
 import { getProducts } from '@/lib/actions/product.actions';
 import { mapDbProductToStore } from '@/lib/store-products';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Products shaped for the Occasion product picker.
  *
  * Exists because image/price are derived from Product.variants JSON via
  * `mapDbProductToStore` — a server-only module (it pulls in Prisma), so the picker
  * cannot map raw rows itself. Reuses the existing `getProducts` service rather than
- * re-querying, and leaves the existing /api/admin/products contract untouched.
+ * re-querying.
  */
 export async function GET(request: Request) {
   const denied = await guardAdmin();
@@ -19,18 +21,17 @@ export async function GET(request: Request) {
     const search = searchParams.get('search')?.trim() || undefined;
     const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '8') || 8));
-    const ids = searchParams.get('ids')?.split(',').filter(Boolean);
+    // Product ids are UUID columns; a malformed one would fail the whole query.
+    const ids = searchParams.get('ids')?.split(',').filter((id) => UUID.test(id)).slice(0, 100);
 
-    // `ids` mode: resolve chip labels for an occasion's existing selection.
+    // `ids` mode: resolve chip labels for an occasion's existing selection, wherever in the
+    // catalogue those products sit (not just among the newest page).
     if (ids?.length) {
-      const result = await getProducts({ page: 1, limit: 100 });
+      const result = await getProducts({ ids, page: 1, limit: ids.length });
       if (!result.success || !result.data) {
         return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
       }
-      const wanted = new Set(ids);
-      const products = result.data.products
-        .filter((p) => wanted.has(p.id))
-        .map((p) => toOption(p));
+      const products = result.data.products.map((p) => toOption(p));
       return NextResponse.json({ products, pagination: { total: products.length, page: 1, limit, totalPages: 1 } });
     }
 

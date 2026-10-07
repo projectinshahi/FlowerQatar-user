@@ -3,8 +3,8 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { productSchema, ProductFormValues } from "@/lib/validations/product";
-import { Prisma, ProductStatus } from "@prisma/client";
+import { productSchema, ProductFormValues, curatedRatingUpdate } from "@/lib/validations/product";
+import { Prisma, ProductStatus, type CategoryType } from "@prisma/client";
 import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { requireAdmin } from "@/lib/admin-guard";
 import { logDbError, uniqueConstraintMessage } from "@/lib/prisma-error";
@@ -118,7 +118,7 @@ export async function createProduct(data: ProductFormValues) {
       });
       if (!subcat) return { success: false, error: "Selected subcategory no longer exists" };
       if (subcat.category?.name) {
-        resolvedCategoryType = subcat.category.name as any;
+        resolvedCategoryType = subcat.category.name as CategoryType;
       }
     }
 
@@ -197,7 +197,7 @@ export async function updateProduct(id: string, data: ProductFormValues) {
       });
       if (!subcat) return { success: false, error: "Selected subcategory no longer exists" };
       if (subcat.category?.name) {
-        resolvedCategoryType = subcat.category.name as any;
+        resolvedCategoryType = subcat.category.name as CategoryType;
       }
     }
 
@@ -220,9 +220,9 @@ export async function updateProduct(id: string, data: ProductFormValues) {
         isBestSeller: parsed.isBestSeller,
         isTrending: parsed.isTrending,
         isNewArrival: parsed.isNewArrival,
-        // `?? null`, not `|| null`: the schema already normalises a blank field to null, and
-        // `||` would additionally swallow any falsy rating the admin actually chose.
-        rating: parsed.rating ?? null,
+        // Only when the form sent a rating: "not sent" must keep the stored curated rating, while
+        // a blanked field (null) still clears it. See curatedRatingUpdate.
+        ...curatedRatingUpdate(parsed.rating),
         variants: buildVariantsJson(parsed.variants),
       },
     });
@@ -243,6 +243,8 @@ export async function updateProduct(id: string, data: ProductFormValues) {
 }
 
 export async function getProducts(params: {
+  /** Exact products by id (e.g. an occasion's saved selection); combine with limit = ids.length. */
+  ids?: string[];
   search?: string;
   status?: ProductStatus;
   subcategoryId?: string;
@@ -253,9 +255,12 @@ export async function getProducts(params: {
   limit?: number;
 }) {
   try {
-    const { search, status, subcategoryId, categoryName, sortBy = "newest", page = 1, limit = 10 } = params;
+    // Returns DRAFT products too, so it must not be callable as a public server action.
+    await requireAdmin();
+    const { ids, search, status, subcategoryId, categoryName, sortBy = "newest", page = 1, limit = 10 } = params;
 
-    const where: any = {};
+    const where: Prisma.ProductWhereInput = {};
+    if (ids) where.id = { in: ids };
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -266,7 +271,7 @@ export async function getProducts(params: {
     if (subcategoryId) where.subcategoryId = subcategoryId;
     else if (categoryName) where.subcategory = { category: { name: categoryName } };
 
-    const orderBy: any = {};
+    const orderBy: Prisma.ProductOrderByWithRelationInput = {};
     switch (sortBy) {
       case "newest": orderBy.createdAt = "desc"; break;
       case "oldest": orderBy.createdAt = "asc"; break;
@@ -297,7 +302,7 @@ export async function getProducts(params: {
         },
       },
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to fetch products:", error);
     return { success: false, error: "Failed to fetch products" };
   }
@@ -305,6 +310,7 @@ export async function getProducts(params: {
 
 export async function getProductById(id: string) {
   try {
+    await requireAdmin();
     const product = await prisma.product.findUnique({
       where: { id },
       include: { subcategory: true },
@@ -313,7 +319,7 @@ export async function getProductById(id: string) {
     if (!product) return { success: false, error: "Product not found" };
 
     return { success: true, data: product };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to fetch product:", error);
     return { success: false, error: "Failed to fetch product" };
   }
@@ -349,7 +355,8 @@ export async function deleteProduct(id: string) {
     const product = await prisma.product.findUnique({ where: { id } });
 
     // Best-effort cleanup of gallery images from Cloudinary (they carry a publicId)
-    const variants = (product?.variants as any[]) || [];
+    type StoredMedia = { publicId?: string; type?: string };
+    const variants = (product?.variants ?? []) as { colorVariants?: { galleryImages?: StoredMedia[] }[] }[];
     for (const variant of variants) {
       for (const cv of variant?.colorVariants || []) {
         for (const img of cv?.galleryImages || []) {
@@ -369,7 +376,7 @@ export async function deleteProduct(id: string) {
     // Was revalidatePath("/") only: the product's own page stayed cached for up to an hour.
     publishChange({ type: "product.deleted", ids: [id], slugs: product ? [product.slug] : [] });
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to delete product:", error);
     return { success: false, error: "Failed to delete product" };
   }
@@ -386,7 +393,7 @@ export async function bulkUpdateProductStatus(ids: string[], status: ProductStat
     revalidatePath("/products");
     publishChange({ type: "product.statusChanged", ids, slugs: rows.map((r) => r.slug), status });
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to bulk update products:", error);
     return { success: false, error: "Failed to bulk update products" };
   }
@@ -403,7 +410,7 @@ export async function bulkDeleteProducts(ids: string[]) {
     revalidatePath("/products");
     publishChange({ type: "product.deleted", ids, slugs: rows.map((r) => r.slug) });
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to bulk delete products:", error);
     return { success: false, error: "Failed to bulk delete products" };
   }

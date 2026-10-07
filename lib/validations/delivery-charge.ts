@@ -7,7 +7,6 @@ import { z } from 'zod';
  */
 
 export const CHARGE_TYPES = ['FIXED', 'PERCENTAGE'] as const;
-export type ChargeTypeValue = (typeof CHARGE_TYPES)[number];
 
 export const PERCENTAGE_MAX = 100;
 
@@ -54,4 +53,3 @@ export const deliveryChargeSchema = z
   });
 
 export type DeliveryChargeFormData = z.input<typeof deliveryChargeSchema>;
-export type DeliveryChargeInput = z.output<typeof deliveryChargeSchema>;

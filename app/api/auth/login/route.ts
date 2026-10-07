@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
     if (!isValidPassword) {
       // Increment failed login attempts
       const attempts = user.failedLoginAttempts + 1;
-      const updates: any = { failedLoginAttempts: attempts };
+      const updates: Prisma.UserUpdateInput = { failedLoginAttempts: attempts };
       if (attempts >= 5) {
         updates.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 mins
       }

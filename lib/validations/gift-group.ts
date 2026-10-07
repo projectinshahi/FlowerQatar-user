@@ -53,8 +53,6 @@ export const nestedGiftSchema = z.object({
   displayOrder,
 });
 
-export const giftSchema = nestedGiftSchema.omit({ id: true });
-
 export const giftGroupSchema = z.object({
   name: groupName,
   description: z
@@ -79,10 +77,6 @@ export const giftGroupPatchSchema = z
   .object({ isActive: z.boolean().optional(), displayOrder: displayOrder.optional() })
   .strict();
 
-export const giftPatchSchema = z
-  .object({ isActive: z.boolean().optional(), displayOrder: displayOrder.optional() })
-  .strict();
-
 export const giftGroupListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -93,6 +87,3 @@ export const giftGroupListQuerySchema = z.object({
 });
 
 export type GiftGroupFormData = z.input<typeof giftGroupSchema>;
-export type GiftGroupInput = z.output<typeof giftGroupSchema>;
-export type GiftFormData = z.input<typeof nestedGiftSchema>;
-export type GiftInput = z.output<typeof giftSchema>;

@@ -74,11 +74,6 @@ function config(): SkipCashConfig {
   return { baseUrl: live ? PRODUCTION_URL : SANDBOX_URL, keyId, keySecret, clientId };
 }
 
-/** True when the gateway credentials are present (checked without touching their values). */
-export function isSkipCashConfigured(): boolean {
-  return Boolean(process.env.SKIPCASH_KEY_ID && process.env.SKIPCASH_KEY_SECRET && process.env.SKIPCASH_CLIENT_ID);
-}
-
 /**
  * The request signature: the payload's own fields, in payload order, as `Name=value` pairs
  * joined by commas, with the first letter of each name capitalised (`uid` → `Uid`).

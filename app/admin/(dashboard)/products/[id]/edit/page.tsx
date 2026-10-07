@@ -2,12 +2,15 @@ import { notFound } from "next/navigation";
 import ProductForm from "@/components/admin/products/ProductForm";
 import { getProductById } from "@/lib/actions/product.actions";
 import { getAdminSubcategoryOptions } from "@/lib/subcategories";
+import { productToFormValues } from "@/lib/validations/product";
+import { requireAdminPage } from "@/lib/admin-guard";
 
 export const metadata = {
   title: "Edit Product | Admin Dashboard",
 };
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const { id } = await params;
 
   // Fetch product and the subcategory options for the category selector.
@@ -20,65 +23,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  // Format data for the form
-  const product = productResult.data;
-
-  // Variants are stored as JSON already matching the form shape.
-  const initialData = {
-    id: product.id,
-    name: product.name || "",
-    slug: product.slug || "",
-    sku: product.sku || "",
-    shortDescription: product.shortDescription || "",
-    description: product.description || "",
-    country: product.country || "",
-    categoryType: product.categoryType || "",
-    subcategoryId: product.subcategoryId || "",
-    status: product.status,
-    isFeatured: product.isFeatured,
-    isBestSeller: product.isBestSeller,
-    isTrending: product.isTrending,
-    isNewArrival: product.isNewArrival,
-    // `?? ""` keeps the number input controlled and blank when nothing is curated — a null
-    // would make React drop back to an uncontrolled input and warn on the first keystroke.
-    rating: product.rating ?? "",
-    variants: ((product.variants as any[]) || []).map((v: any) => ({
-      id: v.id,
-      variantName: v.variantName || "",
-      sku: v.sku || "",
-      description: v.description || "",
-      productCare: {
-        dos: v.productCare?.dos || [],
-        donts: v.productCare?.donts || [],
-      },
-      isDefault: v.isDefault ?? false,
-      isActive: v.isActive ?? true,
-      specifications: (v.specifications || []).map((s: any) => ({
-        id: s.id,
-        title: s.title,
-        value: s.value,
-      })),
-      colorVariants: (v.colorVariants || []).map((cv: any) => ({
-        id: cv.id,
-        colorName: cv.colorName || "",
-        colorCode: cv.colorCode || "#000000",
-        price: cv.price ?? "",
-        salePrice: cv.salePrice ?? "",
-        swatchImage: cv.swatchImage || "",
-        hoverImage: cv.hoverImage || "",
-        isActive: cv.isActive ?? true,
-        isDefault: cv.isDefault ?? false,
-        galleryImages: (cv.galleryImages || []).map((img: any) => ({
-          id: img.id,
-          url: img.url,
-          publicId: img.publicId,
-          isPrimary: img.isPrimary,
-          order: img.order,
-          type: img.type || (img.url?.match(/\.(mp4|webm|mov|ogg)(\?.*)?$/i) ? "video" : "image"),
-        })),
-      })),
-    })),
-  };
+  const initialData = productToFormValues(productResult.data);
 
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto">

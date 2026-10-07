@@ -46,11 +46,14 @@ export default function CouponBox({ items, onApplied }: CouponBoxProps) {
   const [applied, setApplied] = useState<AppliedResult | null>(null);
   const [freeDelivery, setFreeDelivery] = useState<FreeDeliveryResponse | null>(null);
 
-  // Keep the latest onApplied callback without forcing it into effect deps.
+  // Keep the latest onApplied callback (and applied result) without forcing them into effect
+  // deps. Updated in the first effect, so every later effect and handler sees the current value.
   const onAppliedRef = useRef(onApplied);
-  onAppliedRef.current = onApplied;
   const appliedRef = useRef<AppliedResult | null>(applied);
-  appliedRef.current = applied;
+  useEffect(() => {
+    onAppliedRef.current = onApplied;
+    appliedRef.current = applied;
+  });
 
   const hasItems = items.length > 0;
   const allHaveIds = hasItems && items.every((i) => !!i.productId);
@@ -59,22 +62,26 @@ export default function CouponBox({ items, onApplied }: CouponBoxProps) {
   // Stable content signature so effects don't re-run on new array references.
   const itemsKey = JSON.stringify(items);
 
+  // A cart change clears the error, and the free-delivery hint when the cart cannot be checked
+  // (adjusted during render; the effects below keep the parts that call out).
+  const [cartKey, setCartKey] = useState(itemsKey);
+  if (cartKey !== itemsKey) {
+    setCartKey(itemsKey);
+    setError(null);
+    if (!hasItems || !allHaveIds) setFreeDelivery(null);
+  }
+
   // Any change to the cart invalidates a previously applied coupon.
   useEffect(() => {
     if (appliedRef.current) {
       setApplied(null);
       onAppliedRef.current?.(null);
     }
-    setError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsKey]);
 
   // Free-delivery hint on mount and whenever the cart changes.
   useEffect(() => {
-    if (!hasItems || !allHaveIds) {
-      setFreeDelivery(null);
-      return;
-    }
+    if (!hasItems || !allHaveIds) return;
     let cancelled = false;
     (async () => {
       try {

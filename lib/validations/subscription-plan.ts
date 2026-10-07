@@ -38,7 +38,6 @@ export const subscriptionPlanSchema = z
   });
 
 export type SubscriptionPlanFormData = z.input<typeof subscriptionPlanSchema>;
-export type SubscriptionPlanInput = z.output<typeof subscriptionPlanSchema>;
 
 /**
  * Human-readable validity, hiding zero parts. e.g.

@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Heart, Star } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Heart } from 'lucide-react'
 import LuxuryImage from '@/components/LuxuryImage'
 import Link from 'next/link'
 import { AnimatedSection } from '../../components/AnimatedSection'
@@ -26,16 +26,15 @@ interface Product {
 }
 
 /**
- * A single New Arrivals card. Clicking a color swatch swaps the card image to that
- * color variant's own photo (data comes straight from the product's DB variants).
+ * A single New Arrivals card, showing the first colour variant's own photo when it has one
+ * (data comes straight from the product's DB variants).
  */
 function NewArrivalCard({ product }: { product: Product }) {
   const swatches = product.swatches ?? []
-  const [active, setActive] = useState(0)
   const { wishlist, toggleWishlist } = useApp()
   const isWishlisted = wishlist.includes(product.slug)
 
-  const selected = swatches[active]
+  const selected = swatches[0]
   const mainImage = selected?.image || product.image
   const hoverImage = selected?.hoverImage || product.hoverImage
 
@@ -84,29 +83,6 @@ function NewArrivalCard({ product }: { product: Product }) {
         </div>
 
         <div className="mt-auto pt-4 border-t border-divider flex justify-between items-center">
-          {/* Color swatches sit above the card link overlay (z-20) so they're clickable. */}
-          {/* <div className="relative z-20 flex gap-2">
-            {swatches.map((c, i) => (
-              <button
-                key={`${c.name}-${i}`}
-                type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActive(i); }}
-                className={`w-4 h-4 rounded-full border transition-transform hover:scale-110 ${
-                  i === active ? 'ring-2 ring-offset-1 ring-primary scale-110 border-transparent' : 'border-divider/50'
-                }`}
-                style={{ backgroundColor: c.hex }}
-                aria-label={`Show ${c.name}`}
-                aria-pressed={i === active}
-                title={c.name}
-                // Browser extensions inject `fdprocessedid` onto buttons pre-hydration; ignore that diff.
-                suppressHydrationWarning
-              />
-            ))}
-          </div> */}
-          {/* <div className="flex items-center text-primary">
-            <Star size={12} fill="currentColor" className="mr-1" />
-            <span className="text-[11px] font-medium">{product.rating}</span>
-          </div> */}
         </div>
       </div>
     </div>

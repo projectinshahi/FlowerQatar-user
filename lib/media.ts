@@ -8,6 +8,9 @@
  */
 
 export type GalleryMedia = {
+  id?: string;
+  /** Cloudinary public id, kept so the admin can delete the upload. */
+  publicId?: string;
   url?: string;
   type?: string;
   isPrimary?: boolean;

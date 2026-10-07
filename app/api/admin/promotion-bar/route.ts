@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { guardAdmin } from '@/lib/admin-guard';
 import { publishChange } from '@/lib/live-sync';
-import { promotionBarSchema } from '@/lib/validations/promotion-bar';
-import { PROMOTION_BAR_DEFAULTS } from '@/lib/promotions';
+import { promotionBarSchema, PROMOTION_BAR_DEFAULTS } from '@/lib/validations/promotion-bar';
 
 /**
  * GET — the ticker's colours. Returns the defaults rather than null when nothing has been

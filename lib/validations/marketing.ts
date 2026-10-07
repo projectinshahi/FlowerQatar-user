@@ -161,10 +161,6 @@ export const validateCouponSchema = z.object({
   items: z.array(cartItemSchema).min(1, "Cart is empty"),
 });
 
-export const applyCouponSchema = validateCouponSchema.extend({
-  orderId: z.string().uuid().optional().nullable(),
-});
-
 export const cartOnlySchema = z.object({
   items: z.array(cartItemSchema).min(1, "Cart is empty"),
 });

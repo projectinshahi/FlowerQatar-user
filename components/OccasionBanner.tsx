@@ -1,15 +1,15 @@
-import Image from 'next/image';
-import { isVideoMedia, videoPoster, videoSrc } from '@/lib/media';
+import LuxuryImage from '@/components/LuxuryImage';
 
 /**
  * Occasion banner that renders either a still or a video clip.
  *
  * The media type is detected from the URL rather than stored in a column: Cloudinary puts the
- * resource kind in the delivery path, and lib/media.ts already owns that rule for product
- * galleries. Reusing it means no migration and one place where the rules can change.
+ * resource kind in the delivery path, and lib/media.ts already owns that rule. LuxuryImage
+ * applies it, and plays a clip muted, inline and looping only while it is on screen.
  *
- * Videos autoplay muted and inline — the only combination browsers permit without a user
- * gesture — and loop silently, so the banner behaves like motion art rather than a player.
+ * `rounded-[inherit]` matters: Safari (desktop and iOS) does not reliably clip a playing
+ * <video> to a rounded parent via overflow-hidden, so the corners come out square. Giving the
+ * element the parent's own radius clips it directly.
  */
 export default function OccasionBanner({
   url,
@@ -24,34 +24,8 @@ export default function OccasionBanner({
   priority?: boolean;
   className?: string;
 }) {
-  if (isVideoMedia({ url })) {
-    return (
-      <video
-        src={videoSrc(url)}
-        poster={videoPoster(url)}
-        // A muted, inline, looping video is decorative; controls would invite interaction
-        // with something that has no audio and no meaningful timeline.
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        aria-label={title}
-        /*
-         * `rounded-[inherit]` matters: Safari (desktop and iOS) does not reliably clip a
-         * playing <video> to a rounded parent via overflow-hidden, so the corners come out
-         * square. Giving the element the parent's own radius clips it directly.
-         *
-         * object-cover + the parent's aspect ratio is what makes it responsive — the frame
-         * scales with the viewport and the clip is centred rather than letterboxed.
-         */
-        className={`h-full w-full rounded-[inherit] object-cover ${className}`}
-      />
-    );
-  }
-
   return (
-    <Image
+    <LuxuryImage
       src={url}
       alt={title}
       fill

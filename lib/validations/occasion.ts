@@ -64,4 +64,3 @@ export const occasionStatusSchema = z.object({
 });
 
 export type OccasionFormData = z.input<typeof occasionSchema>;
-export type OccasionInput = z.output<typeof occasionSchema>;

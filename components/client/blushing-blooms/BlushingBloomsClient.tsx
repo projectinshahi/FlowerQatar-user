@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Flower2, Gem, Gift, Heart, SlidersHorizontal, X } from 'lucide-react';
-import { isVideoMedia, videoPoster, videoSrc, widthFromSizes } from '@/lib/media';
+import LuxuryImage from '@/components/LuxuryImage';
 import { paginateListing } from '@/lib/shop-facets';
 import BlushingQuickView from './BlushingQuickView';
 import BlushingNav from './BlushingNav';
@@ -12,7 +11,7 @@ import BlushingFooter from './BlushingFooter';
 import BlushingProductCard from './BlushingProductCard';
 import { blushingFontVars } from './fonts';
 import { BlushingBackButton, GOLD, Glow } from './ui';
-import type { BlushingBloomsContent } from '@/lib/blushing-blooms';
+import type { BlushingBloomsContent } from '@/data/blushing-blooms';
 import type { Product } from '@/types';
 
 /**
@@ -88,9 +87,8 @@ function PageButton({
 }
 
 /**
- * Background media for a section. A single url may be an image or a video, so the type is read
- * through isVideoMedia() — the shared rule that also copes with Cloudinary urls carrying no
- * file extension. Never branch on the extension here.
+ * Background media for a section. A single url may be an image or a video; LuxuryImage reads
+ * the type through isVideoMedia() and plays a clip only while it is on screen.
  */
 function SectionMedia({
   src,
@@ -103,24 +101,7 @@ function SectionMedia({
   priority?: boolean;
   sizes?: string;
 }) {
-  if (isVideoMedia({ url: src })) {
-    return (
-      <video
-        src={videoSrc(src, widthFromSizes(sizes))}
-        poster={videoPoster(src)}
-        preload="metadata"
-        autoPlay
-        muted
-        loop
-        playsInline
-        // Decorative background: the meaning is carried by the overlaid copy, so it is hidden
-        // from assistive tech rather than announced as an unlabelled media element.
-        aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-    );
-  }
-  return <Image src={src} alt={alt} fill sizes={sizes} priority={priority} className="object-cover" />;
+  return <LuxuryImage src={src} alt={alt} fill sizes={sizes} priority={priority} className="object-cover" />;
 }
 
 /**

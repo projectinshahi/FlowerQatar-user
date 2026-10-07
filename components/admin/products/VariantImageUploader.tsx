@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, X, Star, GripHorizontal, Film, Play, Loader2 } from "lucide-react";
 import { useFormContext } from "react-hook-form";
-import { isVideoMedia, shouldBePrimary } from "@/lib/media";
+import { isVideoMedia, shouldBePrimary, type GalleryMedia } from "@/lib/media";
 
 // The same ceilings SingleMediaUploader applies, so both product uploaders agree.
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -21,7 +21,7 @@ export default function VariantImageUploader({
   const categoryType = watch("categoryType");
   const isBlushingBlooms = categoryType === "BLUSHING_BLOOMS";
 
-  const images =
+  const images: GalleryMedia[] =
     watch(`variants.${variantIndex}.colorVariants.${colorVariantIndex}.galleryImages`) || [];
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -73,7 +73,7 @@ export default function VariantImageUploader({
 
       const endpoint = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/auto/upload`;
 
-      const uploadData: any = await new Promise((resolve, reject) => {
+      const uploadData = await new Promise<{ secure_url: string; public_id: string; resource_type?: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("POST", endpoint);
 
@@ -87,7 +87,7 @@ export default function VariantImageUploader({
           if (xhr.status === 200) {
             try {
               resolve(JSON.parse(xhr.responseText));
-            } catch (err) {
+            } catch {
               reject(new Error("Invalid JSON response from Cloudinary"));
             }
           } else {
@@ -123,9 +123,9 @@ export default function VariantImageUploader({
         [...images, newMedia],
         { shouldDirty: true, shouldValidate: true }
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error uploading media:", error);
-      setUploadError(error.message || "Failed to upload file. Please try again.");
+      setUploadError((error instanceof Error && error.message) || "Failed to upload file. Please try again.");
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -137,7 +137,7 @@ export default function VariantImageUploader({
     const removed = newImages.splice(index, 1)[0];
     // Ensure one primary image remains if the removed item was primary
     if (removed?.isPrimary && newImages.length > 0) {
-      const firstImgIndex = newImages.findIndex((img: any) => !isVideoMedia(img));
+      const firstImgIndex = newImages.findIndex((img) => !isVideoMedia(img));
       if (firstImgIndex !== -1) {
         newImages[firstImgIndex].isPrimary = true;
       } else {
@@ -152,7 +152,7 @@ export default function VariantImageUploader({
   };
 
   const setPrimary = (index: number) => {
-    const newImages = images.map((img: any, i: number) => ({
+    const newImages = images.map((img, i) => ({
       ...img,
       isPrimary: i === index,
     }));
@@ -267,7 +267,7 @@ export default function VariantImageUploader({
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {images.map((img: any, idx: number) => {
+          {images.map((img, idx) => {
             const isVideo = isVideoMedia(img);
             return (
               <div

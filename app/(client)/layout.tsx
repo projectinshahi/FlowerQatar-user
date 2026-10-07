@@ -4,13 +4,13 @@ import "../globals.css";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "../../lib/site";
 import JsonLd from "../../components/seo/JsonLd";
 import { AppContextProvider } from "../../context/AppContext";
-import CartDrawer from "../../components/CartDrawer";
 import DeferredOverlays from "../../components/DeferredOverlays";
 import ToastContainer from "../../components/ToastContainer";
 import Navbar from "../sections/Navbar";
 import Footer from "../sections/Footer";
 import { getNavMenu } from "../../lib/subcategories";
-import dynamic from "next/dynamic";
+import { getPromotionBar } from "../../lib/promotions";
+import { bootLanguageScript } from "../../lib/translate";
 import { Suspense } from "react";
 import Analytics from "../../components/analytics/Analytics";
 import GoogleTranslate from "../../components/GoogleTranslate";
@@ -19,9 +19,6 @@ import MotionPreferences from "../../components/MotionPreferences";
 import WhatsAppButton from "../../components/WhatsAppButton";
 import ScrollToTop from "../../components/ScrollToTop";
 import LiveUpdates from "../../components/LiveUpdates";
-
-// Lazy, client-only — it self-fetches and only renders when configured + first session view.
-const WelcomePopup = dynamic(() => import("../../components/WelcomePopup"));
 
 const cormorant = Cormorant_Garamond({
   weight: ["300", "400", "500", "600", "700"],
@@ -71,7 +68,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const navMenu = await getNavMenu();
+  const [navMenu, promotionBar] = await Promise.all([getNavMenu(), getPromotionBar()]);
   return (
     <html lang="en" className={`${cormorant.variable} ${montserrat.variable} h-full antialiased`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
@@ -83,23 +80,11 @@ export default async function RootLayout({
       </head>
       <body className="min-h-full flex flex-col font-sans antialiased selection:bg-primary/20 selection:text-primary overflow-x-hidden" suppressHydrationWarning>
         {/*
-          Runs before anything paints. When the visitor is in Arabic it masks the body so the
-          untranslated English frame is never visible, and arms its own timeout so a blocked
-          or failed translate script can never leave the page hidden — that safety net is
-          independent of React deliberately, because React may never mount.
+          Runs before anything paints: <html> gets the selected language's lang and dir from the
+          googtrans cookie (the one source of truth, see lib/translate.ts), so the page never
+          starts in the wrong language and switches after hydration.
         */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{
-              var m=document.cookie.match(/(?:^|;\\s*)googtrans=([^;]+)/);
-              if(!decodeURIComponent(m&&m[1]||'').endsWith('/ar'))return;
-              var h=document.documentElement;
-              h.setAttribute('data-translating','boot');
-              h.lang='ar';
-              setTimeout(function(){h.removeAttribute('data-translating')},2500);
-            }catch(e){}})();`,
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: bootLanguageScript }} />
         <Suspense fallback={null}>
           <Analytics />
         </Suspense>
@@ -130,7 +115,7 @@ export default async function RootLayout({
         <ScrollToTop />
         <AppContextProvider>
           <MotionPreferences>
-          <Navbar menu={navMenu} />
+          <Navbar menu={navMenu} promotionBar={promotionBar} />
           <main id="main" className="flex-grow">
             {children}
           </main>
@@ -143,10 +128,8 @@ export default async function RootLayout({
             transformed ancestor, and it reaches every route rather than just the home page.
           */}
           <WhatsAppButton />
-          <CartDrawer />
           <ToastContainer />
-          <WelcomePopup />
-          {/* Account and search drawers: loaded after the page starts. */}
+          {/* Cart, account and search drawers and the welcome popup: loaded after the page starts. */}
           <DeferredOverlays />
           {/* Re-renders the page when an admin changes what it shows (Socket.IO, server.mjs). */}
           <LiveUpdates />
