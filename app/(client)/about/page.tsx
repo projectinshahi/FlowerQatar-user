@@ -148,10 +148,10 @@ export default function AboutPage() {
             <p className="text-muted text-sm md:text-base leading-relaxed">
               In Qatar, every beautiful moment is worth celebrating. A warm welcome for a guest, a family gathering, a special occasion, a new beginning, or simply saying &quot;I&apos;m thinking of you&quot; — these moments are often expressed not only through words, but through thoughtful gestures.
             </p>
-            <p className="text-muted text-sm leading-relaxed">
+            <p className="text-muted text-sm md:text-base leading-relaxed">
               Since 2019, LEBAMI has been part of those moments through the timeless beauty of flowers. We believe a flower is more than something beautiful. It carries a feeling — love, respect, gratitude, happiness, remembrance, and care. Inspired by Qatar&apos;s culture of generosity and hospitality, we carefully select premium flowers and create elegant arrangements that help people express what words sometimes cannot.
             </p>
-            <p className="text-muted text-sm leading-relaxed">
+            <p className="text-muted text-sm md:text-base leading-relaxed">
               From a single flower to a beautiful arrangement, every LEBAMI creation is prepared with care and delivered with one purpose: to turn a simple moment into a memorable emotion.
             </p>
             <Link

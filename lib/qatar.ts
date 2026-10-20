@@ -48,6 +48,22 @@ export interface QatarAddress {
   unit?: string | null;
 }
 
+const DELIVERY_FIELDS = ['zone', 'street', 'building'] as const;
+type DeliveryFields = Partial<Record<(typeof DELIVERY_FIELDS)[number], string | null>>;
+
+/**
+ * The parts of Qatar's address (zone, street, building) a saved address still lacks. Addresses
+ * saved before that format exist (stored as-is in User.addresses) and lack all three.
+ */
+export function missingAddressFields(a: DeliveryFields): (typeof DELIVERY_FIELDS)[number][] {
+  return DELIVERY_FIELDS.filter((k) => !a[k]?.trim());
+}
+
+/** Whether a saved address can be delivered to: it has a zone, street and building. */
+export function isDeliverableAddress(a: DeliveryFields): boolean {
+  return missingAddressFields(a).length === 0;
+}
+
 /** "Unit 4, Building 12, Street 920, Zone 66". Typed names ("Al Sadd St") stand alone. */
 export function formatQatarAddress(a: QatarAddress): string {
   const tag = (name: string, v?: string | null) => v && (/^\d+$/.test(v) ? `${name} ${v}` : v);

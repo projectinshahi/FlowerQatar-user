@@ -241,9 +241,10 @@ export default function GiftGroupManager() {
             ))}
           </ul>
 
-          {/* Desktop: the original table, unchanged. */}
-          <div className="hidden overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm md:block">
-            <table className="w-full text-left text-sm">
+          {/* Desktop: the original table. Scrolls sideways when narrow or zoomed rather than
+              cutting off the Actions column. */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm md:block">
+            <table className="sticky-actions w-full text-left text-sm">
               <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Group Name</th>

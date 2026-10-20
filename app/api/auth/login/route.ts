@@ -78,8 +78,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 403 });
     }
 
+    // Same reply as a wrong password, so the customer login never reveals which emails are admins.
     if (!isAdminLogin && hasAdminRole) {
-      return NextResponse.json({ error: 'Admins cannot log in on the customer portal.' }, { status: 403 });
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
     if (!user.isEmailVerified) {

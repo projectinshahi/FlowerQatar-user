@@ -161,6 +161,28 @@ body {
   }
 }
 
+/*
+ * Admin tables scroll sideways when the screen is narrow or zoomed in, and their last column
+ * holds the row actions (Edit, Delete, ...). `sticky-actions` on the <table> pins that column to
+ * the right edge so the actions never scroll out of sight. Rows default to white and the pinned
+ * cell takes its row's colour (hover tint included), covering what scrolls beneath it.
+ * Single-cell rows (empty states, expanded details) are left alone. In the components layer so
+ * the rows' own bg/hover utilities still win.
+ */
+@layer components {
+  .sticky-actions tbody tr {
+    background-color: #fff;
+  }
+  .sticky-actions :is(th, td):last-child:not(:first-child) {
+    position: sticky;
+    right: 0;
+    background-color: inherit;
+  }
+  .sticky-actions th:last-child:not(:first-child) {
+    background-color: var(--color-gray-50, #f9fafb);
+  }
+}
+
 /* Hide scrollbar — also on the page itself; wheel, touch and keyboard scrolling still work. */
 .no-scrollbar::-webkit-scrollbar,
 html::-webkit-scrollbar,

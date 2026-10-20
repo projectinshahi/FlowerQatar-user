@@ -62,9 +62,12 @@ const nextConfig: NextConfig = {
    * app/(client)/[category] also redirects, but a redirect() inside a streamed page reaches the
    * client as a 200 with a meta refresh, so search engines never saw a permanent move. The
    * incoming query (e.g. ?tab=) is carried over automatically.
+   *
+   * /blushing-blooms is left out: it is now its own Coming Soon page (app/(client)/blushing-blooms),
+   * and a redirect would run before it. The Blushing Blooms shop stays at /shop?category=blushing-blooms.
    */
   async redirects() {
-    return CATEGORY_ORDER.map((c) => ({
+    return CATEGORY_ORDER.filter((c) => c !== 'BLUSHING_BLOOMS').map((c) => ({
       source: CATEGORY_META[c].base,
       destination: `/shop?category=${categorySlug(c)}`,
       permanent: true,
