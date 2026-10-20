@@ -9,7 +9,7 @@
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extraIds, priceExtras } from '../lib/services/cart';
+import { extraIds, greetingFieldsFor, priceExtras } from '../lib/services/cart';
 
 const prices = new Map([
   ['11111111-1111-4111-8111-111111111111', { name: 'Teddy Bear', price: 299 }],
@@ -63,5 +63,42 @@ describe('gift pricing', () => {
       { id: '22222222-2222-4222-8222-222222222222', name: 'b', price: 0 },
     ]));
     assert.deepEqual(a, b);
+  });
+});
+
+/**
+ * The greeting card is offered on the Blushing Blooms product page and nowhere else, so the
+ * server drops a greeting that arrives for any other product rather than storing it. These pin
+ * that rule, including the two cases where dropping would be wrong.
+ */
+describe('greeting card eligibility', () => {
+  const greeting = {
+    roseColor: 'Red',
+    greetingTemplateId: 'tpl-1',
+    greetingMessage: 'Happy birthday',
+    greetingStyle: { color: '#1A1A1A', font: 'serif', size: 'md' },
+  };
+
+  it('keeps the greeting on a Blushing Blooms product', () => {
+    assert.deepEqual(greetingFieldsFor({ ...greeting }, 'BLUSHING_BLOOMS', true), greeting);
+  });
+
+  it('drops a greeting sent for any other product', () => {
+    assert.deepEqual(greetingFieldsFor({ ...greeting }, 'FLOWERS', true), { roseColor: 'Red' });
+    assert.deepEqual(greetingFieldsFor({ ...greeting }, null, true), { roseColor: 'Red' });
+  });
+
+  it('leaves a custom arrangement alone — it has no product, and /custom has its own card', () => {
+    assert.deepEqual(greetingFieldsFor({ ...greeting }, null, false), greeting);
+  });
+
+  it('does not invent greeting keys on a selection that never had one', () => {
+    assert.deepEqual(greetingFieldsFor({ roseColor: 'Red' }, 'FLOWERS', true), { roseColor: 'Red' });
+  });
+
+  it('does not mutate the selection it was handed', () => {
+    const input = { ...greeting };
+    greetingFieldsFor(input, 'FLOWERS', true);
+    assert.equal(input.greetingTemplateId, 'tpl-1');
   });
 });

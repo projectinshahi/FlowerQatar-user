@@ -200,6 +200,31 @@ function normalize(raw: unknown): StoredItem[] {
 
 /* ───────────────────── Optional gifts / add-ons ───────────────────── */
 
+/**
+ * The greeting fields a line may keep.
+ *
+ * The greeting card is a Blushing Blooms option: only that product page offers one, so a
+ * greeting arriving for any other product came from a hand-made request or a cart line built
+ * before the product changed category. Those fields are dropped rather than rejected, which
+ * is how an unknown gift id is already handled, and means a stale client can never block an
+ * otherwise valid add to cart.
+ *
+ * A custom arrangement (no productId, so no categoryType) keeps whatever it sent: /custom has
+ * its own card field and is not a catalogue product.
+ */
+export function greetingFieldsFor<T extends Record<string, unknown>>(
+  selection: T,
+  categoryType: string | null | undefined,
+  isCatalogueProduct: boolean
+): T {
+  if (!isCatalogueProduct || categoryType === "BLUSHING_BLOOMS") return selection;
+  const rest = { ...selection };
+  delete rest.greetingTemplateId;
+  delete rest.greetingMessage;
+  delete rest.greetingStyle;
+  return rest;
+}
+
 /** Sorted extra ids on a line — the identity of a gift selection. */
 export function extraIds(selection: CartSelection | null | undefined): string[] {
   return (selection?.addOns || [])
@@ -446,9 +471,13 @@ export async function addItem(userId: string, dto: AddItemInput): Promise<CartPa
    * turn — three round trips before a single byte was written.
    */
   const [prices, product, items] = await Promise.all([
-    resolveExtraPrices(extraIds(dto.selection)),
+    // Scoped to the product, so only gifts its category actually offers can be priced.
+    resolveExtraPrices(extraIds(dto.selection), dto.productId),
     dto.productId
-      ? prisma.product.findUnique({ where: { id: dto.productId }, select: { id: true, variants: true, status: true } })
+      ? prisma.product.findUnique({
+          where: { id: dto.productId },
+          select: { id: true, variants: true, status: true, categoryType: true },
+        })
       : null,
     readCart(userId),
   ]);
@@ -475,9 +504,14 @@ export async function addItem(userId: string, dto: AddItemInput): Promise<CartPa
     colorId: dto.colorId ?? null,
     quantity: Math.min(MAX_CART_QUANTITY, dto.quantity),
     unitPrice,
-    // Store the gifts with DB names/prices, so the saved cart never holds client figures.
+    // Store the gifts with DB names/prices, so the saved cart never holds client figures,
+    // and drop a greeting the product does not offer.
     selection: dto.selection
-      ? { ...dto.selection, addOns: extras.list.length ? extras.list : undefined }
+      ? greetingFieldsFor(
+          { ...dto.selection, addOns: extras.list.length ? extras.list : undefined },
+          product?.categoryType,
+          Boolean(dto.productId)
+        )
       : null,
   };
   const idx = items.findIndex((i) => dedupKey(i) === dedupKey(incoming));

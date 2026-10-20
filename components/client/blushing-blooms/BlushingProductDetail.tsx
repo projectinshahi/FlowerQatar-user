@@ -229,6 +229,17 @@ export default function BlushingProductDetail({
   const pricing = usePriceCalculator(product?.price ?? 0, 1, addOns);
   const selectedCard = cards.data?.find((c) => c.id === templateId) ?? null;
 
+  /*
+   * Whether the ADD A GIFT section has anything to say.
+   *
+   * It used to render its heading unconditionally and fall through to a bare "No gifts
+   * available." line, so a product whose category has no gift group showed a heading over
+   * a placeholder. Loading and error still count as something to show: the first draws the
+   * skeletons that hold the space, the second a retry the customer needs to see.
+   */
+  const showGifts =
+    giftGroups.length > 0 || gifts.loading || !!gifts.error || !!gifts.data?.length;
+
   const toggleGift = (g: AddOn) =>
     setAddOns((cur) => (cur.some((a) => a.id === g.id) ? cur.filter((a) => a.id !== g.id) : [...cur, g]));
 
@@ -444,7 +455,8 @@ export default function BlushingProductDetail({
                   </section>
                 )}
 
-                {/* Gifts */}
+                {/* Gifts — heading and all, only when there is something to pick from. */}
+                {showGifts && (
                 <section className="flex flex-col gap-5 lg:gap-[26px]">
                   <SectionLabel>ADD A GIFT</SectionLabel>
                   {/*
@@ -463,11 +475,9 @@ export default function BlushingProductDetail({
                     </div>
                   ) : gifts.error ? (
                     <LoadError message={gifts.error} onRetry={gifts.reload} />
-                  ) : !gifts.data?.length ? (
-                    <p className="text-[13px] text-white/40">No gifts available.</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-                      {gifts.data.map((g) => {
+                      {(gifts.data ?? []).map((g) => {
                         const on = addOns.some((a) => a.id === g.id);
                         const art = giftArt(g.name, g.image);
                         return (
@@ -506,6 +516,7 @@ export default function BlushingProductDetail({
                     </div>
                   )}
                 </section>
+                )}
 
                 {/* Delivery date */}
                 <section className="flex flex-col gap-5 lg:gap-[26px]">

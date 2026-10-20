@@ -100,9 +100,19 @@ export const getGiftGroupsForCategory = cache(
  *
  * Unknown or deactivated ids are simply absent from the map, so the caller charges nothing
  * for them.
+ *
+ * `productId` additionally scopes the Gift rows to the groups that actually cover that
+ * product's category — the same rule getGiftGroupsForCategory renders from. Without it the
+ * lookup accepted any active gift id, so a hand-made request (or a cart line kept from
+ * before an admin moved the group) could attach a gift the product never offered. It is
+ * optional because a custom arrangement has no product to scope by.
+ *
+ * AddOn rows are deliberately NOT scoped: they are the global catalogue the Blushing Blooms
+ * page falls back to when a category has no gift group, so narrowing them would empty it.
  */
 export async function resolveExtraPrices(
-  ids: string[]
+  ids: string[],
+  productId?: string | null
 ): Promise<Map<string, { name: string; price: number }>> {
   const unique = [...new Set(ids.filter((id) => UUID_RE.test(id)))];
   const out = new Map<string, { name: string; price: number }>();
@@ -110,7 +120,22 @@ export async function resolveExtraPrices(
 
   const [gifts, addOns] = await Promise.all([
     prisma.gift.findMany({
-      where: { id: { in: unique }, isActive: true },
+      where: {
+        id: { in: unique },
+        isActive: true,
+        ...(productId && UUID_RE.test(productId)
+          ? {
+              giftGroup: {
+                isActive: true,
+                categories: {
+                  some: {
+                    category: { subcategories: { some: { products: { some: { id: productId } } } } },
+                  },
+                },
+              },
+            }
+          : {}),
+      },
       select: { id: true, name: true, price: true },
     }),
     prisma.addOn.findMany({
