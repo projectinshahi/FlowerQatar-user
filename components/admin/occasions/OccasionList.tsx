@@ -169,7 +169,7 @@ export default function OccasionList() {
       {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full whitespace-nowrap">
+          <table className="sticky-actions w-full whitespace-nowrap">
             <thead className="border-b border-gray-100 bg-gray-50/50">
               <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                 <th className="p-4">Banner</th>
@@ -215,7 +215,7 @@ export default function OccasionList() {
                 </tr>
               ) : (
                 occasions.map((o) => (
-                  <tr key={o.id} className="group transition hover:bg-gray-50/50">
+                  <tr key={o.id} className="transition hover:bg-gray-50/50">
                     <td className="p-4">
                       <div className="relative flex h-12 w-16 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
                         {/*
@@ -298,7 +298,9 @@ export default function OccasionList() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      {/* Always visible. These were revealed on hover, which left the pinned
+                          Actions column looking empty until the pointer happened to land on a row. */}
+                      <div className="flex justify-end gap-2">
                         <Link
                           href={`/admin/occasions/${o.id}/edit`}
                           className="rounded-lg p-2 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600"

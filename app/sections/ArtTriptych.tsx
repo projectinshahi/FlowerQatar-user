@@ -13,15 +13,16 @@ export default function ArtTriptych() {
   const [hoveredCol, setHoveredCol] = useState<number | null>(null)
 
   return (
-    <AnimatedSection className="relative bg-secondary h-[600px] md:h-[800px]">
-      {/* Shared Background Image */}
+    // The section takes the image's own 3:2 shape (1.jpeg is 1536×1024), so the whole image shows
+    // at every width: a fixed height made `cover` crop it on any screen of a different shape.
+    <AnimatedSection className="relative bg-secondary aspect-3/2">
       <div className="absolute inset-0 overflow-hidden">
         <Image
           src="/images/1.jpeg"
-          alt="Birth of Venus"
+          alt=""
           fill
           sizes="100vw"
-          className="object-cover opacity-80 object-[center_30%]"
+          className="object-cover opacity-80"
         />
         <div className="absolute inset-0 bg-black/30" />
       </div>

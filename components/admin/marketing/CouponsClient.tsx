@@ -124,7 +124,7 @@ export default function CouponsClient({
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="sticky-actions w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
               <tr>
                 <th className="px-4 py-3 w-12 text-center">

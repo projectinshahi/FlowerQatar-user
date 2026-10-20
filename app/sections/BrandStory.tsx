@@ -5,25 +5,36 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 export default function BrandStory() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  })
-  
-  const y = useTransform(scrollYProgress, [0, 1], ["-20%", "20%"])
+  const containerRef = useRef<HTMLElement>(null)
+
+  /*
+   * Parallax that never uncovers the maroon while the section is fully on screen. The photo slides
+   * only while part of the section is off screen: up as it enters, down as it leaves. The slide is
+   * never larger than the off-screen part, so the strip it uncovers is always off screen too.
+   */
+  const { scrollYProgress: entering } = useScroll({ target: containerRef, offset: ['start end', 'end end'] })
+  const { scrollYProgress: leaving } = useScroll({ target: containerRef, offset: ['start start', 'end start'] })
+  const y = useTransform([entering, leaving], ([e, l]: number[]) => `${(l - (1 - e)) * 40}%`)
 
   return (
-    <section ref={containerRef} className="relative h-[500px] md:h-[700px] lg:h-[800px] overflow-hidden bg-secondary">
+    /*
+     * Below lg: the photo's shape, with minimum heights that keep the copy inside it (the photo's
+     * sides are trimmed there instead of its top and bottom).
+     * lg and up: never taller than the screen under the fixed menu bar (--site-header-h). The photo
+     * always spans the full width; when that cap bites, its top and bottom are trimmed instead.
+     */
+    <section
+      ref={containerRef}
+      className="relative aspect-1672/941 min-h-120 md:min-h-140 lg:aspect-auto lg:min-h-110 lg:h-[min(56.28vw,calc(100svh_-_var(--site-header-h,155px)))] overflow-hidden bg-secondary"
+    >
       {/* Parallax Background */}
-      <motion.div style={{ y }} className="absolute inset-0 w-full h-[120%] -top-[10%]">
+      <motion.div style={{ y }} className="absolute inset-0">
         <Image
           src="/images/2.jpg"
           alt="Lebami florist wrapping a rose bouquet"
           fill
           sizes="100vw"
-          className="object-cover object-[center_30%]"
+          className="object-cover object-left"
         />
         <div className="absolute inset-0 bg-primary/70 mix-blend-multiply" />
       </motion.div>
@@ -37,7 +48,11 @@ export default function BrandStory() {
           transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="flex flex-col items-center max-w-3xl"
         >
-          <h2 className="font-sans text-[11px] uppercase tracking-[0.2em] text-white/80 text-center">
+          {/* Inline colour: globals.css paints every heading brand red, which beats text-white. */}
+          <h2
+            style={{ color: 'rgba(255, 255, 255, 0.8)' }}
+            className="font-sans text-[11px] uppercase tracking-[0.2em] text-center"
+          >
             WHO WE ARE
           </h2>
           

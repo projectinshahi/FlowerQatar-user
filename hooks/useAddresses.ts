@@ -10,6 +10,27 @@ type SaveResult =
   | { ok: true; data: Address }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
+/**
+ * Create (no id) or update one address. Never throws: a dropped connection or a reply that is
+ * not JSON (a gateway error page) is a failed save like any other, so the caller's form always
+ * leaves its saving state and can retry.
+ */
+export async function requestAddressSave(input: AddressInput, id?: string): Promise<SaveResult> {
+  const reply = await fetch(id ? `/api/addresses/${id}` : "/api/addresses", {
+    method: id ? "PUT" : "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+    .then(async (res) => ({ ok: res.ok, data: await res.json() }))
+    .catch(() => null);
+  if (!reply) return { ok: false, error: "Could not save the address. Check your connection and try again." };
+  const { data } = reply;
+  if (!reply.ok || !data?.success) {
+    return { ok: false, error: data?.error || "Could not save the address", fieldErrors: data?.fieldErrors };
+  }
+  return { ok: true, data: data.data };
+}
+
 /** Owns the address list + all mutations, keeping the UI components thin. */
 export function useAddresses() {
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -36,16 +57,9 @@ export function useAddresses() {
   }, [reload]);
 
   const save = useCallback(async (input: AddressInput, id?: string): Promise<SaveResult> => {
-    const res = await fetch(id ? `/api/addresses/${id}` : "/api/addresses", {
-      method: id ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    const data = await res.json();
-    if (!res.ok || !data?.success) {
-      return { ok: false, error: data?.error || "Could not save the address", fieldErrors: data?.fieldErrors };
-    }
-    const saved: Address = data.data;
+    const res = await requestAddressSave(input, id);
+    if (!res.ok) return res;
+    const saved = res.data;
     setAddresses((prev) => {
       const existed = prev.some((a) => a.id === saved.id);
       const next = existed
@@ -53,7 +67,7 @@ export function useAddresses() {
         : [...(saved.isDefault ? prev.map((a) => ({ ...a, isDefault: false })) : prev), saved];
       return sortDefaultFirst(next);
     });
-    return { ok: true, data: saved };
+    return res;
   }, []);
 
   const remove = useCallback(

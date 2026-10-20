@@ -30,7 +30,7 @@ export const NAV_MENU_TAG = 'nav-menu';
 
 const MENU_HERO: Partial<Record<CategoryType, NonNullable<NavCategory['hero']>>> = {
   GIFT_COMBOS: {
-    image: '/images/category_gift_boxes_1782290153364.png',
+    image: '/images/3.png',
     alt: 'Luxury gift combo',
   },
   SHOP_BY_OCCASION: {
@@ -194,7 +194,9 @@ export const getNavMenu = unstable_cache(
     return CATEGORY_ORDER.map((key) => ({
       key,
       label: CATEGORY_META[key].label,
-      href: shopCategoryHref(key),
+      // Blushing Blooms opens its Coming Soon page (/blushing-blooms); the shop itself stays at
+      // /shop?category=blushing-blooms, and the footer still links there.
+      href: key === 'BLUSHING_BLOOMS' ? CATEGORY_META[key].base : shopCategoryHref(key),
       layout: MENU_LAYOUT[key],
       hero: MENU_HERO[key],
       /*
@@ -231,6 +233,6 @@ export const getNavMenu = unstable_cache(
    *
    * Bump this suffix whenever the shape or link logic below changes.
    */
-  ['nav-menu-v6'],
+  ['nav-menu-v8'],
   { tags: [NAV_MENU_TAG], revalidate: 3600 }
 );

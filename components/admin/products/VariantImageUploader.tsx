@@ -300,8 +300,9 @@ export default function VariantImageUploader({
                   />
                 )}
 
-                {/* Hover overlay with management controls */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2 z-20">
+                {/* Management controls: shown on hover with a mouse; always on touch screens (a tap
+                    is no hover) and when tabbed to. */}
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 any-pointer-coarse:opacity-100 focus-within:opacity-100 transition-opacity flex flex-col justify-between p-2 z-20">
                   <div className="flex justify-between items-start">
                     <button
                       type="button"

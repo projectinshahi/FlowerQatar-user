@@ -404,7 +404,7 @@ export default function SubcategoryManager({ fixedCategoryName }: { fixedCategor
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-left text-sm">
+            <table className="sticky-actions w-full min-w-[700px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 border-b border-gray-100">
                 <tr>
                   {reordering && <th className="p-4">Order</th>}

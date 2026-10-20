@@ -139,7 +139,7 @@ export default function AdminUsers() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="sticky-actions w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-100">
                 <th className="px-6 py-4 font-semibold text-gray-500 text-xs uppercase tracking-wider">User</th>

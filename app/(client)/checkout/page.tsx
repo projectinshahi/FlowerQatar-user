@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../../context/AppContext';
 import Link from 'next/link';
-import { ChevronRight, ChevronUp, ChevronDown, CreditCard, ShieldCheck, CheckCircle2, Check, MapPin } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, CreditCard, ShieldCheck, CheckCircle2, Check, MapPin, Pencil } from 'lucide-react';
 import Image from '../../../components/LuxuryImage';
 import CouponBox from '../../../components/checkout/CouponBox';
 import RedeemPointsBox from '../../../components/checkout/RedeemPointsBox';
@@ -15,8 +15,11 @@ import {
 import { qar, formatNumber } from '../../../lib/utils';
 import { cartView } from '../../../lib/cart-limits';
 import { onLive, onResync } from '../../../lib/live-client';
-import { ZONE_PATTERN, formatQatarAddress, formatShippingAddress, isValidQatarMobile, normalizeQatarMobile, qatarLocalDigits } from '../../../lib/qatar';
+import { ZONE_PATTERN, formatQatarAddress, formatShippingAddress, isDeliverableAddress, isValidQatarMobile, missingAddressFields, normalizeQatarMobile, qatarLocalDigits } from '../../../lib/qatar';
 import { useAddresses } from '../../../hooks/useAddresses';
+import AddressModal from '../../../components/account/address/AddressModal';
+import AddressForm from '../../../components/account/address/AddressForm';
+import { formatAddress, type Address, type AddressInput } from '../../../lib/validations/address';
 import Flag from '../../../components/account/address/Flag';
 import LabelGlyph from '../../../components/account/address/LabelGlyph';
 import DefaultBadge from '../../../components/account/address/DefaultBadge';
@@ -131,12 +134,13 @@ export default function CheckoutPage() {
    * for this order only, never written to their address book.
    *
    * Only saved addresses in the Qatar format can be delivered to; ones saved before zone /
-   * street / building existed are shown but disabled. Until the shopper picks, the choice
+   * street / building existed cannot be picked as they are — choosing one opens the address
+   * editor right here, and once updated it is selected. Until the shopper picks, the choice
    * follows their default (or first usable) address, and falls back to "Other" when there is none.
    * ('new' is the id of the Other option.)
    */
-  const { addresses, loading: addressesLoading } = useAddresses();
-  const deliverable = addresses.filter((a) => a.zone && a.street && a.building);
+  const { addresses, loading: addressesLoading, save: saveAddress } = useAddresses();
+  const deliverable = addresses.filter(isDeliverableAddress);
   const [picked, setPicked] = useState<string | null>(null);
   const selectedId =
     picked && (picked === 'new' || deliverable.some((a) => a.id === picked))
@@ -146,6 +150,30 @@ export default function CheckoutPage() {
   const deliveryAddr: Record<AddressKey, string> = selectedSaved
     ? { zone: selectedSaved.zone, street: selectedSaved.street, building: selectedSaved.building, unit: selectedSaved.unit ?? '' }
     : addr;
+  // An address saved before the Qatar format, open in the editor so it can be completed here.
+  const [fixing, setFixing] = useState<Address | null>(null);
+  const [fixSaving, setFixSaving] = useState(false);
+  const [fixError, setFixError] = useState<string | null>(null);
+  const openFix = (a: Address) => {
+    setFixError(null);
+    setFixing(a);
+  };
+  // The same save (and the same server validation) as My Addresses; the updated address is
+  // picked only once the server has accepted it. A failure keeps the editor open to retry.
+  const handleFix = async (data: AddressInput) => {
+    if (!fixing || fixSaving) return;
+    setFixSaving(true);
+    setFixError(null);
+    const res = await saveAddress(data, fixing.id);
+    setFixSaving(false);
+    if (!res.ok) {
+      setFixError(res.error);
+      return;
+    }
+    setFixing(null);
+    setPicked(res.data.id);
+    addToast(`${res.data.label} address updated and selected for delivery.`, 'success');
+  };
   // Saved addresses whose details panel is open (the chevron in the card's corner).
   const [openDetails, setOpenDetails] = useState<string[]>([]);
   const toggleDetails = (id: string) =>
@@ -576,12 +604,19 @@ export default function CheckoutPage() {
                         const usable = deliverable.includes(a);
                         const active = selectedId === a.id;
                         const open = usable && openDetails.includes(a.id);
+                        // "zone, street and building"
+                        const missing = missingAddressFields(a).join(', ').replace(/, (?=[^,]*$)/, ' and ');
                         return (
                           <div
                             key={a.id}
                             className={`relative border transition-colors ${active ? 'border-primary bg-cream' : 'border-divider bg-white'} ${usable ? 'hover:border-primary' : 'opacity-60'}`}
                           >
-                            <label className={`flex items-start gap-3 p-4 pr-14 ${usable ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                            <label
+                              // Right padding clears the corner button: the chevron, or the wider Update.
+                              className={`flex items-start gap-3 p-4 cursor-pointer ${usable ? 'pr-14' : 'pr-30'}`}
+                              // Its radio is disabled, so a click on an old-format card opens the editor instead.
+                              onClick={usable ? undefined : () => openFix(a)}
+                            >
                               <input type="radio" name="delivery-address" className="mt-0.5" style={BRAND_CONTROL} checked={active} disabled={!usable} onChange={() => setPicked(a.id)} />
                               <span className="flex-1 min-w-0 space-y-1.5">
                                 <span className="flex flex-wrap items-center gap-2">
@@ -592,13 +627,23 @@ export default function CheckoutPage() {
                                 </span>
                                 {!usable ? (
                                   <span className="block text-xs text-muted leading-relaxed">
-                                    Saved before zone, street and building were required. Update it in My Addresses to deliver here.
+                                    Missing {missing}. Update it to deliver here.
                                   </span>
                                 ) : (
                                   !open && <span className="block text-xs text-muted leading-relaxed">{formatQatarAddress(a)}, Qatar</span>
                                 )}
                               </span>
                             </label>
+                            {!usable && (
+                              <button
+                                type="button"
+                                onClick={() => openFix(a)}
+                                aria-label={`Update ${a.label} address`}
+                                className="absolute top-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full border border-primary bg-white px-3 text-[10px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-white"
+                              >
+                                <Pencil size={12} /> Update
+                              </button>
+                            )}
                             {usable && (
                               // Outside the <label>, so opening the details never changes the selection.
                               <button
@@ -909,6 +954,22 @@ export default function CheckoutPage() {
         </div>
 
       </div>
+
+      {/* Outside the step forms: AddressForm is a <form> of its own and forms cannot nest. */}
+      <AddressModal open={!!fixing} title="Update Address" onClose={() => (fixSaving ? undefined : setFixing(null))}>
+        {fixing && (
+          <>
+            {/* The old address is not one of the form's fields, so show it to copy from. */}
+            <p className="mb-5 text-xs leading-relaxed text-muted">
+              {formatAddress(fixing) && (
+                <>Saved as: <span className="text-primary">{formatAddress(fixing)}</span>. </>
+              )}
+              Add the zone, street and building from the blue plate outside the building to deliver here.
+            </p>
+            <AddressForm key={fixing.id} initial={fixing} saving={fixSaving} serverError={fixError} onSubmit={handleFix} />
+          </>
+        )}
+      </AddressModal>
     </div>
   );
 }
