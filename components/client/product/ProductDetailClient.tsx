@@ -10,7 +10,6 @@ import { useApp } from '@/context/AppContext'
 import ProductGallery from './ProductGallery'
 import GiftSection from './GiftSection'
 import DeliveryScheduler from './DeliveryScheduler'
-import GreetingCardSelector, { DEFAULT_GREETING_STYLE } from './GreetingCardSelector'
 import PriceSummary from './PriceSummary'
 import { ProductUnavailableNotice, useProductAvailable } from './ProductAvailability'
 import { usePriceCalculator, type AddOn } from '@/hooks/useProductOptions'
@@ -93,13 +92,12 @@ export default function ProductDetailClient({
   // 'details' because the description panel moved up into the buying column.
   const [openSection, setOpenSection] = useState<string | null>('details');
 
-  // M05: gift add-ons, delivery schedule, greeting card
+  // M05: gift add-ons and delivery schedule. No greeting card: that is a Blushing Blooms
+  // option, and this component only ever renders the other products (see the
+  // categoryType branch in app/(client)/product/[slug]/page.tsx).
   const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([])
   const [deliveryDate, setDeliveryDate] = useState<string | null>(null)
   const [deliveryTime, setDeliveryTime] = useState<string | null>(null)
-  const [greetingTemplateId, setGreetingTemplateId] = useState<string | null>(null)
-  const [greetingMessage, setGreetingMessage] = useState('')
-  const greetingStyle = DEFAULT_GREETING_STYLE
 
   const selectedVariant = product.variants?.find((v: ProductVariant) => v.id === selectedVariantId) || defaultVariant
   const selectedColor = selectedVariant?.colorVariants?.find((c: ProductColorVariant) => c.id === selectedColorId) || selectedVariant?.colorVariants?.[0]
@@ -151,9 +149,6 @@ export default function ProductDetailClient({
       addOns: selectedAddOns.map((a) => ({ id: a.id, name: a.name, price: a.price })),
       deliveryDate: deliveryDate || undefined,
       deliveryTime: deliveryTime || undefined,
-      greetingTemplateId: greetingTemplateId || undefined,
-      greetingMessage: greetingTemplateId ? greetingMessage || undefined : undefined,
-      greetingStyle: greetingTemplateId ? greetingStyle : undefined,
       calculatedPrice: pricing.subtotal,
     })
     setCartOpen(true)
@@ -373,21 +368,21 @@ export default function ProductDetailClient({
             </div>
           )}
 
-          <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
+          {/*
+            M05: Gift Add-ons. The heading is inside the condition, not above it: GiftSection
+            already renders nothing without groups, so an unconditional heading left this
+            product page showing "ADD GIFTS" over an empty box, plus its own 32px of spacing,
+            for every category the admin has not assigned a gift group to.
+          */}
+          {giftGroups.length > 0 && (
+            <div className="mb-8">
+              <span className="font-sans text-[11px] font-semibold uppercase tracking-widest mb-4 block" style={{ color: PALETTE.textPrimary }}>
+                <span style={{ color: PALETTE.textSecondary }}>ADD  GIFTS</span>
+              </span>
+              <GiftSection groups={giftGroups} selected={selectedAddOns} onChange={setSelectedAddOns} />
+            </div>
+          )}
 
-          <div className="w-full h-px mb-8" style={{ backgroundColor: PALETTE.divider }} />
-
-          {/* M05: Gift Add-ons */}
-          <div className="mb-8">
-            <span className="font-sans text-[11px] font-semibold uppercase tracking-widest mb-4 block" style={{ color: PALETTE.textPrimary }}>
-              <span style={{ color: PALETTE.textSecondary }}>ADD  GIFTS</span>
-            </span>
-            <GiftSection groups={giftGroups} selected={selectedAddOns} onChange={setSelectedAddOns} />
-
-          </div>
-
-          {/* Category gifts: hidden entirely when this product's category has no active group. */}
-          
           {/* M05: Delivery schedule */}
           <div className="mb-8">
             <DeliveryScheduler
@@ -398,17 +393,7 @@ export default function ProductDetailClient({
             />
           </div>
 
-          {/* M05: Greeting card */}
-          <div className="mb-8">
-            <GreetingCardSelector
-              templateId={greetingTemplateId}
-              message={greetingMessage}
-              style={greetingStyle}
-              onTemplate={(id) => { setGreetingTemplateId(id); if (!id) setGreetingMessage('') }}
-              onMessage={setGreetingMessage}
-            />
-          </div>
-
+          {/* No greeting card here — it is a Blushing Blooms option only. */}
           {/* M05: Live price summary */}
           <div className="mb-6">
             <PriceSummary basePrice={basePrice} quantity={quantity} addOns={selectedAddOns} subtotal={pricing.subtotal} />
@@ -432,10 +417,6 @@ export default function ProductDetailClient({
             {!available && <ProductUnavailableNotice className="text-black/70" />}
             {/* "Learn More" removed: there is no Klarna information page in this app, and a
                 link to "#" would scroll the customer to the top mid-checkout. */}
-            <div className="flex items-center justify-center gap-1 font-sans text-[12px]" style={{ color: PALETTE.textSecondary }}>
-              <span>or 4 interest-free payments of QAR {(price / 4).toFixed(2)} with</span>
-              <span className="font-bold text-black tracking-tighter">Klarna.</span>
-            </div>
           </div>
 
         </div>
