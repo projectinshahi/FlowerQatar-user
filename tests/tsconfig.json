@@ -1,0 +1,18 @@
+/*
+ * Exists so editors can type-check this folder.
+ *
+ * The root tsconfig.json deliberately excludes `tests` to keep `next build` fast, which left
+ * these files in no TypeScript project at all. An editor then falls back to an inferred project
+ * rooted at whichever folder is open — and when that is this repository's parent directory, it
+ * contains no node_modules, so @types/node is never resolved and every `process` reference
+ * reports TS2591 "Cannot find name 'process'".
+ *
+ * Same compiler options as the application; only the scope differs. `npm run typecheck`
+ * (tsconfig.check.json) already covers these files, so this adds no new CI surface — it only
+ * gives the editor a real project to attach them to.
+ */
+{
+  "extends": "../tsconfig.json",
+  "include": ["**/*.ts"],
+  "exclude": []
+}
