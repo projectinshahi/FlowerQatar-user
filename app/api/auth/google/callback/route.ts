@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { GOOGLE_STATE_COOKIE } from '@/lib/google-oauth';
+import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session-cookie';
 
 export async function GET(req: Request) {
   try {
@@ -111,13 +112,7 @@ export async function GET(req: Request) {
 
     // Set HttpOnly Cookie
     const cookieStore = await cookies();
-    cookieStore.set('session', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    });
+    cookieStore.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
 
     return NextResponse.redirect(`${url.origin}/`);
 

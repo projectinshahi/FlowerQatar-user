@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyPassword, generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session-cookie';
 
 // Shape only - never the password policy. An existing account whose password predates the
 // current rules must still be able to sign in; 72 is the bcrypt ceiling, not a strength rule.
@@ -102,13 +103,7 @@ export async function POST(req: Request) {
 
     // Set HttpOnly Cookie
     const cookieStore = await cookies();
-    cookieStore.set('session', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    });
+    cookieStore.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
 
     return NextResponse.json({
       message: 'Login successful',

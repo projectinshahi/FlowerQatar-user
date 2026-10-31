@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { GOOGLE_STATE_COOKIE } from '@/lib/google-oauth';
+import { COOKIE_SECURE } from '@/lib/session-cookie';
 
 export async function GET(req: Request) {
   const redirectUri = `${new URL(req.url).origin}/api/auth/google/callback`;
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
   const res = NextResponse.redirect(authUrl);
   res.cookies.set(GOOGLE_STATE_COOKIE, state, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: COOKIE_SECURE,
     sameSite: 'lax',
     path: '/api/auth/google',
     maxAge: 10 * 60,
