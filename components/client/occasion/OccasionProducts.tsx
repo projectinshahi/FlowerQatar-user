@@ -36,7 +36,7 @@ export default function OccasionProducts({ products }: { products: Product[] }) 
   return (
     <>
       {/* Same grid treatment as the shop listing. */}
-      <div className="grid grid-cols-2 gap-0 border-l border-t border-divider/40 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-0 border-l border-t border-divider/40 md:grid-cols-3">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} onQuickView={openQuickView} />
         ))}

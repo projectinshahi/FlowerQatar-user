@@ -414,7 +414,7 @@ function ShopContent({ products, facets, filters, dropped, heroTitle, heroImage 
             </div>
           ) : (
             <div className="space-y-12">
-              <div className="grid gap-0 border-l border-t border-divider/40 grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-0 border-l border-t border-divider/40 grid-cols-2 md:grid-cols-3">
                 {products.slice(0, shown).map((product) => (
                   <ProductCard key={product.slug} product={product} onQuickView={openQuickView} showColors={false} />
                 ))}
