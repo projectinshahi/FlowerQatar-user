@@ -11,6 +11,9 @@
     "postinstall": "prisma generate",
     "test": "tsx --test tests/**/*.test.ts"
   },
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@prisma/client": "^5.22.0",
