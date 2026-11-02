@@ -17,8 +17,23 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { parseCookie } from 'cookie';
 
-// A flag rather than NODE_ENV=production in the npm script, which does not work on Windows.
-const dev = !process.argv.includes('--production');
+/*
+ * Development unless told otherwise, by EITHER route:
+ *
+ *   --production   the flag `npm start` passes, because `NODE_ENV=production node ...` in an
+ *                  npm script does not work on Windows.
+ *   NODE_ENV       what a host sets for us. Some platforms (GoDaddy/cPanel via Passenger among
+ *                  them) start this file directly rather than through an npm script, so there
+ *                  is no argv to carry the flag - and this line used to OVERWRITE their
+ *                  NODE_ENV=production back to 'development'. Next then booted its Turbopack
+ *                  dev compiler, which spawns helper processes that bind their own sockets; a
+ *                  restricted container refuses that ("Permission denied (os error 13)"), the
+ *                  first asset it needed failed to compile, and every page answered 500.
+ *
+ * Production therefore wins if either says so; nothing here can downgrade a host's production
+ * environment to development.
+ */
+const dev = !process.argv.includes('--production') && process.env.NODE_ENV !== 'production';
 process.env.NODE_ENV = dev ? 'development' : 'production';
 const port = Number(process.env.PORT) || 3000;
 
