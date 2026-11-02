@@ -70,9 +70,12 @@ export default async function CollectionsPage() {
         ))}
 
         {/* Custom design suite (preserved) */}
+        {/* w-full for the same reason as BrandStory: aspect-ratio with min-height transfers a
+            minimum WIDTH through the ratio (300px x 21/9 = 700px here), which can push a grid item
+            past its column. A definite width confines the ratio to the height. */}
         <Link
           href="/custom"
-          className="group relative block bg-primary overflow-hidden border border-divider/40 aspect-[4/3] md:col-span-2 md:aspect-[21/9] md:min-h-[300px]"
+          className="group relative block w-full bg-primary overflow-hidden border border-divider/40 aspect-[4/3] md:col-span-2 md:aspect-[21/9] md:min-h-[300px]"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary" />
           <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-end text-white">

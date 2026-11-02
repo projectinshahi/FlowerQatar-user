@@ -22,10 +22,18 @@ export default function BrandStory() {
      * sides are trimmed there instead of its top and bottom).
      * lg and up: never taller than the screen under the fixed menu bar (--site-header-h). The photo
      * always spans the full width; when that cap bites, its top and bottom are trimmed instead.
+     *
+     * w-full is load-bearing, not decoration. `aspect-ratio` together with `min-height` transfers a
+     * MINIMUM WIDTH through the ratio: min-h-120 (480px) x 1672/941 made this section 853px wide on
+     * every phone, whatever the viewport. body{overflow-x:hidden} in globals.css hid that on Chrome
+     * and Android, but iOS Safari does not contain it at body level, so the document itself became
+     * 853px wide - every other section then laid out at ~390px against a 853px page, leaving the
+     * blank strip on the right that could be scrolled into. An explicit width makes the width
+     * definite, so the ratio can only resolve the height and min-height clamps that height alone.
      */
     <section
       ref={containerRef}
-      className="relative aspect-1672/941 min-h-120 md:min-h-140 lg:aspect-auto lg:min-h-110 lg:h-[min(56.28vw,calc(100svh_-_var(--site-header-h,155px)))] overflow-hidden bg-secondary"
+      className="relative w-full aspect-1672/941 min-h-120 md:min-h-140 lg:aspect-auto lg:min-h-110 lg:h-[min(56.28vw,calc(100svh_-_var(--site-header-h,155px)))] overflow-hidden bg-secondary"
     >
       {/* Parallax Background */}
       <motion.div style={{ y }} className="absolute inset-0">
@@ -40,7 +48,7 @@ export default function BrandStory() {
       </motion.div>
 
       {/* Content */}
-      <div className="absolute inset-0 flex items-center justify-center px-4">
+      <div className="absolute inset-0 flex items-center justify-center px-6 md:px-4">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -56,7 +64,13 @@ export default function BrandStory() {
             WHO WE ARE
           </h2>
           
-          <p className="font-serif text-[28px] md:text-[48px] text-white font-light text-center leading-[1.3] mt-6">
+          {/*
+            Fluid below md so the four phrases stop stacking into a tall column of short ragged
+            lines on a 320-375px phone: 20px at 320px up to the original 28px by ~470px, where it
+            meets the unchanged md size. text-balance evens the line lengths out, which is what
+            stops a single trailing word on its own line.
+          */}
+          <p className="font-serif text-[clamp(1.25rem,6vw,1.75rem)] md:text-[48px] text-white font-light text-center text-balance tracking-[-0.01em] leading-[1.35] mt-5 md:mt-6 md:tracking-normal md:leading-[1.3]">
             PIONEERS OF ETERNITY FLOWERS <br className="hidden md:block" />
             <span className="md:hidden">/ </span>
             LUXURY THAT LASTS ALL YEAR <br className="hidden md:block" />
@@ -68,7 +82,7 @@ export default function BrandStory() {
           
           <Link
             href="/about"
-            className="border border-white text-white px-8 py-4 font-sans text-[15px] uppercase tracking-[0.15em] hover:bg-white hover:text-[#2a0015] transition-colors duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] mt-10 inline-block"
+            className="border border-white text-white px-8 py-4 font-sans text-[15px] uppercase tracking-[0.15em] hover:bg-white hover:text-[#2a0015] transition-colors duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] mt-8 md:mt-10 inline-block"
           >
             LEARN MORE
           </Link>
