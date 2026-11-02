@@ -119,7 +119,7 @@ export default function BlushingListingSkeleton() {
 
           <div className="flex flex-col gap-[10px]">
             {/* First six products */}
-            <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 md:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <CardSkeleton key={i} />
               ))}

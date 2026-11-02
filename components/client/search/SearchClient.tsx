@@ -93,7 +93,7 @@ export default function SearchClient({ products, query: queryParam }: { products
                   We found {results.length} arrangement{results.length > 1 ? 's' : ''} for &quot;{queryParam}&quot;
                 </h2>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 lg:gap-8">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 lg:gap-8">
                 {results.map((product) => (
                   <ProductCard key={product.slug} product={product} />
                 ))}
@@ -110,7 +110,7 @@ export default function SearchClient({ products, query: queryParam }: { products
               {bestSellers.length > 0 && (
                 <div>
                   <h3 className="font-serif text-2xl text-primary text-center mb-10 tracking-wide">Atelier Best Sellers</h3>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
                     {bestSellers.map((product) => (
                       <ProductCard key={product.slug} product={product} />
                     ))}

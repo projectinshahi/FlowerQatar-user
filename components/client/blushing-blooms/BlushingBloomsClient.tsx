@@ -519,7 +519,7 @@ export default function BlushingBloomsClient({
   };
 
   const grid = (items: Product[], priorityCount = 0) => (
-    <div className="grid grid-cols-2 gap-x-[10px] gap-y-[18px] sm:gap-x-[18px] sm:gap-y-[30px] lg:grid-cols-3">
+    <div className="grid grid-cols-2 gap-x-[10px] gap-y-[18px] sm:gap-x-[18px] sm:gap-y-[30px] md:grid-cols-3">
       {items.map((p, i) => (
         <BlushingProductCard
           key={p.id || p.slug || p.name}

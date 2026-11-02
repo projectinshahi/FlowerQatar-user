@@ -2,7 +2,7 @@
  * Product-shaped skeletons. Dimensions are copied from the real components so swapping in
  * data cannot shift layout:
  *  - card  → components/ProductCard.tsx
- *  - grid  → components/client/shop/ShopClient.tsx  (grid-cols-2 lg:grid-cols-3, zero gap)
+ *  - grid  → components/client/shop/ShopClient.tsx  (grid-cols-2 md:grid-cols-3, zero gap)
  */
 import {
   Skeleton,
@@ -40,7 +40,7 @@ export function ProductCardSkeleton({ className = '' }: { className?: string }) 
  */
 export function ProductGridSkeleton({
   count = 6,
-  columns = 'grid-cols-2 lg:grid-cols-3',
+  columns = 'grid-cols-2 md:grid-cols-3',
   bordered = true,
   className = '',
 }: {
@@ -134,7 +134,7 @@ export function ProductDetailSkeleton() {
       {/* Related products */}
       <div className="mt-16 space-y-5">
         <SkeletonTitle className="mx-auto h-7" width="220px" />
-        <ProductGridSkeleton count={4} columns="grid-cols-2 lg:grid-cols-4" />
+        <ProductGridSkeleton count={4} columns="grid-cols-2 md:grid-cols-3 lg:grid-cols-4" />
       </div>
     </SkeletonRegion>
   );

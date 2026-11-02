@@ -78,7 +78,7 @@ export function SearchPageSkeleton() {
         <SkeletonTitle className="h-8" width="320px" />
         <SkeletonText className="h-3" width="180px" />
       </div>
-      <ProductGridSkeleton count={6} columns="grid-cols-2 lg:grid-cols-3" bordered={false} className="gap-3 md:gap-6 lg:gap-8" />
+      <ProductGridSkeleton count={6} columns="grid-cols-2 md:grid-cols-3" bordered={false} className="gap-3 md:gap-6 lg:gap-8" />
     </SkeletonRegion>
   );
 }
