@@ -44,3 +44,9 @@ next-env.d.ts
 
 # Detached dev-server log (see AGENTS.md)
 dev-server.log
+
+# Local AI agent config and skills - machine-local tooling, not part of the app.
+# .claude/skills holds symlinks into .agents/skills, which do not resolve on another
+# machine or on a checkout that has no .agents, so committing them only breaks clones.
+.claude/
+.agents/
