@@ -143,6 +143,16 @@ export default function VariantsStep({ subcategories = [] }: { subcategories?: S
               <option value="PUBLISHED">Published</option>
               <option value="ARCHIVED">Archived</option>
             </select>
+            {/*
+              A new product starts as Draft, and every storefront query reads only PUBLISHED
+              rows, so a product saved on the default never reaches its collection page - the
+              listing shows "0 PRODUCTS" and nothing anywhere says why. Saying it here, beside
+              the control that decides it, is the whole fix: the rule itself is correct.
+            */}
+            <p className="mt-1.5 text-xs text-gray-500">
+              Only <span className="font-medium text-gray-700">Published</span> products appear on
+              the storefront. New products start as <span className="font-medium text-gray-700">Draft</span>.
+            </p>
           </div>
           {/* Category system: one of the six fixed categories + a subcategory within it. */}
           <div>
