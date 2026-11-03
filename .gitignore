@@ -50,3 +50,6 @@ dev-server.log
 # machine or on a checkout that has no .agents, so committing them only breaks clones.
 .claude/
 .agents/
+
+# Deployment archives built from this tree (see the GoDaddy deploy notes).
+*.zip
