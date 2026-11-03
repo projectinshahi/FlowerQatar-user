@@ -90,4 +90,35 @@ const nextConfig: NextConfig = {
   },
 };
 
+/*
+ * NEXT_PUBLIC_SITE_URL is baked into the bundle at build time, and lib/site.ts falls back to a
+ * Vercel address when it is unset. That fallback is silent, and it is load-bearing in places
+ * that cost money or lock people out:
+ *
+ *   lib/services/skipcash.ts   webhookUrl + returnUrl handed to the payment gateway - a wrong
+ *                              value means SkipCash posts the "payment succeeded" callback to
+ *                              another domain and orders are never marked paid.
+ *   app/api/auth/google/*      the OAuth redirect_uri, which Google matches exactly.
+ *   app/sitemap.ts, robots.ts, canonicals, invoice verification links.
+ *
+ * So a production build without it is refused here rather than shipped. Checked only during
+ * `next build`: the running server must never fail to start over this, and `next dev` is
+ * deliberately unaffected.
+ */
+if (process.env.NEXT_PHASE === "phase-production-build") {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!siteUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_SITE_URL is not set. It is inlined at build time and is used for the SkipCash " +
+        "webhook/return URLs, the Google OAuth redirect_uri, sitemap and canonicals. Set it to the " +
+        "public origin (e.g. https://your-domain.com) before building."
+    );
+  }
+  if (!/^https?:\/\//i.test(siteUrl)) {
+    throw new Error(
+      `NEXT_PUBLIC_SITE_URL must be an absolute URL including the scheme; received "${siteUrl}".`
+    );
+  }
+}
+
 export default nextConfig;

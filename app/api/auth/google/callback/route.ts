@@ -4,19 +4,21 @@ import { generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { GOOGLE_STATE_COOKIE } from '@/lib/google-oauth';
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session-cookie';
+import { SITE_URL } from '@/lib/site';
 
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
-    const redirectUri = `${url.origin}/api/auth/google/callback`;
+    // Must match the value the initiator sent, and must be the public origin - see ../route.ts.
+    const redirectUri = `${SITE_URL}/api/auth/google/callback`;
     
     // CSRF: Google must echo back the `state` this browser was given (see ../route.ts).
     const stateStore = await cookies();
     const expectedState = stateStore.get(GOOGLE_STATE_COOKIE)?.value;
     stateStore.delete({ name: GOOGLE_STATE_COOKIE, path: '/api/auth/google' });
     if (!code || !expectedState || url.searchParams.get('state') !== expectedState) {
-      return NextResponse.redirect(`${url.origin}/account/login?error=GoogleAuthFailed`);
+      return NextResponse.redirect(`${SITE_URL}/account/login?error=GoogleAuthFailed`);
     }
 
     const clientId = process.env.CLIENT_ID;
@@ -38,7 +40,7 @@ export async function GET(req: Request) {
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
       console.error('Google token exchange failed:', tokenData);
-      return NextResponse.redirect(`${url.origin}/account/login?error=GoogleTokenFailed`);
+      return NextResponse.redirect(`${SITE_URL}/account/login?error=GoogleTokenFailed`);
     }
 
     // Get user info
@@ -49,7 +51,7 @@ export async function GET(req: Request) {
 
     // An unverified Google email proves nothing about who owns the address.
     if (!googleUser.email || googleUser.verified_email !== true) {
-      return NextResponse.redirect(`${url.origin}/account/login?error=GoogleEmailMissing`);
+      return NextResponse.redirect(`${SITE_URL}/account/login?error=GoogleEmailMissing`);
     }
 
     const normalizedEmail = googleUser.email.toLowerCase().trim();
@@ -94,7 +96,7 @@ export async function GET(req: Request) {
     }
 
     if (!user.isActive || user.isBlocked || user.isDeleted) {
-      return NextResponse.redirect(`${url.origin}/account/login?error=AccountDeactivated`);
+      return NextResponse.redirect(`${SITE_URL}/account/login?error=AccountDeactivated`);
     }
 
     // Login successful
@@ -114,11 +116,10 @@ export async function GET(req: Request) {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
 
-    return NextResponse.redirect(`${url.origin}/`);
+    return NextResponse.redirect(`${SITE_URL}/`);
 
   } catch (error) {
     console.error('Google Callback Error:', error);
-    const url = new URL(req.url);
-    return NextResponse.redirect(`${url.origin}/account/login?error=InternalError`);
+    return NextResponse.redirect(`${SITE_URL}/account/login?error=InternalError`);
   }
 }
