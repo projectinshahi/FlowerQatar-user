@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "node server.mjs",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --webpack",
     "start": "node server.mjs --production",
     "lint": "eslint",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
