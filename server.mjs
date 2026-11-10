@@ -137,6 +137,6 @@ globalThis[Symbol.for('lebami.live')] = {
   },
 };
 
-httpServer.listen(port, () => {
+httpServer.listen(port, '0.0.0.0', () => {
   console.log(`> Lebami ready on http://localhost:${port} (${dev ? 'development' : 'production'}, live updates on)`);
 });
