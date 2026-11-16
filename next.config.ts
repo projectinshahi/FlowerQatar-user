@@ -8,7 +8,7 @@ const cpuCount = cpus().length || 1;
 // the live site; promote to "Content-Security-Policy" after reviewing violation reports.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.googletagmanager.com",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://res.cloudinary.com https://flagcdn.com https://images.unsplash.com https://upload.wikimedia.org https://*.googleusercontent.com https://www.google-analytics.com https://*.google-analytics.com",
   "media-src 'self' https://res.cloudinary.com",
