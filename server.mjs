@@ -42,6 +42,14 @@ const httpServer = createServer();
 const app = next({ dev, port, httpServer });
 const handle = app.getRequestHandler();
 await app.prepare();
+
+// Initialize subscription plans on startup
+try {
+  const { ensureSubscriptionPlansExist } = await import('./lib/services/subscription/initialize.ts');
+  await ensureSubscriptionPlansExist();
+} catch (error) {
+  console.warn('Could not initialize subscription plans:', error.message);
+}
 /*
  * Browser-safe caching for pages.
  *

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import { prisma } from "@/lib/prisma";
 import { orderedItemImage } from "@/lib/media";
 import { createPendingOrder, setOrderPayment, setOrderPaymentStatus, OrderError } from "@/lib/services/order";
@@ -33,7 +33,7 @@ const schema = z.object({
  * Guests get an empty list rather than a 401, matching the cart's graceful pattern.
  */
 export async function GET() {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ success: true, orders: [] });
 
   const orders = await prisma.order.findMany({
@@ -69,7 +69,7 @@ export async function GET() {
  * covered by points/discounts has nothing to pay, so it comes back `paid` with no payUrl.
  */
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) {
     return NextResponse.json({ success: false, error: "Please sign in to place an order." }, { status: 401 });
   }

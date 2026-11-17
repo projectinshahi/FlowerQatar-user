@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
+import { ADMIN_SESSION_COOKIE } from "@/lib/session-cookie";
 import { isDbUnreachable, logDbError, retryOnUnreachable } from "@/lib/prisma-error";
 
 export class AuthError extends Error {
@@ -37,8 +38,8 @@ export const ACTIVE_USER = { isActive: true, isBlocked: false, isDeleted: false 
  * still active. Callers must filter their own query with ACTIVE_USER, which lets one read do
  * both the auth check and the fetch.
  */
-export async function getSessionUserId(): Promise<string | null> {
-  const token = (await cookies()).get("session")?.value;
+export async function getAdminSessionUserId(): Promise<string | null> {
+  const token = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value;
   return (token && verifyToken(token)?.userId) || null;
 }
 
@@ -49,7 +50,7 @@ export async function getSessionUserId(): Promise<string | null> {
  * per authenticated page.
  */
 async function loadCurrentUser(): Promise<AuthUser | null> {
-  const userId = await getSessionUserId();
+  const userId = await getAdminSessionUserId();
   if (!userId) return null;
 
   /*

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
  * someone else's order id returns 404, not their details.
  */
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) {
     return NextResponse.json({ success: false, error: "Please sign in." }, { status: 401 });
   }

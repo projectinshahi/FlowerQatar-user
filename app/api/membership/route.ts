@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import { getActiveMembership } from "@/lib/services/membership";
 import { getWalletView } from "@/lib/services/wallet";
 import { planName } from "@/lib/subscription-plans";
@@ -7,10 +7,10 @@ import { planName } from "@/lib/subscription-plans";
 /**
  * GET /api/membership — the caller's active membership (if any) + points wallet.
  * Guests get nulls (never a 401), so the checkout can render a guest state cleanly.
- * Everything is scoped to the authenticated user id.
+ * Everything is scoped to the authenticated customer.
  */
 export async function GET() {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) {
     return NextResponse.json({ success: true, data: { membership: null, wallet: null } });
   }

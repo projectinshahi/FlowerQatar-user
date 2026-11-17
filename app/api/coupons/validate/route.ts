@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { validateCouponSchema } from "@/lib/validations/marketing";
 import { validateCoupon } from "@/lib/services/marketing";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 
 /**
  * POST /api/coupons/validate
  * Checks a coupon against the cart without recording usage. Works for guests
- * (userId optional); per-customer limits require a signed-in user.
+ * (userId optional); per-customer limits require a signed-in customer.
  */
 export async function POST(request: Request) {
   try {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: false, reason: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const user = await getCurrentUser();
+    const user = await getCurrentCustomer();
     const result = await validateCoupon(parsed.data.code, parsed.data.items, user?.id ?? null);
 
     return NextResponse.json(result, { status: 200 });

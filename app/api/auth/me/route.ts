@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { CUSTOMER_SESSION_COOKIE, SESSION_COOKIE_CLEARED } from '@/lib/session-cookie';
 
 /**
  * Logged-out response: 200 with a null user.
@@ -13,13 +14,18 @@ import { cookies } from 'next/headers';
  */
 function guest(clearCookie = false) {
   const res = NextResponse.json({ user: null });
-  if (clearCookie) res.cookies.delete('session');
+  if (clearCookie) {
+    const cookieStore = res.cookies;
+    // Clear both customer and legacy session cookies
+    cookieStore.set(CUSTOMER_SESSION_COOKIE, '', SESSION_COOKIE_CLEARED);
+    cookieStore.set('session', '', SESSION_COOKIE_CLEARED);
+  }
   return res;
 }
 
 export async function GET() {
   try {
-    const token = (await cookies()).get('session')?.value;
+    const token = (await cookies()).get(CUSTOMER_SESSION_COOKIE)?.value;
     if (!token) return guest();
 
     const payload = verifyToken(token);

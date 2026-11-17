@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ok, withUser, ApiError } from "@/lib/api";
 import { verifyPassword } from "@/lib/auth";
 import { deleteAccountSchema } from "@/lib/validations/privacy";
-import { SESSION_COOKIE, SESSION_COOKIE_CLEARED } from "@/lib/session-cookie";
+import { CUSTOMER_SESSION_COOKIE, SESSION_COOKIE_CLEARED } from "@/lib/session-cookie";
 
 // POST /api/account/delete — GDPR account deletion (soft-delete + PII anonymization).
 // Requires password confirmation (or email confirmation for social-only accounts).
@@ -63,9 +63,9 @@ export const POST = withUser(async ({ user, req }) => {
     });
   });
 
-  // Invalidate the current session.
+  // Invalidate the customer session.
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, "", SESSION_COOKIE_CLEARED);
+  jar.set(CUSTOMER_SESSION_COOKIE, "", SESSION_COOKIE_CLEARED);
 
   return ok({ deleted: true });
 });

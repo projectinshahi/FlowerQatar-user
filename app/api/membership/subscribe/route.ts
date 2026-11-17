@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import { subscribeSchema } from "@/lib/validations/membership";
 import {
   confirmMembershipPaid,
@@ -28,7 +28,7 @@ import {
  * the gateway is not proof of payment, so this route never activates anything itself.
  */
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) {
     return NextResponse.json({ success: false, error: "Please sign in to subscribe." }, { status: 401 });
   }

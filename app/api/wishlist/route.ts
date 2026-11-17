@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import { getStoreProducts, mapDbProductToStore } from "@/lib/store-products";
 import type { Product } from "@/types";
 
@@ -41,7 +41,7 @@ function fail(e: unknown, fallback: string) {
 // storefront can hydrate on every page load without console/network errors. Same as /api/cart.
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentCustomer();
     const data = user ? await wishlistPayload(user.id) : { items: [] };
     return NextResponse.json({ success: true, data });
   } catch (e) {
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     const slug = typeof body?.slug === "string" ? body.slug.trim() : "";
     // Independent reads, issued together; the checks below keep their original order.
     const [user, product] = await Promise.all([
-      getCurrentUser(),
+      getCurrentCustomer(),
       slug ? prisma.product.findUnique({ where: { slug }, select: { id: true } }) : null,
     ]);
     if (!user) {

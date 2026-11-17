@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { AuthError, getCurrentUser, type AuthUser } from "@/lib/admin-guard";
+import { getCurrentCustomer, type CustomerUser } from "@/lib/customer-guard";
 
 /** Expected, client-safe errors thrown by services (business-rule violations, not-found, etc.). */
 export class ApiError extends Error {
@@ -42,6 +43,33 @@ export function withUser<Ctx = any>(
       if (len > MAX_BODY_BYTES) return fail("Request payload too large", 413);
 
       const user = await getCurrentUser();
+      if (!user) return fail("You must be signed in", 401);
+      return await handler({ user, req, ctx });
+    } catch (e) {
+      return mapError(e);
+    }
+  };
+}
+
+/**
+ * Wraps a route handler requiring customer authentication + error handling.
+ * Uses the CUSTOMER session, never the ADMIN session.
+ *
+ * - Loads the signed-in customer and passes it to `handler`.
+ * - Maps ZodError -> 422 (with field messages), everything
+ *   else -> 500 with a generic message (internal errors are logged, never exposed).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withCustomer<Ctx = any>(
+  handler: (args: { user: CustomerUser; req: Request; ctx: Ctx }) => Promise<Response>
+) {
+  return async (req: Request, ctx: Ctx): Promise<Response> => {
+    try {
+      // Reject oversized payloads early (our JSON APIs are small; uploads go direct to Cloudinary).
+      const len = Number(req.headers.get("content-length") || 0);
+      if (len > MAX_BODY_BYTES) return fail("Request payload too large", 413);
+
+      const user = await getCurrentCustomer();
       if (!user) return fail("You must be signed in", 401);
       return await handler({ user, req, ctx });
     } catch (e) {

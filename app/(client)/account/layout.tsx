@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import AccountSidebar from "@/components/account/AccountSidebar";
 import { privatePageMetadata } from "@/lib/page-metadata";
 
@@ -9,8 +9,8 @@ export const metadata = privatePageMetadata("My Account");
 export const dynamic = "force-dynamic";
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
-  // Server-side auth guard: only signed-in users can reach any /account page.
-  const user = await getCurrentUser();
+  // Server-side auth guard: only signed-in CUSTOMERS can reach any /account page.
+  const user = await getCurrentCustomer();
   if (!user) redirect("/");
 
   const displayName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email;

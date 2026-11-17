@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import { prisma } from "@/lib/prisma";
 import { expireStaleMemberships } from "@/lib/services/membership";
 import { getWalletView } from "@/lib/services/wallet";
@@ -9,11 +9,11 @@ export const metadata = { title: "Subscriptions" };
 
 export default async function SubscriptionsPage() {
   /*
-   * The account layout already guards this route, and getCurrentUser is cache()d, so this
+   * The account layout already guards this route, and getCurrentCustomer is cache()d, so this
    * costs no extra query. The membership and the wallet are read here rather than from the
    * browser, so they are part of the page's own render — no second request, no loading flash.
    */
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) return <SubscriptionsManager />;
 
   // Flip any past-due membership to EXPIRED first, so what is shown is what is true today.
