@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/admin-guard';
+import { getCurrentCustomer } from '@/lib/customer-guard';
 import { getInvoiceDataByOrderId, InvoiceServiceError } from '@/lib/invoice/service';
 import { prisma } from '@/lib/prisma';
 
@@ -13,12 +14,13 @@ export async function GET(
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    const user = await getCurrentUser();
+    // Check both admin and customer sessions (they are separate)
+    const adminUser = await getCurrentUser();
+    const customerUser = await getCurrentCustomer();
 
     // Verify access rights:
-    // 1. Admin or Super Admin can access any order invoice
-    // 2. Logged-in user can access their own order invoice
-    // 3. Guest with valid order access
+    // 1. Admin or Super Admin can access any order invoice (via admin session)
+    // 2. Logged-in customer can access their own order invoice (via customer session)
     const order = await prisma.order.findUnique({
       where: { id },
       select: { userId: true },
@@ -28,8 +30,8 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const isAdmin = user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN');
-    const isOwner = user && order.userId && user.id === order.userId;
+    const isAdmin = adminUser && (adminUser.role === 'ADMIN' || adminUser.role === 'SUPER_ADMIN');
+    const isOwner = customerUser && order.userId && customerUser.id === order.userId;
 
     if (!isAdmin && !isOwner && order.userId) {
       return NextResponse.json({ error: 'Unauthorized to view this invoice' }, { status: 403 });

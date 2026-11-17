@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { getInvoiceDataByOrderId } from '@/lib/invoice/service';
 import { getCurrentUser } from '@/lib/admin-guard';
+import { getCurrentCustomer } from '@/lib/customer-guard';
 import { prisma } from '@/lib/prisma';
 import { InvoiceView } from '@/components/invoice/InvoiceView';
 import type { Metadata } from 'next';
@@ -25,7 +26,9 @@ export default async function CustomerInvoicePage({
   const { id } = await params;
   if (!id) notFound();
 
-  const user = await getCurrentUser();
+  // Check both admin and customer sessions (they are separate)
+  const adminUser = await getCurrentUser();
+  const customerUser = await getCurrentCustomer();
 
   const order = await prisma.order.findUnique({
     where: { id },
@@ -36,12 +39,12 @@ export default async function CustomerInvoicePage({
     notFound();
   }
 
-  const isAdmin = user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN');
-  const isOwner = user && order.userId && user.id === order.userId;
+  const isAdmin = adminUser && (adminUser.role === 'ADMIN' || adminUser.role === 'SUPER_ADMIN');
+  const isOwner = customerUser && order.userId && customerUser.id === order.userId;
 
-  // If order belongs to a registered user, require login / ownership
+  // If order belongs to a registered customer, require customer login / ownership or admin access
   if (order.userId && !isOwner && !isAdmin) {
-    if (!user) {
+    if (!customerUser && !adminUser) {
       redirect('/account');
     }
     notFound();

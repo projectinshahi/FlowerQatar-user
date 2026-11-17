@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { GOOGLE_STATE_COOKIE } from '@/lib/google-oauth';
-import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session-cookie';
+import { CUSTOMER_SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session-cookie';
 import { SITE_URL } from '@/lib/site';
 
 export async function GET(req: Request) {
@@ -112,9 +112,9 @@ export async function GET(req: Request) {
     // Generate JWT
     const token = generateToken({ userId: user.id, role: user.role });
 
-    // Set HttpOnly Cookie
+    // Set HttpOnly Cookie — Google OAuth is for customer login only
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+    cookieStore.set(CUSTOMER_SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
 
     return NextResponse.redirect(`${SITE_URL}/`);
 

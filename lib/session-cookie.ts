@@ -20,6 +20,11 @@
  * falls back to an https:// Vercel address when the variable is unset. Deriving `Secure` from
  * that fallback would silently re-create this bug on any server missing the variable.
  */
+// Separate cookies for admin and customer — never reuse for the other system
+export const ADMIN_SESSION_COOKIE = 'lebami_admin_session';
+export const CUSTOMER_SESSION_COOKIE = 'lebami_customer_session';
+
+// Legacy fallback (deprecated, removed after migration)
 export const SESSION_COOKIE = 'session';
 
 /** Pure so the matrix of deployments can be tested without reloading this module. */

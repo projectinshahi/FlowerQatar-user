@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { CheckCircle2, Sparkles, CalendarClock, Gift } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/admin-guard';
+import { getCurrentCustomer } from '@/lib/customer-guard';
 import { planName, planAccent } from '@/lib/subscription-plans';
 import { formatValidity } from '@/lib/validations/subscription-plan';
 import { getWalletView } from '@/lib/services/wallet';
@@ -21,7 +21,7 @@ export default async function MembershipSuccessPage({
   searchParams: Promise<{ m?: string }>;
 }) {
   const { m } = await searchParams;
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) redirect('/');
 
   /*

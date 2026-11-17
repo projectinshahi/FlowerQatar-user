@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { ACTIVE_USER, getCurrentUser, getSessionUserId } from "@/lib/admin-guard";
+import { ACTIVE_USER, getCurrentUser } from "@/lib/admin-guard";
+import { getCustomerSessionUserId } from "@/lib/customer-guard";
 import { MAX_CART_QUANTITY } from "@/lib/cart-limits";
 import type { AddItemInput, CartSelection } from "@/lib/validations/cart";
 import type { Prisma } from "@prisma/client";
@@ -425,14 +426,14 @@ async function saveAndPrice(userId: string, items: StoredItem[]): Promise<CartPa
  * readCart, which rejects inactive accounts — so the auth check and the cart load are one query.
  */
 export async function resolveSessionUserId(): Promise<string> {
-  const userId = await getSessionUserId();
+  const userId = await getCustomerSessionUserId();
   if (!userId) throw new CartError("Please sign in to use your cart.", 401);
   return userId;
 }
 
-/** The signed-in user's cart, or an empty one for guests and inactive accounts. One read. */
+/** The signed-in customer's cart, or an empty one for guests and inactive accounts. One read. */
 export async function getSessionCart(): Promise<CartPayload> {
-  const userId = await getSessionUserId();
+  const userId = await getCustomerSessionUserId();
   if (!userId) return emptyCart();
   try {
     return await getCartPayload(userId);

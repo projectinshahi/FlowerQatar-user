@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyPassword, generateToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
-import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session-cookie';
+import { ADMIN_SESSION_COOKIE, CUSTOMER_SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session-cookie';
 
 // Shape only - never the password policy. An existing account whose password predates the
 // current rules must still be able to sign in; 72 is the bcrypt ceiling, not a strength rule.
@@ -101,9 +101,10 @@ export async function POST(req: Request) {
     // Generate JWT
     const token = generateToken({ userId: user.id, role: user.role });
 
-    // Set HttpOnly Cookie
+    // Set HttpOnly Cookie — separate for admin vs customer
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+    const cookieName = isAdminLogin ? ADMIN_SESSION_COOKIE : CUSTOMER_SESSION_COOKIE;
+    cookieStore.set(cookieName, token, SESSION_COOKIE_OPTIONS);
 
     return NextResponse.json({
       message: 'Login successful',

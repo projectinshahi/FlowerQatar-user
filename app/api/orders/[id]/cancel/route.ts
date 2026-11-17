@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/admin-guard";
+import { getCurrentCustomer } from "@/lib/customer-guard";
 import { cancelOrder, OrderError } from "@/lib/services/order";
 
 /**
@@ -7,7 +7,7 @@ import { cancelOrder, OrderError } from "@/lib/services/order";
  * Ownership is enforced in cancelOrder (passing userId); redeemed points are refunded.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getCurrentUser();
+  const user = await getCurrentCustomer();
   if (!user) return NextResponse.json({ success: false, error: "Please sign in." }, { status: 401 });
 
   try {
